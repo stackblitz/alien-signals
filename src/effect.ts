@@ -1,6 +1,6 @@
 import { Tracker } from './tracker';
 
-export function effect(fn: () => void): Tracker {
+export function effect(fn: () => void) {
 	const tracker = new Tracker(
 		() => { },
 		() => {
@@ -9,5 +9,5 @@ export function effect(fn: () => void): Tracker {
 			}
 		});
 	tracker.track(fn);
-	return tracker;
+	return () => tracker.stop();
 }

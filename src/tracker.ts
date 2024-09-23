@@ -55,6 +55,11 @@ export class Tracker {
 		}
 	}
 
+	stop() {
+		preCleanup(this);
+		postCleanup(this);
+	}
+
 	deref() {
 		return this;
 	}
