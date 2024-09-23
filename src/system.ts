@@ -24,11 +24,11 @@ export function resetTracking() {
 	activeTrackers = pausedTrackers.pop()!;
 }
 
-export function pauseEffect() {
+function pauseSpread() {
 	pauseEffectStack++;
 }
 
-export function resetEffect() {
+function resetSpread() {
 	pauseEffectStack--;
 	while (!pauseEffectStack && pendingEffects.length) {
 		pendingEffects.shift()!();
@@ -61,7 +61,7 @@ export function cleanupInvalidTracker(subs: Subs, tracker: Tracker) {
 }
 
 export function trigger(subs: Subs, dirtyLevel: DirtyLevels) {
-	pauseEffect();
+	pauseSpread();
 	for (const [tracker, version] of subs.entries()) {
 		const tracking = version === tracker.version;
 		if (!tracking) {
@@ -79,5 +79,11 @@ export function trigger(subs: Subs, dirtyLevel: DirtyLevels) {
 			}
 		}
 	}
-	resetEffect();
+	resetSpread();
+}
+
+export function batch(fn: () => void) {
+	pauseSpread();
+	fn();
+	resetSpread();
 }
