@@ -37,8 +37,6 @@ export function resetEffect() {
 
 export const depsMap = new WeakMap<TrackToken, Dep[]>();
 
-const useWeakRef = true;
-
 const trackerRegistry = new FinalizationRegistry<WeakRef<Tracker>>(trackToken => {
 	const deps = depsMap.get(trackToken);
 	if (deps) {
@@ -53,7 +51,7 @@ export function track(dep: Dep) {
 	if (activeTrackers.length) {
 		const tracker = activeTrackers[activeTrackers.length - 1];
 		if (!tracker.trackToken) {
-			if (tracker.effect || !useWeakRef) {
+			if (tracker.effect) {
 				tracker.trackToken = tracker;
 			}
 			else {
@@ -94,11 +92,18 @@ export function trigger(dep: Dep, dirtyLevel: DirtyLevels) {
 		if (!tracker) {
 			continue;
 		}
-		if (tracker.dirtyLevel < dirtyLevel) {
+		let tracking: boolean | undefined;
+		if (
+			tracker.dirtyLevel < dirtyLevel
+			&& (tracking ??= dep.get(tracker) === tracker.trackId)
+		) {
 			tracker.shouldSpreadEffect ||= tracker.dirtyLevel === DirtyLevels.NotDirty;
 			tracker.dirtyLevel = dirtyLevel;
 		}
-		if (tracker.shouldSpreadEffect) {
+		if (
+			tracker.shouldSpreadEffect
+			&& (tracking ??= dep.get(tracker) === tracker.trackId)
+		) {
 			tracker.spread();
 			tracker.shouldSpreadEffect = false;
 			if (tracker.effect) {
