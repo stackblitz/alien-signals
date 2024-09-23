@@ -1,6 +1,6 @@
-import type { TrackToken } from './tracker';
+import type { Tracker } from './tracker';
 
-export class Subs extends Map<TrackToken, number>  {
+export class Subs extends Map<Tracker, number>  {
 	constructor(public queryDirty?: () => void) {
 		super();
 	}

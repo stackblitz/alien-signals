@@ -1,15 +1,14 @@
-import { DirtyLevels, activeTrackers, cleanupInvalidTracker, subsListMap, pauseTracking, resetTracking } from './system';
-
-export type TrackToken = WeakRef<Tracker> | Tracker;
+import { Subs } from './subs';
+import { DirtyLevels, activeTrackers, cleanupInvalidTracker, pauseTracking, resetTracking } from './system';
 
 export class Tracker {
 
-	trackToken?: TrackToken;
 	dirtyLevel = DirtyLevels.Dirty;
 	shouldSpread = false;
 	version = 0;
 	runnings = 0;
-	depsLength = 0;
+	subsLength = 0;
+	subsList: Subs[] = [];
 
 	constructor(
 		public spread: () => void,
@@ -17,21 +16,16 @@ export class Tracker {
 	) { }
 
 	get dirty() {
-		while (this.dirtyLevel === DirtyLevels.MaybeDirty) {
+		while (this.dirtyLevel === DirtyLevels.MaybeDirty && this.subsList.length) {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
-			if (this.trackToken) {
-				const subsList = subsListMap.get(this.trackToken);
-				if (subsList?.length) {
-					pauseTracking();
-					for (const subs of subsList) {
-						subs.queryDirty?.();
-						if (this.dirtyLevel >= DirtyLevels.Dirty) {
-							break;
-						}
-					}
-					resetTracking();
+			pauseTracking();
+			for (const subs of this.subsList) {
+				subs.queryDirty?.();
+				if (this.dirtyLevel >= DirtyLevels.Dirty) {
+					break;
 				}
 			}
+			resetTracking();
 			if (this.dirtyLevel === DirtyLevels.QueryingDirty) {
 				this.dirtyLevel = DirtyLevels.NotDirty;
 			}
@@ -59,25 +53,18 @@ export class Tracker {
 		preCleanup(this);
 		postCleanup(this);
 	}
-
-	deref() {
-		return this;
-	}
 }
 
 function preCleanup(tracker: Tracker) {
 	tracker.version++;
-	tracker.depsLength = 0;
+	tracker.subsLength = 0;
 }
 
 function postCleanup(tracker: Tracker) {
-	if (tracker.trackToken) {
-		const subsList = subsListMap.get(tracker.trackToken);
-		if (subsList && subsList.length > tracker.depsLength) {
-			for (let i = tracker.depsLength; i < subsList.length; i++) {
-				cleanupInvalidTracker(subsList[i], tracker);
-			}
-			subsList.length = tracker.depsLength;
+	if (tracker.subsList.length > tracker.subsLength) {
+		for (let i = tracker.subsLength; i < tracker.subsList.length; i++) {
+			cleanupInvalidTracker(tracker.subsList[i], tracker);
 		}
+		tracker.subsList.length = tracker.subsLength;
 	}
 }

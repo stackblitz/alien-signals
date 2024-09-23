@@ -1,5 +1,5 @@
 import type { Subs } from './subs';
-import type { Tracker, TrackToken } from './tracker';
+import type { Tracker } from './tracker';
 
 export const enum DirtyLevels {
 	NotDirty,
@@ -35,44 +35,19 @@ export function resetEffect() {
 	}
 }
 
-export const subsListMap = new WeakMap<TrackToken, Subs[]>();
-
-const trackerRegistry = new FinalizationRegistry<WeakRef<Tracker>>(trackToken => {
-	const subsList = subsListMap.get(trackToken);
-	if (subsList) {
-		for (const subs of subsList) {
-			subs.delete(trackToken);
-		}
-		subsList.length = 0;
-	}
-});
-
 export function track(subs: Subs) {
 	if (activeTrackers.length) {
 		const tracker = activeTrackers[activeTrackers.length - 1];
-		if (!tracker.trackToken) {
-			if (tracker.effect) {
-				tracker.trackToken = tracker;
-			}
-			else {
-				tracker.trackToken = new WeakRef(tracker);
-				trackerRegistry.register(tracker, tracker.trackToken, tracker);
-			}
-			subsListMap.set(tracker.trackToken, []);
-		}
-		const deps = subsListMap.get(tracker.trackToken);
-		if (deps) {
-			if (subs.get(tracker) !== tracker.version) {
-				subs.set(tracker, tracker.version);
-				const oldDep = deps[tracker.depsLength];
-				if (oldDep !== subs) {
-					if (oldDep) {
-						cleanupInvalidTracker(oldDep, tracker);
-					}
-					deps[tracker.depsLength++] = subs;
-				} else {
-					tracker.depsLength++;
+		if (subs.get(tracker) !== tracker.version) {
+			subs.set(tracker, tracker.version);
+			const oldDep = tracker.subsList[tracker.subsLength];
+			if (oldDep !== subs) {
+				if (oldDep) {
+					cleanupInvalidTracker(oldDep, tracker);
 				}
+				tracker.subsList[tracker.subsLength++] = subs;
+			} else {
+				tracker.subsLength++;
 			}
 		}
 	}
@@ -87,9 +62,8 @@ export function cleanupInvalidTracker(subs: Subs, tracker: Tracker) {
 
 export function trigger(subs: Subs, dirtyLevel: DirtyLevels) {
 	pauseEffect();
-	for (const [trackToken, version] of subs.entries()) {
-		const tracker = trackToken.deref();
-		const tracking = version === tracker?.version;
+	for (const [tracker, version] of subs.entries()) {
+		const tracking = version === tracker.version;
 		if (!tracking) {
 			continue;
 		}
