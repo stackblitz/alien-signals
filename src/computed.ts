@@ -4,12 +4,13 @@ import { Dep } from './dep';
 
 export function computed<T>(getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
+	let dep: Dep | undefined;
 
 	const tracker = new Tracker(
-		() => trigger(dep, DirtyLevels.MaybeDirty)
+		() => trigger(dep ??= new Dep(fn), DirtyLevels.MaybeDirty)
 	);
 	const fn = (): T => {
-		track(dep);
+		track(dep ??= new Dep(fn));
 		if (
 			tracker.dirty
 			&& !Object.is(
@@ -21,7 +22,6 @@ export function computed<T>(getter: (oldValue?: T) => T) {
 		}
 		return oldValue!;
 	};
-	const dep = new Dep(fn);
 
 	return fn;
 }

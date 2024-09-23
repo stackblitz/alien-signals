@@ -1,4 +1,4 @@
-import { DirtyLevels, activeTrackers, cleanupDepEffect, depsMap, pauseTracking, resetTracking } from './system';
+import { DirtyLevels, activeTrackers, cleanupInvalidTracker, depsMap, pauseTracking, resetTracking } from './system';
 
 export type TrackToken = WeakRef<Tracker> | Tracker;
 
@@ -21,10 +21,10 @@ export class Tracker {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
 			if (this.trackToken) {
 				const deps = depsMap.get(this.trackToken);
-				if (deps) {
+				if (deps?.length) {
 					pauseTracking();
 					for (const dep of deps) {
-						dep.computed?.();
+						dep.queryDirty?.();
 						if (this.dirtyLevel >= DirtyLevels.Dirty) {
 							break;
 						}
@@ -75,7 +75,7 @@ function postCleanup(tracker: Tracker) {
 		const deps = depsMap.get(tracker.trackToken);
 		if (deps && deps.length > tracker.depsLength) {
 			for (let i = tracker.depsLength; i < deps.length; i++) {
-				cleanupDepEffect(deps[i], tracker);
+				cleanupInvalidTracker(deps[i], tracker);
 			}
 			deps.length = tracker.depsLength;
 		}

@@ -67,7 +67,7 @@ export function track(dep: Dep) {
 				const oldDep = deps[tracker.depsLength];
 				if (oldDep !== dep) {
 					if (oldDep) {
-						cleanupDepEffect(oldDep, tracker);
+						cleanupInvalidTracker(oldDep, tracker);
 					}
 					deps[tracker.depsLength++] = dep;
 				} else {
@@ -78,7 +78,7 @@ export function track(dep: Dep) {
 	}
 }
 
-export function cleanupDepEffect(dep: Dep, tracker: Tracker) {
+export function cleanupInvalidTracker(dep: Dep, tracker: Tracker) {
 	const trackId = dep.get(tracker);
 	if (trackId !== undefined && tracker.trackId !== trackId) {
 		dep.delete(tracker);
@@ -87,23 +87,17 @@ export function cleanupDepEffect(dep: Dep, tracker: Tracker) {
 
 export function trigger(dep: Dep, dirtyLevel: DirtyLevels) {
 	pauseEffect();
-	for (const trackToken of dep.keys()) {
+	for (const [trackToken, trackId] of dep.entries()) {
 		const tracker = trackToken.deref();
-		if (!tracker) {
+		const tracking = trackId === tracker?.trackId;
+		if (!tracking) {
 			continue;
 		}
-		let tracking: boolean | undefined;
-		if (
-			tracker.dirtyLevel < dirtyLevel
-			&& (tracking ??= dep.get(tracker) === tracker.trackId)
-		) {
+		if (tracker.dirtyLevel < dirtyLevel) {
 			tracker.shouldSpreadEffect ||= tracker.dirtyLevel === DirtyLevels.NotDirty;
 			tracker.dirtyLevel = dirtyLevel;
 		}
-		if (
-			tracker.shouldSpreadEffect
-			&& (tracking ??= dep.get(tracker) === tracker.trackId)
-		) {
+		if (tracker.shouldSpreadEffect) {
 			tracker.spread();
 			tracker.shouldSpreadEffect = false;
 			if (tracker.effect) {
