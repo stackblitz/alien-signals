@@ -55,12 +55,6 @@ export class Tracker {
 		}
 	}
 
-	reset() {
-		preCleanup(this);
-		postCleanup(this);
-		this.dirtyLevel = DirtyLevels.Dirty;
-	}
-
 	deref() {
 		return this;
 	}
