@@ -7,8 +7,8 @@ export class Tracker {
 	shouldSpread = false;
 	version = 0;
 	runnings = 0;
-	subsLength = 0;
-	subsList: Subs[] = [];
+	depsLength = 0;
+	deps: Subs[] = [];
 
 	constructor(
 		public spread: () => void,
@@ -16,11 +16,11 @@ export class Tracker {
 	) { }
 
 	get dirty() {
-		while (this.dirtyLevel === DirtyLevels.MaybeDirty && this.subsList.length) {
+		while (this.dirtyLevel === DirtyLevels.MaybeDirty && this.depsLength) {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
 			pauseTracking();
-			for (const subs of this.subsList) {
-				subs.queryDirty?.();
+			for (let i = 0; i < this.depsLength; i++) {
+				this.deps[i].queryDirty?.();
 				if (this.dirtyLevel >= DirtyLevels.Dirty) {
 					break;
 				}
@@ -57,14 +57,14 @@ export class Tracker {
 
 function preCleanup(tracker: Tracker) {
 	tracker.version++;
-	tracker.subsLength = 0;
+	tracker.depsLength = 0;
 }
 
 function postCleanup(tracker: Tracker) {
-	if (tracker.subsList.length > tracker.subsLength) {
-		for (let i = tracker.subsLength; i < tracker.subsList.length; i++) {
-			cleanupInvalidTracker(tracker.subsList[i], tracker);
+	if (tracker.deps.length > tracker.depsLength) {
+		for (let i = tracker.depsLength; i < tracker.deps.length; i++) {
+			cleanupInvalidTracker(tracker.deps[i], tracker);
 		}
-		tracker.subsList.length = tracker.subsLength;
+		tracker.deps.length = tracker.depsLength;
 	}
 }

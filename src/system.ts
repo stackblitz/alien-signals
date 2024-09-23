@@ -40,14 +40,14 @@ export function track(subs: Subs) {
 		const tracker = activeTrackers[activeTrackers.length - 1];
 		if (subs.get(tracker) !== tracker.version) {
 			subs.set(tracker, tracker.version);
-			const oldDep = tracker.subsList[tracker.subsLength];
+			const oldDep = tracker.deps[tracker.depsLength];
 			if (oldDep !== subs) {
 				if (oldDep) {
 					cleanupInvalidTracker(oldDep, tracker);
 				}
-				tracker.subsList[tracker.subsLength++] = subs;
+				tracker.deps[tracker.depsLength++] = subs;
 			} else {
-				tracker.subsLength++;
+				tracker.depsLength++;
 			}
 		}
 	}
