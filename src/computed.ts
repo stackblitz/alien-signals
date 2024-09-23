@@ -1,16 +1,16 @@
 import { Tracker } from './tracker';
 import { DirtyLevels, track, trigger } from './system';
-import { Dep } from './dep';
+import { Subs } from './subs';
 
 export function computed<T>(getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
-	let dep: Dep | undefined;
+	let subs: Subs | undefined;
 
 	const tracker = new Tracker(
-		() => trigger(dep ??= new Dep(fn), DirtyLevels.MaybeDirty)
+		() => trigger(subs ??= new Subs(fn), DirtyLevels.MaybeDirty)
 	);
 	const fn = (): T => {
-		track(dep ??= new Dep(fn));
+		track(subs ??= new Subs(fn));
 		if (
 			tracker.dirty
 			&& !Object.is(
@@ -18,7 +18,7 @@ export function computed<T>(getter: (oldValue?: T) => T) {
 				oldValue = tracker.track(() => getter(oldValue))
 			)
 		) {
-			trigger(dep, DirtyLevels.Dirty);
+			trigger(subs, DirtyLevels.Dirty);
 		}
 		return oldValue!;
 	};

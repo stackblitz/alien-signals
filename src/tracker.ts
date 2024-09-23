@@ -1,4 +1,4 @@
-import { DirtyLevels, activeTrackers, cleanupInvalidTracker, depsMap, pauseTracking, resetTracking } from './system';
+import { DirtyLevels, activeTrackers, cleanupInvalidTracker, subsListMap, pauseTracking, resetTracking } from './system';
 
 export type TrackToken = WeakRef<Tracker> | Tracker;
 
@@ -6,8 +6,8 @@ export class Tracker {
 
 	trackToken?: TrackToken;
 	dirtyLevel = DirtyLevels.Dirty;
-	shouldSpreadEffect = false;
-	trackId = 0;
+	shouldSpread = false;
+	version = 0;
 	runnings = 0;
 	depsLength = 0;
 
@@ -20,11 +20,11 @@ export class Tracker {
 		while (this.dirtyLevel === DirtyLevels.MaybeDirty) {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
 			if (this.trackToken) {
-				const deps = depsMap.get(this.trackToken);
-				if (deps?.length) {
+				const subsList = subsListMap.get(this.trackToken);
+				if (subsList?.length) {
 					pauseTracking();
-					for (const dep of deps) {
-						dep.queryDirty?.();
+					for (const subs of subsList) {
+						subs.queryDirty?.();
 						if (this.dirtyLevel >= DirtyLevels.Dirty) {
 							break;
 						}
@@ -66,18 +66,18 @@ export class Tracker {
 }
 
 function preCleanup(tracker: Tracker) {
-	tracker.trackId++;
+	tracker.version++;
 	tracker.depsLength = 0;
 }
 
 function postCleanup(tracker: Tracker) {
 	if (tracker.trackToken) {
-		const deps = depsMap.get(tracker.trackToken);
-		if (deps && deps.length > tracker.depsLength) {
-			for (let i = tracker.depsLength; i < deps.length; i++) {
-				cleanupInvalidTracker(deps[i], tracker);
+		const subsList = subsListMap.get(tracker.trackToken);
+		if (subsList && subsList.length > tracker.depsLength) {
+			for (let i = tracker.depsLength; i < subsList.length; i++) {
+				cleanupInvalidTracker(subsList[i], tracker);
 			}
-			deps.length = tracker.depsLength;
+			subsList.length = tracker.depsLength;
 		}
 	}
 }
