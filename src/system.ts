@@ -16,28 +16,28 @@ export class Subscriber {
 	dirtyLevel = DirtyLevels.Dirty;
 	shouldSpread = false;
 	version = 0;
-	runnings = 0;
+	running = 0;
 	depsLength = 0;
 	deps: Subscribers[] = [];
 	depsDirty = false;
 
 	constructor(
-		public spread: () => void,
+		public subscribers: Subscribers | undefined,
 		public effect?: () => void,
 	) { }
 
 	get dirty() {
 		while (this.dirtyLevel === DirtyLevels.MaybeDirty) {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
-			const lastPausedIndex = pausedTrackersIndex;
-			pausedTrackersIndex = activeSubscribersDepth;
+			const lastPausedIndex = pausedSubscribersIndex;
+			pausedSubscribersIndex = activeSubscribersDepth;
 			for (let i = 0; i < this.depsLength; i++) {
 				this.deps[i].queryDirty?.();
 				if (this.dirtyLevel >= DirtyLevels.Dirty) {
 					break;
 				}
 			}
-			pausedTrackersIndex = lastPausedIndex;
+			pausedSubscribersIndex = lastPausedIndex;
 			if (this.dirtyLevel === DirtyLevels.QueryingDirty) {
 				this.dirtyLevel = DirtyLevels.NotDirty;
 			}
@@ -50,11 +50,11 @@ const queuedEffects: (() => void)[] = [];
 
 let activeSubscriber: Subscriber | undefined;
 let activeSubscribersDepth = 0;
+let pausedSubscribersIndex = 0;
 let batchDepth = 0;
-let pausedTrackersIndex = 0;
 
 export function link(subs: Subscribers) {
-	const activeSubscribersLength = activeSubscribersDepth - pausedTrackersIndex;
+	const activeSubscribersLength = activeSubscribersDepth - pausedSubscribersIndex;
 	if (!activeSubscriber || activeSubscribersLength <= 0) {
 		return;
 	}
@@ -90,15 +90,15 @@ export function track<T>(subscriber: Subscriber, fn: () => T) {
 	try {
 		activeSubscriber = subscriber;
 		activeSubscribersDepth++;
-		subscriber.runnings++;
+		subscriber.running++;
 		preTrack(subscriber);
 		return fn();
 	} finally {
 		postTrack(subscriber);
-		subscriber.runnings--;
+		subscriber.running--;
 		activeSubscribersDepth--;
 		activeSubscriber = lastActiveSubscriber;
-		if (!subscriber.runnings) {
+		if (!subscriber.running) {
 			subscriber.dirtyLevel = DirtyLevels.NotDirty;
 		}
 	}
@@ -125,24 +125,32 @@ function removeExpiredSubscriber(subs: Subscribers, subscriber: Subscriber) {
 	}
 }
 
-export function trigger(subs: Subscribers, dirtyLevel: DirtyLevels) {
+export function broadcast(subs: Subscribers) {
 	batchStart();
-	for (const [subscriber, version] of subs.entries()) {
-		const subscribing = version === subscriber.version;
-		if (!subscribing) {
-			continue;
-		}
-		if (subscriber.dirtyLevel < dirtyLevel) {
-			subscriber.shouldSpread ||= subscriber.dirtyLevel === DirtyLevels.NotDirty;
-			subscriber.dirtyLevel = dirtyLevel;
-		}
-		if (subscriber.shouldSpread) {
-			subscriber.shouldSpread = false;
-			subscriber.spread();
-			if (subscriber.effect) {
-				queuedEffects.push(subscriber.effect);
+	let dirtyLevel = DirtyLevels.Dirty;
+	let queued = [subs];
+	let current = 0;
+	while (current < queued.length) {
+		for (const [subscriber, version] of queued[current++].entries()) {
+			const subscribing = version === subscriber.version;
+			if (!subscribing) {
+				continue;
+			}
+			if (subscriber.dirtyLevel < dirtyLevel) {
+				subscriber.shouldSpread ||= subscriber.dirtyLevel === DirtyLevels.NotDirty;
+				subscriber.dirtyLevel = dirtyLevel;
+			}
+			if (subscriber.shouldSpread) {
+				subscriber.shouldSpread = false;
+				if (subscriber.subscribers) {
+					queued.push(subscriber.subscribers);
+				}
+				if (subscriber.effect) {
+					queuedEffects.push(subscriber.effect);
+				}
 			}
 		}
+		dirtyLevel = DirtyLevels.MaybeDirty;
 	}
 	batchEnd();
 }

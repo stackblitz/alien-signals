@@ -1,4 +1,4 @@
-import { DirtyLevels, Subscribers, link, trigger } from './system';
+import { Subscribers, broadcast, link } from './system';
 
 export interface Signal<T = any> {
 	(): T;
@@ -16,7 +16,7 @@ export function signal<T>(oldValue?: T): Signal<T | undefined> {
 	}) as Signal;
 
 	fn.markDirty = () => {
-		trigger(subs, DirtyLevels.Dirty);
+		broadcast(subs);
 	};
 	fn.set = (newValue) => {
 		if (!Object.is(oldValue, oldValue = newValue)) {

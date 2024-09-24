@@ -1,19 +1,11 @@
-import { DirtyLevels, Subscribers, link, track, Subscriber, trigger } from './system';
+import { Subscribers, link, track, Subscriber, broadcast } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
-	let subs: Subscribers | undefined;
 
-	const subscriber = new Subscriber(
-		() => {
-			if (subs) {
-				trigger(subs, DirtyLevels.MaybeDirty);
-			}
-		}
-	);
 	const getter = () => _getter(oldValue);
 	const fn = (): T => {
-		link(subs ??= new Subscribers(fn));
+		link(subs);
 		if (
 			subscriber.dirty
 			&& !Object.is(
@@ -21,10 +13,12 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 				oldValue = track(subscriber, getter)
 			)
 		) {
-			trigger(subs, DirtyLevels.Dirty);
+			broadcast(subs);
 		}
 		return oldValue!;
 	};
+	const subs = new Subscribers(fn);
+	const subscriber = new Subscriber(subs);
 
 	return fn;
 }
