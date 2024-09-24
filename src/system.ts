@@ -19,6 +19,7 @@ export class Subscriber {
 	runnings = 0;
 	depsLength = 0;
 	deps: Subscribers[] = [];
+	depsDirty = false;
 
 	constructor(
 		public spread: () => void,
@@ -57,17 +58,30 @@ export function link(subs: Subscribers) {
 	if (!activeSubscriber || activeSubscribersLength <= 0) {
 		return;
 	}
-	if (subs.get(activeSubscriber) !== activeSubscriber.version) {
-		subs.set(activeSubscriber, activeSubscriber.version);
-		const oldDep = activeSubscriber.deps[activeSubscriber.depsLength];
-		if (oldDep !== subs) {
-			if (oldDep) {
-				removeExpiredSubscriber(oldDep, activeSubscriber);
-			}
-			activeSubscriber.deps[activeSubscriber.depsLength++] = subs;
-		} else {
-			activeSubscriber.depsLength++;
+	if (activeSubscriber.depsDirty) {
+		if (subs.get(activeSubscriber) !== activeSubscriber.version) {
+			subs.set(activeSubscriber, activeSubscriber.version);
 		}
+	}
+	const oldDep = activeSubscriber.deps[activeSubscriber.depsLength];
+	if (oldDep !== subs) {
+		if (oldDep) {
+			removeExpiredSubscriber(oldDep, activeSubscriber);
+		}
+		activeSubscriber.deps[activeSubscriber.depsLength++] = subs;
+		if (!activeSubscriber.depsDirty) {
+			activeSubscriber.depsDirty = true;
+			activeSubscriber.version++;
+			for (let i = 0; i < activeSubscriber.depsLength; i++) {
+				const dep = activeSubscriber.deps[i];
+				if (dep.get(activeSubscriber) !== activeSubscriber.version) {
+					dep.set(activeSubscriber, activeSubscriber.version);
+				}
+			}
+		}
+	}
+	else {
+		activeSubscriber.depsLength++;
 	}
 }
 
@@ -77,10 +91,10 @@ export function track<T>(subscriber: Subscriber, fn: () => T) {
 		activeSubscriber = subscriber;
 		activeSubscribersDepth++;
 		subscriber.runnings++;
-		preCleanup(subscriber);
+		preTrack(subscriber);
 		return fn();
 	} finally {
-		postCleanup(subscriber);
+		postTrack(subscriber);
 		subscriber.runnings--;
 		activeSubscribersDepth--;
 		activeSubscriber = lastActiveSubscriber;
@@ -90,12 +104,12 @@ export function track<T>(subscriber: Subscriber, fn: () => T) {
 	}
 }
 
-export function preCleanup(subscriber: Subscriber) {
-	subscriber.version++;
+export function preTrack(subscriber: Subscriber) {
 	subscriber.depsLength = 0;
+	subscriber.depsDirty = false;
 }
 
-export function postCleanup(subscriber: Subscriber) {
+export function postTrack(subscriber: Subscriber) {
 	if (subscriber.deps.length > subscriber.depsLength) {
 		for (let i = subscriber.depsLength; i < subscriber.deps.length; i++) {
 			removeExpiredSubscriber(subscriber.deps[i], subscriber);

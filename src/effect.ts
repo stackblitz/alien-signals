@@ -1,4 +1,4 @@
-import { postCleanup, preCleanup, track, Subscriber } from './system';
+import { postTrack, preTrack, track, Subscriber } from './system';
 
 let activeScope = new Set<ReturnType<typeof effect>>();
 
@@ -13,8 +13,8 @@ export function effect(fn: () => void) {
 	track(subscriber, fn);
 	const effect = {
 		stop() {
-			preCleanup(subscriber);
-			postCleanup(subscriber);
+			preTrack(subscriber);
+			postTrack(subscriber);
 			activeScope.delete(effect);
 		},
 	};
