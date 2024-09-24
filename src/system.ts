@@ -14,7 +14,6 @@ export class Subscribers extends Map<Subscriber, number> {
 export class Subscriber {
 
 	dirtyLevel = DirtyLevels.Dirty;
-	shouldSpread = false;
 	version = 0;
 	running = 0;
 	depsLength = 0;
@@ -136,18 +135,16 @@ export function broadcast(subs: Subscribers) {
 			if (!subscribing) {
 				continue;
 			}
-			if (subscriber.dirtyLevel < dirtyLevel) {
-				subscriber.shouldSpread ||= subscriber.dirtyLevel === DirtyLevels.NotDirty;
-				subscriber.dirtyLevel = dirtyLevel;
-			}
-			if (subscriber.shouldSpread) {
-				subscriber.shouldSpread = false;
+			if (subscriber.dirtyLevel === DirtyLevels.NotDirty) {
 				if (subscriber.subscribers) {
 					queued.push(subscriber.subscribers);
 				}
 				if (subscriber.effect) {
 					queuedEffects.push(subscriber.effect);
 				}
+			}
+			if (subscriber.dirtyLevel < dirtyLevel) {
+				subscriber.dirtyLevel = dirtyLevel;
 			}
 		}
 		dirtyLevel = DirtyLevels.MaybeDirty;
