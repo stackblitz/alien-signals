@@ -1,5 +1,4 @@
-import { DirtyLevels, track, trigger } from './system';
-import { Subs } from './subs';
+import { DirtyLevels, Subscribers, link, trigger } from './system';
 
 export interface Signal<T = any> {
 	(): T;
@@ -10,9 +9,9 @@ export interface Signal<T = any> {
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
 export function signal<T>(oldValue?: T): Signal<T | undefined> {
-	const subs = new Subs();
+	const subs = new Subscribers();
 	const fn = (() => {
-		track(subs);
+		link(subs);
 		return oldValue;
 	}) as Signal;
 

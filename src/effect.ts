@@ -1,20 +1,20 @@
-import { postCleanup, preCleanup, Tracker } from './tracker';
+import { postCleanup, preCleanup, track, Subscriber } from './system';
 
 let activeScope = new Set<ReturnType<typeof effect>>();
 
 export function effect(fn: () => void) {
-	const tracker = new Tracker(
+	const subscriber = new Subscriber(
 		() => { },
 		() => {
-			if (tracker.dirty) {
-				tracker.track(fn);
+			if (subscriber.dirty) {
+				track(subscriber, fn);
 			}
 		});
-	tracker.track(fn);
+	track(subscriber, fn);
 	const effect = {
 		stop() {
-			preCleanup(tracker);
-			postCleanup(tracker);
+			preCleanup(subscriber);
+			postCleanup(subscriber);
 			activeScope.delete(effect);
 		},
 	};

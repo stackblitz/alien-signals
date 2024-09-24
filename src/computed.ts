@@ -1,12 +1,10 @@
-import { Tracker } from './tracker';
-import { DirtyLevels, track, trigger } from './system';
-import { Subs } from './subs';
+import { DirtyLevels, Subscribers, link, track, Subscriber, trigger } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
-	let subs: Subs | undefined;
+	let subs: Subscribers | undefined;
 
-	const tracker = new Tracker(
+	const subscriber = new Subscriber(
 		() => {
 			if (subs) {
 				trigger(subs, DirtyLevels.MaybeDirty);
@@ -15,12 +13,12 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 	);
 	const getter = () => _getter(oldValue);
 	const fn = (): T => {
-		track(subs ??= new Subs(fn));
+		link(subs ??= new Subscribers(fn));
 		if (
-			tracker.dirty
+			subscriber.dirty
 			&& !Object.is(
 				oldValue,
-				oldValue = tracker.track(getter)
+				oldValue = track(subscriber, getter)
 			)
 		) {
 			trigger(subs, DirtyLevels.Dirty);
