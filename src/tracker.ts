@@ -48,19 +48,14 @@ export class Tracker {
 			}
 		}
 	}
-
-	stop() {
-		preCleanup(this);
-		postCleanup(this);
-	}
 }
 
-function preCleanup(tracker: Tracker) {
+export function preCleanup(tracker: Tracker) {
 	tracker.version++;
 	tracker.depsLength = 0;
 }
 
-function postCleanup(tracker: Tracker) {
+export function postCleanup(tracker: Tracker) {
 	if (tracker.deps.length > tracker.depsLength) {
 		for (let i = tracker.depsLength; i < tracker.deps.length; i++) {
 			cleanupInvalidTracker(tracker.deps[i], tracker);
