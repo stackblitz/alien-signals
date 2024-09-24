@@ -1,5 +1,5 @@
 {
-	"name": "computeds",
+	"name": "@johnsoncodehk/signals",
 	"version": "0.0.1",
 	"main": "out/index.js",
 	"license": "MIT",
@@ -8,7 +8,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/johnsoncodehk/computeds.git"
+		"url": "https://github.com/johnsoncodehk/signals.git"
 	},
 	"devDependencies": {
 		"vite": "latest",
