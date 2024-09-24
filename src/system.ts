@@ -10,7 +10,7 @@ export const enum DirtyLevels {
 
 export let activeTrackers: Tracker[] = [];
 
-let pauseEffectStack = 0;
+let batchDepth = 0;
 
 const pausedTrackers: Tracker[][] = [];
 const pendingEffects: (() => void)[] = [];
@@ -22,17 +22,6 @@ export function pauseTracking() {
 
 export function resetTracking() {
 	activeTrackers = pausedTrackers.pop()!;
-}
-
-function pauseSpread() {
-	pauseEffectStack++;
-}
-
-function resetSpread() {
-	pauseEffectStack--;
-	while (!pauseEffectStack && pendingEffects.length) {
-		pendingEffects.shift()!();
-	}
 }
 
 export function track(subs: Subs) {
@@ -61,7 +50,7 @@ export function cleanupInvalidTracker(subs: Subs, tracker: Tracker) {
 }
 
 export function trigger(subs: Subs, dirtyLevel: DirtyLevels) {
-	pauseSpread();
+	batchStart();
 	for (const [tracker, version] of subs.entries()) {
 		const tracking = version === tracker.version;
 		if (!tracking) {
@@ -79,11 +68,16 @@ export function trigger(subs: Subs, dirtyLevel: DirtyLevels) {
 			}
 		}
 	}
-	resetSpread();
+	batchEnd();
 }
 
-export function batch(fn: () => void) {
-	pauseSpread();
-	fn();
-	resetSpread();
+export function batchStart() {
+	batchDepth++;
+}
+
+export function batchEnd() {
+	batchDepth--;
+	while (!batchDepth && pendingEffects.length) {
+		pendingEffects.shift()!();
+	}
 }
