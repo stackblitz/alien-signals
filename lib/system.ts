@@ -8,7 +8,6 @@ export const enum DirtyLevels {
 export interface Link {
 	dep: Dep;
 	sub: Subscriber;
-	subVersion: number;
 	prev?: Link;
 	next?: Link;
 }
@@ -77,7 +76,6 @@ export function link(dep: Dep) {
 		const newLink: Link = {
 			dep,
 			sub: activeSubscriber,
-			subVersion: activeSubscriber.version,
 		};
 		activeSubscriber.deps[activeSubscriber.depsLength++] = newLink;
 		if (!dep.firstLink) {
@@ -91,7 +89,6 @@ export function link(dep: Dep) {
 		}
 	}
 	else {
-		oldLink.subVersion = activeSubscriber.version;
 		activeSubscriber.depsLength++;
 	}
 }
@@ -152,18 +149,16 @@ export function broadcast(dep: Dep) {
 	while (i < queuedDeps.length) {
 		let currentLink = queuedDeps[i++].firstLink;
 		while (currentLink) {
-			if (currentLink.subVersion === currentLink.sub.version) {
-				if (currentLink.sub.dirtyLevel === DirtyLevels.NotDirty) {
-					if (currentLink.sub.dep) {
-						queuedDeps.push(currentLink.sub.dep);
-					}
-					if (currentLink.sub.effect) {
-						queuedEffects.push(currentLink.sub.effect);
-					}
+			if (currentLink.sub.dirtyLevel === DirtyLevels.NotDirty) {
+				if (currentLink.sub.dep) {
+					queuedDeps.push(currentLink.sub.dep);
 				}
-				if (currentLink.sub.dirtyLevel < dirtyLevel) {
-					currentLink.sub.dirtyLevel = dirtyLevel;
+				if (currentLink.sub.effect) {
+					queuedEffects.push(currentLink.sub.effect);
 				}
+			}
+			if (currentLink.sub.dirtyLevel < dirtyLevel) {
+				currentLink.sub.dirtyLevel = dirtyLevel;
 			}
 			currentLink = currentLink.next;
 		}
