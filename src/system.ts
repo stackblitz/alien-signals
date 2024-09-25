@@ -17,11 +17,12 @@ export interface Dep {
 	firstLink?: Link;
 	lastLink?: Link;
 	queryDirty?(): void;
+	subscriberVersion?: number;
 }
 
 export class Subscriber {
 	dirtyLevel = DirtyLevels.Dirty;
-	version = 0;
+	version = globalSubscriberVersion++;
 	running = 0;
 	depsLength = 0;
 	deps: Link[] = [];
@@ -57,12 +58,17 @@ let activeSubscriber: Subscriber | undefined;
 let activeSubscribersDepth = 0;
 let pausedSubscribersIndex = 0;
 let batchDepth = 0;
+let globalSubscriberVersion = 0;
 
 export function link(dep: Dep) {
 	const activeSubscribersLength = activeSubscribersDepth - pausedSubscribersIndex;
 	if (!activeSubscriber || activeSubscribersLength <= 0) {
 		return;
 	}
+	if (dep.subscriberVersion === activeSubscriber.version) {
+		return;
+	}
+	dep.subscriberVersion = activeSubscriber.version;
 	const oldLink = activeSubscriber.deps[activeSubscriber.depsLength];
 	if (oldLink?.dep !== dep) {
 		if (oldLink) {
@@ -126,7 +132,7 @@ export function track<T>(subscriber: Subscriber, fn: () => T) {
 
 export function preTrack(subscriber: Subscriber) {
 	subscriber.depsLength = 0;
-	subscriber.version++;
+	subscriber.version = globalSubscriberVersion++;
 }
 
 export function postTrack(subscriber: Subscriber) {
