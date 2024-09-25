@@ -9,8 +9,7 @@
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"outDir": "out",
-		"rootDir": "src",
+		"skipLibCheck": true,
 	},
-	"include": [ "src" ],
+	"include": [ "*", "lib/**/*" ],
 }
