@@ -1,11 +1,11 @@
-import { Subscribers, link, track, Subscriber, broadcast } from './system';
+import { link, track, Subscriber, broadcast, Dep } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
 
 	const getter = () => _getter(oldValue);
 	const fn = (): T => {
-		link(subs);
+		link(dep);
 		if (
 			subscriber.dirty
 			&& !Object.is(
@@ -13,12 +13,14 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 				oldValue = track(subscriber, getter)
 			)
 		) {
-			broadcast(subs);
+			broadcast(dep);
 		}
 		return oldValue!;
 	};
-	const subs = new Subscribers(fn);
-	const subscriber = new Subscriber(subs);
+	const dep: Dep = {
+		queryDirty: fn,
+	};
+	const subscriber = new Subscriber(dep);
 
 	return fn;
 }

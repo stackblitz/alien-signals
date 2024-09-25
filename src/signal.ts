@@ -1,4 +1,4 @@
-import { Subscribers, broadcast, link } from './system';
+import { broadcast, Dep, link } from './system';
 
 export interface Signal<T = any> {
 	(): T;
@@ -9,14 +9,14 @@ export interface Signal<T = any> {
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
 export function signal<T>(oldValue?: T): Signal<T | undefined> {
-	const subs = new Subscribers();
+	const dep: Dep = {};
 	const fn = (() => {
-		link(subs);
+		link(dep);
 		return oldValue;
 	}) as Signal;
 
 	fn.markDirty = () => {
-		broadcast(subs);
+		broadcast(dep);
 	};
 	fn.set = (newValue) => {
 		if (!Object.is(oldValue, oldValue = newValue)) {
