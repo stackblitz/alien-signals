@@ -5,18 +5,24 @@ export const enum DirtyLevels {
 	Dirty,
 }
 
-export interface Link {
-	dep: Dep;
-	sub: Subscriber;
+export class Link {
 	prev?: Link;
 	next?: Link;
+
+	constructor(
+		public dep: Dep,
+		public sub: Subscriber
+	) { }
 }
 
-export interface Dep {
+export class Dep {
 	firstLink?: Link;
 	lastLink?: Link;
-	queryDirty?(): void;
-	subscriberVersion?: number;
+	subscribeVersion?: number;
+
+	constructor(
+		public queryDirty?: () => void
+	) { }
 }
 
 export class Subscriber {
@@ -30,25 +36,25 @@ export class Subscriber {
 		public dep: Dep | undefined,
 		public effect?: () => void,
 	) { }
+}
 
-	get dirty() {
-		while (this.dirtyLevel === DirtyLevels.MaybeDirty) {
-			this.dirtyLevel = DirtyLevels.QueryingDirty;
-			const lastPausedIndex = pausedSubscribersIndex;
-			pausedSubscribersIndex = activeSubscribersDepth;
-			for (let i = 0; i < this.depsLength; i++) {
-				this.deps[i].dep.queryDirty?.();
-				if (this.dirtyLevel >= DirtyLevels.Dirty) {
-					break;
-				}
-			}
-			pausedSubscribersIndex = lastPausedIndex;
-			if (this.dirtyLevel === DirtyLevels.QueryingDirty) {
-				this.dirtyLevel = DirtyLevels.NotDirty;
+export function isDirty(sub: Subscriber) {
+	while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
+		sub.dirtyLevel = DirtyLevels.QueryingDirty;
+		const lastPausedIndex = pausedSubscribersIndex;
+		pausedSubscribersIndex = activeSubscribersDepth;
+		for (let i = 0; i < sub.depsLength; i++) {
+			sub.deps[i].dep.queryDirty?.();
+			if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+				break;
 			}
 		}
-		return this.dirtyLevel >= DirtyLevels.Dirty;
+		pausedSubscribersIndex = lastPausedIndex;
+		if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
+			sub.dirtyLevel = DirtyLevels.NotDirty;
+		}
 	}
+	return sub.dirtyLevel === DirtyLevels.Dirty;
 }
 
 const queuedEffects: (() => void)[] = [];
@@ -64,19 +70,16 @@ export function link(dep: Dep) {
 	if (!activeSubscriber || activeSubscribersLength <= 0) {
 		return;
 	}
-	if (dep.subscriberVersion === activeSubscriber.version) {
+	if (dep.subscribeVersion === activeSubscriber.version) {
 		return;
 	}
-	dep.subscriberVersion = activeSubscriber.version;
+	dep.subscribeVersion = activeSubscriber.version;
 	const oldLink = activeSubscriber.deps[activeSubscriber.depsLength];
 	if (oldLink?.dep !== dep) {
 		if (oldLink) {
 			breakLink(oldLink);
 		}
-		const newLink: Link = {
-			dep,
-			sub: activeSubscriber,
-		};
+		const newLink = new Link(dep, activeSubscriber);
 		activeSubscriber.deps[activeSubscriber.depsLength++] = newLink;
 		if (!dep.firstLink) {
 			dep.firstLink = newLink;

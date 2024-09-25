@@ -9,7 +9,7 @@ export interface Signal<T = any> {
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
 export function signal<T>(oldValue?: T): Signal<T | undefined> {
-	const dep: Dep = {};
+	const dep = new Dep();
 	const fn = (() => {
 		link(dep);
 		return oldValue;

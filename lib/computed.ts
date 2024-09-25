@@ -1,4 +1,4 @@
-import { link, track, Subscriber, broadcast, Dep } from './system';
+import { link, track, Subscriber, broadcast, Dep, isDirty } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
@@ -7,7 +7,7 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 	const fn = (): T => {
 		link(dep);
 		if (
-			subscriber.dirty
+			isDirty(subscriber)
 			&& !Object.is(
 				oldValue,
 				oldValue = track(subscriber, getter)
@@ -17,9 +17,7 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 		}
 		return oldValue!;
 	};
-	const dep: Dep = {
-		queryDirty: fn,
-	};
+	const dep = new Dep(fn);
 	const subscriber = new Subscriber(dep);
 
 	return fn;

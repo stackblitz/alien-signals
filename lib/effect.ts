@@ -1,4 +1,4 @@
-import { postTrack, preTrack, track, Subscriber } from './system';
+import { postTrack, preTrack, track, Subscriber, isDirty } from './system';
 
 export let currentEffectScope = {
 	effects: new Set<ReturnType<typeof effect>>(),
@@ -8,7 +8,7 @@ export function effect(fn: () => void) {
 	const subscriber = new Subscriber(
 		undefined,
 		() => {
-			if (subscriber.dirty) {
+			if (isDirty(subscriber)) {
 				track(subscriber, fn);
 			}
 		});
