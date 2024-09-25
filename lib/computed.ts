@@ -1,19 +1,19 @@
-import { link, track, Subscriber, broadcast, Dependency, isDirty } from './system';
+import { Subscriber, Dependency } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
 
 	const getter = () => _getter(oldValue);
 	const fn = (): T => {
-		link(dep);
+		dep.link();
 		if (
-			isDirty(subscriber)
+			subscriber.isDirty()
 			&& !Object.is(
 				oldValue,
-				oldValue = track(subscriber, getter)
+				oldValue = subscriber.track(getter)
 			)
 		) {
-			broadcast(dep);
+			dep.broadcast();
 		}
 		return oldValue!;
 	};

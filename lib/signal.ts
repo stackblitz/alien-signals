@@ -1,4 +1,4 @@
-import { broadcast, Dependency, link } from './system';
+import { Dependency } from './system';
 
 export interface Signal<T = any> {
 	(): T;
@@ -11,12 +11,12 @@ export function signal<T>(oldValue: T): Signal<T>;
 export function signal<T>(oldValue?: T): Signal<T | undefined> {
 	const dep = new Dependency();
 	const fn = (() => {
-		link(dep);
+		dep.link();
 		return oldValue;
 	}) as Signal;
 
 	fn.markDirty = () => {
-		broadcast(dep);
+		dep.broadcast();
 	};
 	fn.set = (newValue) => {
 		if (!Object.is(oldValue, oldValue = newValue)) {
