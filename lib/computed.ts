@@ -1,24 +1,33 @@
 import { Subscriber, Dependency } from './system';
 
-export function computed<T>(_getter: (oldValue?: T) => T) {
-	let oldValue: T | undefined;
+export class Computed<T = any> {
+	private oldValue: T | undefined = undefined;
+	private dep = new Dependency(this);
+	private sub = new Subscriber(this.dep);
 
-	const getter = () => _getter(oldValue);
-	const fn = (): T => {
-		dep.link();
-		if (
-			subscriber.isDirty()
-			&& !Object.is(
-				oldValue,
-				oldValue = subscriber.track(getter)
-			)
-		) {
-			dep.broadcast();
+	constructor(
+		private getter: (oldValue?: T) => T
+	) { }
+
+	get(): T {
+		this.dep.link();
+		if (this.sub.isDirty()) {
+			const prevSub = this.sub.trackStart();
+			if (!Object.is(
+				this.oldValue,
+				this.oldValue = this.getter(this.oldValue)
+			)) {
+				this.sub.trackEnd(prevSub);
+				this.dep.broadcast();
+			}
+			else {
+				this.sub.trackEnd(prevSub);
+			}
 		}
-		return oldValue!;
-	};
-	const dep = new Dependency(fn);
-	const subscriber = new Subscriber(dep);
+		return this.oldValue!;
+	}
+}
 
-	return fn;
+export function computed<T>(getter: (oldValue?: T) => T) {
+	return new Computed(getter);
 }

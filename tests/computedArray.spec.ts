@@ -6,7 +6,7 @@ describe('computedArray', () => {
 	it('should get updated item value', () => {
 		const src = signal([1]);
 		const arr = computedArray(src, item => {
-			return () => item() + 1;
+			return () => item.get() + 1;
 		});
 		expect(arr[0]).toBe(2);
 	});
@@ -15,7 +15,7 @@ describe('computedArray', () => {
 		const spy = vi.fn();
 		const src = signal([1]);
 		const arr = computedArray(src, item => {
-			return () => item() + 1;
+			return () => item.get() + 1;
 		});
 		effect(() => {
 			spy();
@@ -30,7 +30,7 @@ describe('computedArray', () => {
 		const spy = vi.fn();
 		const src = signal([1]);
 		const arr = computedArray(src, item => {
-			return () => item() + 1;
+			return () => item.get() + 1;
 		});
 		effect(() => {
 			spy();
@@ -49,7 +49,7 @@ describe('computedArray', () => {
 				if (i === 0) {
 					spy();
 				}
-				return item() + 1;
+				return item.get() + 1;
 			};
 		});
 		effect(() => arr[0]);
@@ -64,7 +64,7 @@ describe('computedArray', () => {
 		const spy = vi.fn();
 		const src = signal([1]);
 		const arr = computedArray(src, item => {
-			return () => item() + 1;
+			return () => item.get() + 1;
 		});
 		effect(() => {
 			spy();
@@ -81,7 +81,7 @@ describe('computedArray', () => {
 		const spy = vi.fn();
 		const src = signal([1, 2]);
 		const arr = computedArray(src, item => {
-			return () => item() + 1;
+			return () => item.get() + 1;
 		});
 		effect(() => {
 			spy();
@@ -100,7 +100,7 @@ describe('computedArray', () => {
 		const arr = computedArray(src, item => {
 			return () => {
 				spy();
-				return item() + 1;
+				return item.get() + 1;
 			};
 		});
 		effect(() => {

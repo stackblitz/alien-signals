@@ -1,47 +1,59 @@
 import { Subscriber } from './system';
 
-export let currentEffectScope = {
-	effects: new Set<ReturnType<typeof effect>>(),
-};
+export class EffectScope {
+	effects = new Set<Effect>();
+
+	run<T>(fn: () => T) {
+		const original = currentEffectScope;
+		try {
+			currentEffectScope = this;
+			return fn();
+		} finally {
+			currentEffectScope = original;
+		}
+	}
+
+	stop() {
+		for (const effect of [...this.effects]) {
+			effect.stop();
+		}
+	}
+}
+
+export let currentEffectScope = new EffectScope();
+
+export class Effect {
+	private sub = new Subscriber(undefined, this);
+	private scope = currentEffectScope;
+
+	constructor(
+		private fn: () => void
+	) {
+		const prevSub = this.sub.trackStart();
+		fn();
+		this.sub.trackEnd(prevSub);
+		this.scope.effects.add(this);
+	}
+
+	run() {
+		if (this.sub.isDirty()) {
+			const prevSub = this.sub.trackStart();
+			this.fn();
+			this.sub.trackEnd(prevSub);
+		}
+	}
+
+	stop() {
+		this.sub.preTrack();
+		this.sub.postTrack();
+		this.scope.effects.delete(this);
+	}
+}
 
 export function effect(fn: () => void) {
-	const subscriber = new Subscriber(
-		undefined,
-		() => {
-			if (subscriber.isDirty()) {
-				subscriber.track(fn);
-			}
-		});
-	subscriber.track(fn);
-	const effect = {
-		stop() {
-			subscriber.preTrack();
-			subscriber.postTrack();
-			currentEffectScope.effects.delete(effect);
-		},
-	};
-	currentEffectScope.effects.add(effect);
-	return effect;
+	return new Effect(fn);
 }
 
 export function effectScope() {
-	const scope: typeof currentEffectScope = {
-		effects: new Set(),
-	};
-	return {
-		run<T>(fn: () => T) {
-			const original = currentEffectScope;
-			try {
-				currentEffectScope = scope;
-				return fn();
-			} finally {
-				currentEffectScope = original;
-			}
-		},
-		stop() {
-			for (const effect of [...scope.effects]) {
-				effect.stop();
-			}
-		},
-	};
+	return new EffectScope();
 }

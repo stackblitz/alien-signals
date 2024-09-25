@@ -13,7 +13,7 @@ export function shallowRef<T>(value: T) {
 	const s = _signal(value);
 	return {
 		get value() {
-			return s();
+			return s.get();
 		},
 		set value(value: T) {
 			s.set(value);
@@ -25,7 +25,7 @@ export function computed<T>(fn: () => T) {
 	const c = _computed(fn);
 	return {
 		get value() {
-			return c();
+			return c.get();
 		}
 	};
 }

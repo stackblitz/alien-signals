@@ -1,3 +1,6 @@
+import type { Computed } from './computed';
+import type { Effect } from './effect';
+
 export const enum DirtyLevels {
 	NotDirty,
 	QueryingDirty,
@@ -36,7 +39,7 @@ export class Dependency {
 	subscribeVersion = -1;
 
 	constructor(
-		public queryDirty: (() => void) | null = null
+		public computed: Computed | null = null,
 	) { }
 
 	link() {
@@ -104,7 +107,7 @@ export class Subscriber {
 
 	constructor(
 		public dep: Dependency | null = null,
-		public effect: (() => void) | null = null,
+		public effect: Effect | null = null,
 	) { }
 
 	isDirty() {
@@ -113,7 +116,7 @@ export class Subscriber {
 			const lastPausedIndex = pausedSubscribersIndex;
 			pausedSubscribersIndex = activeSubscribersDepth;
 			for (let i = 0; i < this.depsLength; i++) {
-				this.deps[i].dep.queryDirty?.();
+				this.deps[i].dep.computed?.get();
 				if (this.dirtyLevel >= DirtyLevels.Dirty) {
 					break;
 				}
@@ -126,22 +129,22 @@ export class Subscriber {
 		return this.dirtyLevel === DirtyLevels.Dirty;
 	}
 
-	track<T>(fn: () => T) {
+	trackStart() {
 		const lastActiveSubscriber = activeSubscriber;
-		try {
-			activeSubscriber = this;
-			activeSubscribersDepth++;
-			this.running++;
-			this.preTrack();
-			return fn();
-		} finally {
-			this.postTrack();
-			this.running--;
-			activeSubscribersDepth--;
-			activeSubscriber = lastActiveSubscriber;
-			if (!this.running) {
-				this.dirtyLevel = DirtyLevels.NotDirty;
-			}
+		activeSubscriber = this;
+		activeSubscribersDepth++;
+		this.running++;
+		this.preTrack();
+		return lastActiveSubscriber;
+	}
+
+	trackEnd(lastActiveSubscriber: Subscriber | undefined) {
+		this.postTrack();
+		this.running--;
+		activeSubscribersDepth--;
+		activeSubscriber = lastActiveSubscriber;
+		if (!this.running) {
+			this.dirtyLevel = DirtyLevels.NotDirty;
 		}
 	}
 
@@ -160,7 +163,7 @@ export class Subscriber {
 	}
 }
 
-const queuedEffects: (() => void)[] = [];
+const queuedEffects: Effect[] = [];
 
 let activeSubscriber: Subscriber | undefined;
 let activeSubscribersDepth = 0;
@@ -175,6 +178,6 @@ export function batchStart() {
 export function batchEnd() {
 	batchDepth--;
 	while (!batchDepth && queuedEffects.length) {
-		queuedEffects.shift()!();
+		queuedEffects.shift()!.run();
 	}
 }

@@ -1,26 +1,27 @@
-import { computed } from '../computed';
+import { Computed, computed } from '../computed';
+import { Signal } from '../signal';
 
 export function computedArray<I, O>(
-	arr: () => I[],
-	getGetter: (item: () => I, index: number) => () => O
+	arr: Signal<I[]>,
+	getGetter: (item: Computed<I>, index: number) => () => O
 ) {
-	const length = computed(() => arr().length);
+	const length = computed(() => arr.get().length);
 	const keys = computed(() => {
 		const keys: string[] = [];
-		for (let i = 0; i < length(); i++) {
+		for (let i = 0; i < length.get(); i++) {
 			keys.push(String(i));
 		}
 		return keys;
 	});
-	const items = computed<(() => O)[]>((array) => {
+	const items = computed<Computed<O>[]>((array) => {
 		array ??= [];
-		while (array.length < length()) {
+		while (array.length < length.get()) {
 			const index = array.length;
-			const item = computed(() => arr()[index]);
+			const item = computed(() => arr.get()[index]);
 			array.push(computed(getGetter(item, index)));
 		}
-		if (array.length > length()) {
-			array.length = length();
+		if (array.length > length.get()) {
+			array.length = length.get();
 		}
 		return array;
 	});
@@ -28,18 +29,18 @@ export function computedArray<I, O>(
 	return new Proxy({}, {
 		get(_, p, receiver) {
 			if (p === 'length') {
-				return length();
+				return length.get();
 			}
 			if (typeof p === 'string' && !isNaN(Number(p))) {
-				return items()[Number(p)]?.();
+				return items.get()[Number(p)]?.get();
 			}
-			return Reflect.get(items(), p, receiver);
+			return Reflect.get(items.get(), p, receiver);
 		},
 		has(_, p) {
-			return Reflect.has(items(), p);
+			return Reflect.has(items.get(), p);
 		},
 		ownKeys() {
-			return keys();
+			return keys.get();
 		},
 	}) as unknown as readonly Readonly<O>[];
 }
