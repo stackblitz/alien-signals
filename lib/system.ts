@@ -1,5 +1,11 @@
-import type { Computed } from './computed';
-import type { Effect } from './effect';
+export interface IComputed {
+	get(): any;
+}
+
+export interface IEffect {
+	run(): void;
+	stop(): void;
+}
 
 export const enum DirtyLevels {
 	NotDirty,
@@ -39,7 +45,7 @@ export class Dependency {
 	subVersion = -1;
 
 	constructor(
-		public computed: Computed | null = null,
+		public computed: IComputed | null = null,
 	) { }
 
 	link() {
@@ -108,7 +114,7 @@ export class Subscriber {
 
 	constructor(
 		public dep: Dependency | null = null,
-		public effect: Effect | null = null,
+		public effect: IEffect | null = null,
 	) { }
 
 	isDirty() {
@@ -164,13 +170,17 @@ export class Subscriber {
 	}
 }
 
-const queuedEffects: Effect[] = [];
+export const queuedEffects: IEffect[] = [];
 
-let activeSub: Subscriber | undefined;
-let activeSubsDepth = 0;
-let pausedSubsIndex = 0;
-let batchDepth = 0;
-let subVersion = 0;
+export let activeSub: Subscriber | undefined;
+export let activeSubsDepth = 0;
+export let pausedSubsIndex = 0;
+export let batchDepth = 0;
+export let subVersion = 0;
+
+export function setPausedSubsIndex(index: number) {
+	pausedSubsIndex = index;
+}
 
 export function batchStart() {
 	batchDepth++;

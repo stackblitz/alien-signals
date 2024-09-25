@@ -1,7 +1,7 @@
-import { Subscriber } from './system';
+import { IEffect, Subscriber } from './system';
 
 export class EffectScope {
-	effects = new Set<Effect>();
+	effects = new Set<IEffect>();
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
