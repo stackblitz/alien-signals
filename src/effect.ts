@@ -1,6 +1,6 @@
 import { postTrack, preTrack, track, Subscriber } from './system';
 
-export let currentScope = {
+export let currentEffectScope = {
 	effects: new Set<ReturnType<typeof effect>>(),
 };
 
@@ -17,25 +17,25 @@ export function effect(fn: () => void) {
 		stop() {
 			preTrack(subscriber);
 			postTrack(subscriber);
-			currentScope.effects.delete(effect);
+			currentEffectScope.effects.delete(effect);
 		},
 	};
-	currentScope.effects.add(effect);
+	currentEffectScope.effects.add(effect);
 	return effect;
 }
 
 export function effectScope() {
-	const scope: typeof currentScope = {
+	const scope: typeof currentEffectScope = {
 		effects: new Set(),
 	};
 	return {
 		run<T>(fn: () => T) {
-			const original = currentScope;
+			const original = currentEffectScope;
 			try {
-				currentScope = scope;
+				currentEffectScope = scope;
 				return fn();
 			} finally {
-				currentScope = original;
+				currentEffectScope = original;
 			}
 		},
 		stop() {

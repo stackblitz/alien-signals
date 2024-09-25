@@ -64,9 +64,6 @@ export function link(subs: Subscribers) {
 	}
 	const oldDep = activeSubscriber.deps[activeSubscriber.depsLength];
 	if (oldDep !== subs) {
-		if (oldDep) {
-			removeExpiredSubscriber(oldDep, activeSubscriber);
-		}
 		activeSubscriber.deps[activeSubscriber.depsLength++] = subs;
 		if (!activeSubscriber.depsDirty) {
 			activeSubscriber.depsDirty = true;
@@ -77,6 +74,9 @@ export function link(subs: Subscribers) {
 					dep.set(activeSubscriber, activeSubscriber.version);
 				}
 			}
+		}
+		if (oldDep) {
+			removeExpiredSubscriber(oldDep, activeSubscriber);
 		}
 	}
 	else {
@@ -126,18 +126,18 @@ function removeExpiredSubscriber(subs: Subscribers, subscriber: Subscriber) {
 
 export function broadcast(subs: Subscribers) {
 	batchStart();
+	const queuedSubs = [subs];
 	let dirtyLevel = DirtyLevels.Dirty;
-	let queued = [subs];
 	let current = 0;
-	while (current < queued.length) {
-		for (const [subscriber, version] of queued[current++].entries()) {
+	while (current < queuedSubs.length) {
+		for (const [subscriber, version] of queuedSubs[current++].entries()) {
 			const subscribing = version === subscriber.version;
 			if (!subscribing) {
 				continue;
 			}
 			if (subscriber.dirtyLevel === DirtyLevels.NotDirty) {
 				if (subscriber.subscribers) {
-					queued.push(subscriber.subscribers);
+					queuedSubs.push(subscriber.subscribers);
 				}
 				if (subscriber.effect) {
 					queuedEffects.push(subscriber.effect);
