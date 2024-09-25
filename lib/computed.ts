@@ -1,4 +1,4 @@
-import { link, track, Subscriber, broadcast, Dep, isDirty } from './system';
+import { link, track, Subscriber, broadcast, Dependency, isDirty } from './system';
 
 export function computed<T>(_getter: (oldValue?: T) => T) {
 	let oldValue: T | undefined;
@@ -17,7 +17,7 @@ export function computed<T>(_getter: (oldValue?: T) => T) {
 		}
 		return oldValue!;
 	};
-	const dep = new Dep(fn);
+	const dep = new Dependency(fn);
 	const subscriber = new Subscriber(dep);
 
 	return fn;

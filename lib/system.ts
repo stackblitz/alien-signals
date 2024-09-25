@@ -6,22 +6,22 @@ export const enum DirtyLevels {
 }
 
 export class Link {
-	prev?: Link;
-	next?: Link;
+	prev: Link | null = null;
+	next: Link | null = null;
 
 	constructor(
-		public dep: Dep,
+		public dep: Dependency,
 		public sub: Subscriber
 	) { }
 }
 
-export class Dep {
-	firstLink?: Link;
-	lastLink?: Link;
-	subscribeVersion?: number;
+export class Dependency {
+	firstLink: Link | null = null;
+	lastLink: Link | null = null;
+	subscribeVersion = -1;
 
 	constructor(
-		public queryDirty?: () => void
+		public queryDirty: (() => void) | null = null
 	) { }
 }
 
@@ -33,8 +33,8 @@ export class Subscriber {
 	deps: Link[] = [];
 
 	constructor(
-		public dep: Dep | undefined,
-		public effect?: () => void,
+		public dep: Dependency | null = null,
+		public effect: (() => void) | null = null,
 	) { }
 }
 
@@ -65,7 +65,7 @@ let pausedSubscribersIndex = 0;
 let batchDepth = 0;
 let globalSubscriberVersion = 0;
 
-export function link(dep: Dep) {
+export function link(dep: Dependency) {
 	const activeSubscribersLength = activeSubscribersDepth - pausedSubscribersIndex;
 	if (!activeSubscriber || activeSubscribersLength <= 0) {
 		return;
@@ -144,7 +144,7 @@ export function postTrack(subscriber: Subscriber) {
 	}
 }
 
-export function broadcast(dep: Dep) {
+export function broadcast(dep: Dependency) {
 	batchStart();
 	const queuedDeps = [dep];
 	let dirtyLevel = DirtyLevels.Dirty;

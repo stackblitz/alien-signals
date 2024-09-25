@@ -1,4 +1,4 @@
-import { broadcast, Dep, link } from './system';
+import { broadcast, Dependency, link } from './system';
 
 export interface Signal<T = any> {
 	(): T;
@@ -9,7 +9,7 @@ export interface Signal<T = any> {
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
 export function signal<T>(oldValue?: T): Signal<T | undefined> {
-	const dep = new Dep();
+	const dep = new Dependency();
 	const fn = (() => {
 		link(dep);
 		return oldValue;
