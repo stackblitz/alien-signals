@@ -1,4 +1,4 @@
-import { Dependency } from './system';
+import { batchEnd, batchStart, Dependency } from './system';
 
 export class Signal<T = any> {
 	private dep = new Dependency();
@@ -14,7 +14,9 @@ export class Signal<T = any> {
 
 	set(value: T) {
 		if (!Object.is(this.oldValue, this.oldValue = value)) {
+			batchStart();
 			this.dep.broadcast();
+			batchEnd();
 		}
 	}
 }

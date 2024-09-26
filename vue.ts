@@ -64,9 +64,9 @@ export class ReactiveEffect {
 	constructor(
 		private fn: () => void
 	) {
-		const prevSub = this.sub.trackStart();
+		this.sub.trackStart();
 		fn();
-		this.sub.trackEnd(prevSub);
+		this.sub.trackEnd();
 		this.scope.effects.add(this);
 	}
 
@@ -75,15 +75,15 @@ export class ReactiveEffect {
 			this.scheduler();
 		}
 		else if (this.sub.isDirty()) {
-			const prevSub = this.sub.trackStart();
+			this.sub.trackStart();
 			this.fn();
-			this.sub.trackEnd(prevSub);
+			this.sub.trackEnd();
 		}
 	}
 
 	stop() {
-		this.sub.preTrack();
-		this.sub.postTrack();
+		this.sub.trackStart();
+		this.sub.trackEnd();
 		this.scope.effects.delete(this);
 	}
 }

@@ -12,17 +12,14 @@ export class Computed<T = any> {
 	get(): T {
 		this.dep.link();
 		if (this.sub.isDirty()) {
-			const prevSub = this.sub.trackStart();
+			this.sub.trackStart();
 			if (!Object.is(
 				this.oldValue,
 				this.oldValue = this.getter(this.oldValue)
 			)) {
-				this.sub.trackEnd(prevSub);
 				this.dep.broadcast();
 			}
-			else {
-				this.sub.trackEnd(prevSub);
-			}
+			this.sub.trackEnd();
 		}
 		return this.oldValue!;
 	}

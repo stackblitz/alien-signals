@@ -79,7 +79,6 @@ export class Dependency {
 	}
 
 	broadcast() {
-		batchStart();
 		const queuedDeps: Dependency[] = [this];
 		let dirtyLevel = DirtyLevels.Dirty;
 		let i = 0;
@@ -101,16 +100,16 @@ export class Dependency {
 			}
 			dirtyLevel = DirtyLevels.MaybeDirty;
 		}
-		batchEnd();
 	}
 }
 
 export class Subscriber {
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
-	running = 0;
+	trackDepth = 0;
 	depsLength = 0;
 	deps: Link[] = [];
+	lastActiveSub: Subscriber | null = null;
 
 	constructor(
 		public dep: Dependency | null = null,
@@ -137,42 +136,36 @@ export class Subscriber {
 	}
 
 	trackStart() {
-		const lastActiveSubscriber = activeSub;
+		if (!this.trackDepth) {
+			this.lastActiveSub = activeSub;
+		}
 		activeSub = this;
 		activeSubsDepth++;
-		this.running++;
-		this.preTrack();
-		return lastActiveSubscriber;
-	}
-
-	trackEnd(lastActiveSubscriber: Subscriber | undefined) {
-		this.postTrack();
-		this.running--;
-		activeSubsDepth--;
-		activeSub = lastActiveSubscriber;
-		if (!this.running) {
-			this.dirtyLevel = DirtyLevels.NotDirty;
-		}
-	}
-
-	preTrack() {
+		this.trackDepth++;
 		this.depsLength = 0;
 		this.version = subVersion++;
 	}
 
-	postTrack() {
+	trackEnd() {
+		this.trackDepth--;
 		if (this.deps.length > this.depsLength) {
 			for (let i = this.depsLength; i < this.deps.length; i++) {
 				this.deps[i].break();
 			}
 			this.deps.length = this.depsLength;
 		}
+		activeSubsDepth--;
+		if (!this.trackDepth) {
+			activeSub = this.lastActiveSub;
+			this.lastActiveSub = null;
+			this.dirtyLevel = DirtyLevels.NotDirty;
+		}
 	}
 }
 
 export const queuedEffects: IEffect[] = [];
 
-export let activeSub: Subscriber | undefined;
+export let activeSub: Subscriber | null = null;
 export let activeSubsDepth = 0;
 export let pausedSubsIndex = 0;
 export let batchDepth = 0;
