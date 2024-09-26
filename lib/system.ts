@@ -104,12 +104,15 @@ export class Dependency {
 	}
 
 	broadcast() {
-		const queuedDeps: Dependency[] = [this];
+		if (!this.firstSub) {
+			return;
+		}
+		const queuedSubs: Link[] = [this.firstSub];
 		let dirtyLevel = DirtyLevels.Dirty;
 		let i = 0;
 
-		while (i < queuedDeps.length) {
-			let link = queuedDeps[i++].firstSub;
+		while (i < queuedSubs.length) {
+			let link: Link | null = queuedSubs[i++];
 			while (link) {
 				const sub = link.sub;
 				const subDirtyLevel = sub.dirtyLevel;
@@ -118,8 +121,8 @@ export class Dependency {
 					const subDep = sub.dep;
 					const subEffect = sub.effect;
 
-					if (subDep) {
-						queuedDeps.push(subDep);
+					if (subDep?.firstSub) {
+						queuedSubs.push(subDep.firstSub);
 					}
 					if (subEffect) {
 						queuedEffects.push(subEffect);
