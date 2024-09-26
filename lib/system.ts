@@ -14,6 +14,29 @@ export const enum DirtyLevels {
 	Dirty,
 }
 
+class LinkPool {
+	private pool: Link[] = [];
+
+	getLink(dep: Dependency, sub: Subscriber): Link {
+		if (this.pool.length > 0) {
+			const link = this.pool.pop()!;
+			link.dep = dep;
+			link.sub = sub;
+			link.prev = null;
+			link.next = null;
+			return link;
+		} else {
+			return new Link(dep, sub);
+		}
+	}
+
+	releaseLink(link: Link) {
+		this.pool.push(link);
+	}
+}
+
+const linkPool = new LinkPool();
+
 export class Link {
 	prev: Link | null = null;
 	next: Link | null = null;
@@ -24,18 +47,21 @@ export class Link {
 	) { }
 
 	break() {
-		if (this.next) {
-			this.next.prev = this.prev;
+		const { next, prev, dep } = this;
+
+		if (next) {
+			next.prev = prev;
+		} else {
+			dep.lastSub = prev;
 		}
-		else {
-			this.dep.lastSub = this.prev;
+
+		if (prev) {
+			prev.next = next;
+		} else {
+			dep.firstSub = next;
 		}
-		if (this.prev) {
-			this.prev.next = this.next;
-		}
-		else {
-			this.dep.firstSub = this.next;
-		}
+
+		linkPool.releaseLink(this);
 	}
 }
 
@@ -60,7 +86,7 @@ export class Dependency {
 		const old = sub.deps[sub.depsLength] as Link | undefined;
 		if (old?.dep !== this) {
 			old?.break();
-			const newLink = new Link(this, sub);
+			const newLink = linkPool.getLink(this, sub);
 			sub.deps[sub.depsLength++] = newLink;
 			if (!this.firstSub) {
 				this.firstSub = newLink;
@@ -81,20 +107,29 @@ export class Dependency {
 		const queuedDeps: Dependency[] = [this];
 		let dirtyLevel = DirtyLevels.Dirty;
 		let i = 0;
+
 		while (i < queuedDeps.length) {
 			let link = queuedDeps[i++].firstSub;
 			while (link) {
-				if (link.sub.dirtyLevel === DirtyLevels.NotDirty) {
-					if (link.sub.dep) {
-						queuedDeps.push(link.sub.dep);
+				const sub = link.sub;
+				const subDirtyLevel = sub.dirtyLevel;
+
+				if (subDirtyLevel === DirtyLevels.NotDirty) {
+					const subDep = sub.dep;
+					const subEffect = sub.effect;
+
+					if (subDep) {
+						queuedDeps.push(subDep);
 					}
-					if (link.sub.effect) {
-						queuedEffects.push(link.sub.effect);
+					if (subEffect) {
+						queuedEffects.push(subEffect);
 					}
 				}
-				if (link.sub.dirtyLevel < dirtyLevel) {
-					link.sub.dirtyLevel = dirtyLevel;
+
+				if (subDirtyLevel < dirtyLevel) {
+					sub.dirtyLevel = dirtyLevel;
 				}
+
 				link = link.next;
 			}
 			dirtyLevel = DirtyLevels.MaybeDirty;
@@ -119,8 +154,10 @@ export class Subscriber {
 			this.dirtyLevel = DirtyLevels.QueryingDirty;
 			const lastPausedIndex = pausedSubsIndex;
 			pausedSubsIndex = activeSubsDepth;
-			for (let i = 0; i < this.depsLength; i++) {
-				this.deps[i].dep.computed?.get();
+			const deps = this.deps;
+			const depsLength = this.depsLength;
+			for (let i = 0; i < depsLength; i++) {
+				deps[i].dep.computed?.get();
 				if (this.dirtyLevel >= DirtyLevels.Dirty) {
 					break;
 				}
@@ -142,11 +179,13 @@ export class Subscriber {
 	}
 
 	trackEnd() {
-		if (this.deps.length > this.depsLength) {
-			for (let i = this.depsLength; i < this.deps.length; i++) {
-				this.deps[i].break();
+		const deps = this.deps;
+		const depsLength = this.depsLength;
+		if (deps.length > depsLength) {
+			for (let i = depsLength; i < deps.length; i++) {
+				deps[i].break();
 			}
-			this.deps.length = this.depsLength;
+			deps.length = depsLength;
 		}
 		activeSubsDepth--;
 		activeSub = this.lastActiveSub;
