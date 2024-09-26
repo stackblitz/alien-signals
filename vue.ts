@@ -3,6 +3,7 @@ import {
 	signal as _signal,
 	activeSubsDepth,
 	currentEffectScope,
+	IEffect,
 	pausedSubsIndex,
 	setPausedSubsIndex,
 	Subscriber,
@@ -55,7 +56,7 @@ export function getCurrentScope() {
 	return currentEffectScope;
 }
 
-export class ReactiveEffect {
+export class ReactiveEffect implements IEffect {
 	private sub = new Subscriber(undefined, this);
 	private scope = currentEffectScope;
 

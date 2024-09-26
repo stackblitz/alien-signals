@@ -22,7 +22,7 @@ export class EffectScope {
 
 export let currentEffectScope = new EffectScope();
 
-export class Effect {
+export class Effect implements IEffect {
 	private sub = new Subscriber(undefined, this);
 	private scope = currentEffectScope;
 

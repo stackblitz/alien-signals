@@ -1,6 +1,6 @@
-import { Subscriber, Dependency } from './system';
+import { Dependency, IComputed, Subscriber } from './system';
 
-export class Computed<T = any> {
+export class Computed<T = any> implements IComputed {
 	private oldValue: T | undefined = undefined;
 	private dep = new Dependency(this);
 	private sub = new Subscriber(this.dep);
