@@ -49,11 +49,10 @@ export class Dependency {
 	) { }
 
 	link() {
-		const activeSubscribersLength = activeSubsDepth - pausedSubsIndex;
-		if (!activeSub || activeSubscribersLength <= 0) {
+		if (activeSubsDepth - pausedSubsIndex <= 0) {
 			return;
 		}
-		const sub = activeSub;
+		const sub = activeSub!;
 		if (this.subVersion === sub.version) {
 			return;
 		}
