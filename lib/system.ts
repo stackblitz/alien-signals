@@ -40,6 +40,7 @@ const linkPool = new LinkPool();
 export class Link {
 	prev: Link | null = null;
 	next: Link | null = null;
+	broadcastNext: Link | null = null;
 
 	constructor(
 		public dep: Dependency,
@@ -104,17 +105,14 @@ export class Dependency {
 	}
 
 	broadcast() {
-		if (!this.firstSub) {
-			return;
-		}
-		const queuedSubs: Link[] = [this.firstSub];
 		let dirtyLevel = DirtyLevels.Dirty;
-		let i = 0;
+		let currentSubHead: Link | null = this.firstSub;
+		let lastSubHead = currentSubHead;
 
-		while (i < queuedSubs.length) {
-			let link: Link | null = queuedSubs[i++];
-			while (link) {
-				const sub = link.sub;
+		while (currentSubHead) {
+			let current: Link | null = currentSubHead;
+			while (current) {
+				const sub = current.sub;
 				const subDirtyLevel = sub.dirtyLevel;
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
@@ -122,7 +120,8 @@ export class Dependency {
 					const subEffect = sub.effect;
 
 					if (subDep?.firstSub) {
-						queuedSubs.push(subDep.firstSub);
+						lastSubHead!.broadcastNext = subDep.firstSub;
+						lastSubHead = lastSubHead!.broadcastNext;
 					}
 					if (subEffect) {
 						queuedEffects.push(subEffect);
@@ -133,9 +132,12 @@ export class Dependency {
 					sub.dirtyLevel = dirtyLevel;
 				}
 
-				link = link.next;
+				current = current.next;
 			}
 			dirtyLevel = DirtyLevels.MaybeDirty;
+			const { broadcastNext } = currentSubHead;
+			currentSubHead.broadcastNext = null;
+			currentSubHead = broadcastNext;
 		}
 	}
 }
