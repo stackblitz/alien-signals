@@ -105,7 +105,6 @@ export class Dependency {
 export class Subscriber {
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
-	trackDepth = 0;
 	depsLength = 0;
 	deps: Link[] = [];
 	lastActiveSub: Subscriber | null = null;
@@ -135,18 +134,14 @@ export class Subscriber {
 	}
 
 	trackStart() {
-		if (!this.trackDepth) {
-			this.lastActiveSub = activeSub;
-		}
+		this.lastActiveSub = activeSub;
 		activeSub = this;
 		activeSubsDepth++;
-		this.trackDepth++;
 		this.depsLength = 0;
 		this.version = subVersion++;
 	}
 
 	trackEnd() {
-		this.trackDepth--;
 		if (this.deps.length > this.depsLength) {
 			for (let i = this.depsLength; i < this.deps.length; i++) {
 				this.deps[i].break();
@@ -154,11 +149,9 @@ export class Subscriber {
 			this.deps.length = this.depsLength;
 		}
 		activeSubsDepth--;
-		if (!this.trackDepth) {
-			activeSub = this.lastActiveSub;
-			this.lastActiveSub = null;
-			this.dirtyLevel = DirtyLevels.NotDirty;
-		}
+		activeSub = this.lastActiveSub;
+		this.lastActiveSub = null;
+		this.dirtyLevel = DirtyLevels.NotDirty;
 	}
 }
 
