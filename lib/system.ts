@@ -46,18 +46,18 @@ class LinkPool {
 	}
 
 	releaseLink(link: Link) {
-		const { nextSub: next, prevSub: prev, dep } = link;
+		const { nextSub, prevSub, dep } = link;
 
-		if (next) {
-			next.prevSub = prev;
+		if (nextSub) {
+			nextSub.prevSub = prevSub;
 		} else {
-			dep.lastSub = prev;
+			dep.lastSub = prevSub;
 		}
 
-		if (prev) {
-			prev.nextSub = next;
+		if (prevSub) {
+			prevSub.nextSub = nextSub;
 		} else {
-			dep.firstSub = next;
+			dep.firstSub = nextSub;
 		}
 
 		this.pool.push(link);
