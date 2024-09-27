@@ -1,4 +1,4 @@
-export interface IComputed<T = any> {
+export interface ISignal<T = any> {
 	get(): T;
 }
 
@@ -73,7 +73,7 @@ export class Link {
 	broadcastNext: Link | null = null;
 
 	constructor(
-		public dep: Dependency & ({} | IComputed),
+		public dep: Dependency & ({} | ISignal),
 		public sub: Subscriber & ({} | IEffect | Dependency)
 	) { }
 }
@@ -168,8 +168,7 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
-			const lastPausedIndex = pausedSubsIndex;
-			pausedSubsIndex = activeSubsDepth;
+			const resumeIndex = pauseTracking();
 			const depsLength = sub.depsLength;
 			let link = sub.firstDep;
 			for (let i = 0; i < depsLength; i++) {
@@ -181,7 +180,7 @@ export namespace Subscriber {
 				}
 				link = link!.nextDep;
 			}
-			pausedSubsIndex = lastPausedIndex;
+			resetTracking(resumeIndex);
 			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.dirtyLevel = DirtyLevels.NotDirty;
 			}
@@ -224,16 +223,22 @@ function breakAllDeps(link: Link) {
 	}
 }
 
-export let activeSub: Subscriber | null = null;
-export let activeSubsDepth = 0;
-export let pausedSubsIndex = 0;
-export let batchDepth = 0;
-export let subVersion = 0;
-export let queuedEffectFirst: IEffect | null = null;
-export let queuedEffectLast: IEffect | null = null;
+let activeSub: Subscriber | null = null;
+let activeSubsDepth = 0;
+let pausedSubsIndex = 0;
+let batchDepth = 0;
+let subVersion = 0;
+let queuedEffectFirst: IEffect | null = null;
+let queuedEffectLast: IEffect | null = null;
 
-export function setPausedSubsIndex(index: number) {
-	pausedSubsIndex = index;
+export function pauseTracking() {
+	const lastPausedIndex = pausedSubsIndex;
+	pausedSubsIndex = activeSubsDepth;
+	return lastPausedIndex;
+}
+
+export function resetTracking(lastPausedIndex: number) {
+	pausedSubsIndex = lastPausedIndex;
 }
 
 export function batchStart() {

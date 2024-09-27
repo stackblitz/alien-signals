@@ -1,12 +1,11 @@
 import {
 	computed as _computed,
 	signal as _signal,
-	activeSubsDepth,
 	currentEffectScope,
 	DirtyLevels,
 	IEffect,
-	pausedSubsIndex,
-	setPausedSubsIndex,
+	pauseTracking as _pauseTracking,
+	resetTracking as _resetTracking,
 	Subscriber,
 } from './index.js';
 
@@ -19,15 +18,20 @@ export {
 
 export type ShallowRef<T> = { value: T; };
 
-const pausedSubsIndexes: number[] = [];
+let pausedStack = 0;
 
 export function pauseTracking() {
-	pausedSubsIndexes.push(pausedSubsIndex);
-	setPausedSubsIndex(activeSubsDepth);
+	if (pausedStack === 0) {
+		_pauseTracking();
+	}
+	pausedStack++;
 }
 
 export function resetTracking() {
-	setPausedSubsIndex(pausedSubsIndexes.pop()!);
+	pausedStack--;
+	if (pausedStack === 0) {
+		_resetTracking(pausedStack);
+	}
 }
 
 export function shallowRef<T>(): ShallowRef<T | undefined>;
