@@ -1,21 +1,25 @@
 import { batchEnd, batchStart, Dependency } from './system';
 
-export class Signal<T = any> {
-	private dep = new Dependency();
+export class Signal<T = any> implements Dependency {
+	// Dependency
+	computed = this;
+	firstSub = null;
+	lastSub = null;
+	subVersion = -1;
 
 	constructor(
 		private oldValue: T | undefined = undefined
 	) { }
 
 	get() {
-		this.dep.link();
+		Dependency.link(this);
 		return this.oldValue!;
 	}
 
 	set(value: T) {
 		if (!Object.is(this.oldValue, this.oldValue = value)) {
 			batchStart();
-			this.dep.broadcast();
+			Dependency.broadcast(this);
 			batchEnd();
 		}
 	}

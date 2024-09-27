@@ -7,6 +7,19 @@ export interface IEffect {
 	stop(): void;
 }
 
+export interface Dependency {
+	firstSub: Link | null;
+	lastSub: Link | null;
+	subVersion: number;
+}
+
+export interface Subscriber {
+	dirtyLevel: DirtyLevels;
+	version: number;
+	depsLength: number;
+	deps: Link[];
+}
+
 export const enum DirtyLevels {
 	NotDirty,
 	QueryingDirty,
@@ -31,24 +44,7 @@ class LinkPool {
 	}
 
 	releaseLink(link: Link) {
-		this.pool.push(link);
-	}
-}
-
-const linkPool = new LinkPool();
-
-export class Link {
-	prev: Link | null = null;
-	next: Link | null = null;
-	broadcastNext: Link | null = null;
-
-	constructor(
-		public dep: Dependency,
-		public sub: Subscriber
-	) { }
-
-	break() {
-		const { next, prev, dep } = this;
+		const { next, prev, dep } = link;
 
 		if (next) {
 			next.prev = prev;
@@ -62,41 +58,49 @@ export class Link {
 			dep.firstSub = next;
 		}
 
-		linkPool.releaseLink(this);
+		this.pool.push(link);
 	}
 }
 
-export class Dependency {
-	firstSub: Link | null = null;
-	lastSub: Link | null = null;
-	subVersion = -1;
+const linkPool = new LinkPool();
+
+export class Link {
+	prev: Link | null = null;
+	next: Link | null = null;
+	broadcastNext: Link | null = null;
 
 	constructor(
-		public computed: IComputed | null = null,
+		public dep: Dependency & ({} | IComputed),
+		public sub: Subscriber & ({} | IEffect | Dependency)
 	) { }
+}
 
-	link() {
+export namespace Dependency {
+
+	export function link(dep: Dependency) {
 		if (activeSubsDepth - pausedSubsIndex <= 0) {
 			return;
 		}
 		const sub = activeSub!;
-		if (this.subVersion === sub.version) {
+		if (dep.subVersion === sub.version) {
 			return;
 		}
-		this.subVersion = sub.version;
+		dep.subVersion = sub.version;
 		const old = sub.deps[sub.depsLength] as Link | undefined;
-		if (old?.dep !== this) {
-			old?.break();
-			const newLink = linkPool.getLink(this, sub);
+		if (old?.dep !== dep) {
+			if (old) {
+				linkPool.releaseLink(old);
+			}
+			const newLink = linkPool.getLink(dep, sub);
 			sub.deps[sub.depsLength++] = newLink;
-			if (!this.firstSub) {
-				this.firstSub = newLink;
-				this.lastSub = newLink;
+			if (!dep.firstSub) {
+				dep.firstSub = newLink;
+				dep.lastSub = newLink;
 			}
 			else {
-				newLink.prev = this.lastSub;
-				this.lastSub!.next = newLink;
-				this.lastSub = newLink;
+				newLink.prev = dep.lastSub;
+				dep.lastSub!.next = newLink;
+				dep.lastSub = newLink;
 			}
 		}
 		else {
@@ -104,9 +108,9 @@ export class Dependency {
 		}
 	}
 
-	broadcast() {
+	export function broadcast(dep: Dependency) {
 		let dirtyLevel = DirtyLevels.Dirty;
-		let currentSubHead: Link | null = this.firstSub;
+		let currentSubHead: Link | null = dep.firstSub;
 		let lastSubHead = currentSubHead;
 
 		while (currentSubHead) {
@@ -116,15 +120,12 @@ export class Dependency {
 				const subDirtyLevel = sub.dirtyLevel;
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
-					const subDep = sub.dep;
-					const subEffect = sub.effect;
-
-					if (subDep?.firstSub) {
-						lastSubHead!.broadcastNext = subDep.firstSub;
+					if ('firstSub' in sub && sub.firstSub) {
+						lastSubHead!.broadcastNext = sub.firstSub;
 						lastSubHead = lastSubHead!.broadcastNext;
 					}
-					if (subEffect) {
-						queuedEffects.push(subEffect);
+					if ('run' in sub) {
+						queuedEffects.push(sub);
 					}
 				}
 
@@ -142,60 +143,53 @@ export class Dependency {
 	}
 }
 
-export class Subscriber {
-	dirtyLevel = DirtyLevels.Dirty;
-	version = -1;
-	depsLength = 0;
-	deps: Link[] = [];
-	lastActiveSub: Subscriber | null = null;
+export namespace Subscriber {
 
-	constructor(
-		public dep: Dependency | null = null,
-		public effect: IEffect | null = null,
-	) { }
-
-	isDirty() {
-		while (this.dirtyLevel === DirtyLevels.MaybeDirty) {
-			this.dirtyLevel = DirtyLevels.QueryingDirty;
+	export function isDirty(sub: Subscriber) {
+		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
+			sub.dirtyLevel = DirtyLevels.QueryingDirty;
 			const lastPausedIndex = pausedSubsIndex;
 			pausedSubsIndex = activeSubsDepth;
-			const deps = this.deps;
-			const depsLength = this.depsLength;
+			const deps = sub.deps;
+			const depsLength = sub.depsLength;
 			for (let i = 0; i < depsLength; i++) {
-				deps[i].dep.computed?.get();
-				if (this.dirtyLevel >= DirtyLevels.Dirty) {
-					break;
+				const dep = deps[i].dep;
+				if ('get' in dep) {
+					dep.get();
+					if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+						break;
+					}
 				}
 			}
 			pausedSubsIndex = lastPausedIndex;
-			if (this.dirtyLevel === DirtyLevels.QueryingDirty) {
-				this.dirtyLevel = DirtyLevels.NotDirty;
+			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
+				sub.dirtyLevel = DirtyLevels.NotDirty;
 			}
 		}
-		return this.dirtyLevel === DirtyLevels.Dirty;
+		return sub.dirtyLevel === DirtyLevels.Dirty;
 	}
 
-	trackStart() {
-		this.lastActiveSub = activeSub;
-		activeSub = this;
+	export function trackStart(sub: Subscriber) {
+		const lastActiveSub = activeSub;
+		activeSub = sub;
 		activeSubsDepth++;
-		this.depsLength = 0;
-		this.version = subVersion++;
+		sub.depsLength = 0;
+		sub.version = subVersion++;
+		return lastActiveSub;
 	}
 
-	trackEnd() {
-		const deps = this.deps;
-		const depsLength = this.depsLength;
+	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | null) {
+		const deps = sub.deps;
+		const depsLength = sub.depsLength;
 		if (deps.length > depsLength) {
 			for (let i = depsLength; i < deps.length; i++) {
-				deps[i].break();
+				linkPool.releaseLink(deps[i]);
 			}
 			deps.length = depsLength;
 		}
 		activeSubsDepth--;
-		activeSub = this.lastActiveSub;
-		this.lastActiveSub = null;
-		this.dirtyLevel = DirtyLevels.NotDirty;
+		activeSub = lastActiveSub;
+		sub.dirtyLevel = DirtyLevels.NotDirty;
 	}
 }
 

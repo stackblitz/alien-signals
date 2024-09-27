@@ -1,4 +1,4 @@
-import { IEffect, Subscriber } from './system';
+import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export class EffectScope {
 	effects = new Set<IEffect>();
@@ -22,9 +22,14 @@ export class EffectScope {
 
 export let currentEffectScope = new EffectScope();
 
-export class Effect implements IEffect {
-	private sub = new Subscriber(undefined, this);
+export class Effect implements IEffect, Subscriber {
 	private scope = currentEffectScope;
+
+	// Subscriber
+	deps = [];
+	depsLength = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	version = -1;
 
 	constructor(
 		private fn: () => void
@@ -34,16 +39,16 @@ export class Effect implements IEffect {
 	}
 
 	run() {
-		if (this.sub.isDirty()) {
-			this.sub.trackStart();
+		if (Subscriber.isDirty(this)) {
+			const lastActiveSub = Subscriber.trackStart(this);
 			this.fn();
-			this.sub.trackEnd();
+			Subscriber.trackEnd(this, lastActiveSub);
 		}
 	}
 
 	stop() {
-		this.sub.trackStart();
-		this.sub.trackEnd();
+		const lastActiveSub = Subscriber.trackStart(this);
+		Subscriber.trackEnd(this, lastActiveSub);
 		this.scope.effects.delete(this);
 	}
 }

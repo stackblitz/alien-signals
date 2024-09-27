@@ -1,25 +1,34 @@
-import { Dependency, IComputed, Subscriber } from './system';
+import { Dependency, DirtyLevels, IComputed, Subscriber } from './system';
 
-export class Computed<T = any> implements IComputed {
+export class Computed<T = any> implements IComputed, Dependency, Subscriber {
 	private oldValue: T | undefined = undefined;
-	private dep = new Dependency(this);
-	private sub = new Subscriber(this.dep);
+
+	// Dependency
+	firstSub = null;
+	lastSub = null;
+	subVersion = -1;
+
+	// Subscriber
+	deps = [];
+	depsLength = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	version = -1;
 
 	constructor(
 		private getter: (oldValue?: T) => T
 	) { }
 
 	get(): T {
-		this.dep.link();
-		if (this.sub.isDirty()) {
-			this.sub.trackStart();
+		Dependency.link(this);
+		if (Subscriber.isDirty(this)) {
+			const lastActiveSub = Subscriber.trackStart(this);
 			if (!Object.is(
 				this.oldValue,
 				this.oldValue = this.getter(this.oldValue)
 			)) {
-				this.dep.broadcast();
+				Dependency.broadcast(this);
 			}
-			this.sub.trackEnd();
+			Subscriber.trackEnd(this, lastActiveSub);
 		}
 		return this.oldValue!;
 	}

@@ -3,6 +3,7 @@ import {
 	signal as _signal,
 	activeSubsDepth,
 	currentEffectScope,
+	DirtyLevels,
 	IEffect,
 	pausedSubsIndex,
 	setPausedSubsIndex,
@@ -56,18 +57,23 @@ export function getCurrentScope() {
 	return currentEffectScope;
 }
 
-export class ReactiveEffect implements IEffect {
-	private sub = new Subscriber(undefined, this);
+export class ReactiveEffect implements IEffect, Subscriber {
 	private scope = currentEffectScope;
+
+	// Subscriber
+	deps = [];
+	depsLength = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	version = -1;
 
 	scheduler?: () => void;
 
 	constructor(
 		private fn: () => void
 	) {
-		this.sub.trackStart();
+		const lastActiveSub = Subscriber.trackStart(this);
 		fn();
-		this.sub.trackEnd();
+		Subscriber.trackEnd(this, lastActiveSub);
 		this.scope.effects.add(this);
 	}
 
@@ -75,16 +81,16 @@ export class ReactiveEffect implements IEffect {
 		if (this.scheduler) {
 			this.scheduler();
 		}
-		else if (this.sub.isDirty()) {
-			this.sub.trackStart();
+		else if (Subscriber.isDirty(this)) {
+			const lastActiveSub = Subscriber.trackStart(this);
 			this.fn();
-			this.sub.trackEnd();
+			Subscriber.trackEnd(this, lastActiveSub);
 		}
 	}
 
 	stop() {
-		this.sub.trackStart();
-		this.sub.trackEnd();
+		const lastActiveSub = Subscriber.trackStart(this);
+		Subscriber.trackEnd(this, lastActiveSub);
 		this.scope.effects.delete(this);
 	}
 }
