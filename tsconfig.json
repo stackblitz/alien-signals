@@ -1,10 +1,8 @@
 {
 	"compilerOptions": {
 		"target": "ES2021",
-		"lib": [
-			"ES2021",
-		],
-		"module": "Node16",
+		"lib": [ "ES2021" ],
+		"module": "ESNext",
 		"declaration": true,
 		"strict": true,
 		"noUnusedLocals": true,
