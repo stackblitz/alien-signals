@@ -3,6 +3,7 @@ export interface IComputed {
 }
 
 export interface IEffect {
+	queuedNext: IEffect | null;
 	run(): void;
 	stop(): void;
 }
@@ -124,8 +125,15 @@ export namespace Dependency {
 						lastSubHead!.broadcastNext = sub.firstSub;
 						lastSubHead = lastSubHead!.broadcastNext;
 					}
-					if ('run' in sub) {
-						queuedEffects.push(sub);
+					if ('run' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
+						if (queuedEffectLast) {
+							queuedEffectLast.queuedNext = sub;
+							queuedEffectLast = sub;
+						}
+						else {
+							queuedEffectFirst = sub;
+							queuedEffectLast = sub;
+						}
 					}
 				}
 
@@ -193,13 +201,14 @@ export namespace Subscriber {
 	}
 }
 
-export const queuedEffects: IEffect[] = [];
 
 export let activeSub: Subscriber | null = null;
 export let activeSubsDepth = 0;
 export let pausedSubsIndex = 0;
 export let batchDepth = 0;
 export let subVersion = 0;
+export let queuedEffectFirst: IEffect | null = null;
+export let queuedEffectLast: IEffect | null = null;
 
 export function setPausedSubsIndex(index: number) {
 	pausedSubsIndex = index;
@@ -211,7 +220,16 @@ export function batchStart() {
 
 export function batchEnd() {
 	batchDepth--;
-	while (!batchDepth && queuedEffects.length) {
-		queuedEffects.shift()!.run();
+	while (!batchDepth && queuedEffectFirst) {
+		queuedEffectFirst.run();
+		const { queuedNext } = queuedEffectFirst;
+		if (queuedNext) {
+			queuedEffectFirst.queuedNext = null;
+			queuedEffectFirst = queuedNext;
+		}
+		else {
+			queuedEffectFirst = null;
+			queuedEffectLast = null;
+		}
 	}
 }

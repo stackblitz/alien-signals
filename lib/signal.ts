@@ -2,7 +2,6 @@ import { batchEnd, batchStart, Dependency } from './system';
 
 export class Signal<T = any> implements Dependency {
 	// Dependency
-	computed = this;
 	firstSub = null;
 	lastSub = null;
 	subVersion = -1;

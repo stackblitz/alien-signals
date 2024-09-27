@@ -59,6 +59,7 @@ export function getCurrentScope() {
 
 export class ReactiveEffect implements IEffect, Subscriber {
 	private scope = currentEffectScope;
+	queuedNext = null;
 
 	// Subscriber
 	deps = [];

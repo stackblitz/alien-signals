@@ -24,6 +24,7 @@ export let currentEffectScope = new EffectScope();
 
 export class Effect implements IEffect, Subscriber {
 	private scope = currentEffectScope;
+	queuedNext = null;
 
 	// Subscriber
 	deps = [];
