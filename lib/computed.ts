@@ -1,6 +1,6 @@
 import { Dependency, DirtyLevels, IComputed, Subscriber } from './system';
 
-export class Computed<T = any> implements IComputed, Dependency, Subscriber {
+export class Computed<T = any> implements IComputed<T>, Dependency, Subscriber {
 	private oldValue: T | undefined = undefined;
 
 	// Dependency

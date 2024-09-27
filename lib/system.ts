@@ -1,5 +1,5 @@
-export interface IComputed {
-	get(): any;
+export interface IComputed<T = any> {
+	get(): T;
 }
 
 export interface IEffect {
