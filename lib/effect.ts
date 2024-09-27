@@ -27,7 +27,8 @@ export class Effect implements IEffect, Subscriber {
 	queuedNext = null;
 
 	// Subscriber
-	deps = [];
+	firstDep = null;
+	lastDep = null;
 	depsLength = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;

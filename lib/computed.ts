@@ -9,7 +9,8 @@ export class Computed<T = any> implements IComputed<T>, Dependency, Subscriber {
 	subVersion = -1;
 
 	// Subscriber
-	deps = [];
+	firstDep = null;
+	lastDep = null;
 	depsLength = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;

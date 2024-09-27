@@ -18,7 +18,8 @@ export interface Subscriber {
 	dirtyLevel: DirtyLevels;
 	version: number;
 	depsLength: number;
-	deps: Link[];
+	firstDep: Link | null;
+	lastDep: Link | null;
 }
 
 export const enum DirtyLevels {
@@ -36,8 +37,8 @@ class LinkPool {
 			const link = this.pool.pop()!;
 			link.dep = dep;
 			link.sub = sub;
-			link.prev = null;
-			link.next = null;
+			link.prevSub = null;
+			link.nextSub = null;
 			return link;
 		} else {
 			return new Link(dep, sub);
@@ -45,16 +46,16 @@ class LinkPool {
 	}
 
 	releaseLink(link: Link) {
-		const { next, prev, dep } = link;
+		const { nextSub: next, prevSub: prev, dep } = link;
 
 		if (next) {
-			next.prev = prev;
+			next.prevSub = prev;
 		} else {
 			dep.lastSub = prev;
 		}
 
 		if (prev) {
-			prev.next = next;
+			prev.nextSub = next;
 		} else {
 			dep.firstSub = next;
 		}
@@ -66,8 +67,9 @@ class LinkPool {
 const linkPool = new LinkPool();
 
 export class Link {
-	prev: Link | null = null;
-	next: Link | null = null;
+	prevSub: Link | null = null;
+	nextSub: Link | null = null;
+	nextDep: Link | null = null;
 	broadcastNext: Link | null = null;
 
 	constructor(
@@ -87,26 +89,36 @@ export namespace Dependency {
 			return;
 		}
 		dep.subVersion = sub.version;
-		const old = sub.deps[sub.depsLength] as Link | undefined;
+		const old = sub.depsLength === 0
+			? sub.firstDep
+			: sub.lastDep!.nextDep;
 		if (old?.dep !== dep) {
 			if (old) {
 				linkPool.releaseLink(old);
 			}
 			const newLink = linkPool.getLink(dep, sub);
-			sub.deps[sub.depsLength++] = newLink;
+			if (!sub.lastDep) {
+				sub.firstDep = newLink;
+				sub.lastDep = newLink;
+			}
+			else {
+				sub.lastDep!.nextDep = newLink;
+				sub.lastDep = newLink;
+			}
 			if (!dep.firstSub) {
 				dep.firstSub = newLink;
 				dep.lastSub = newLink;
 			}
 			else {
-				newLink.prev = dep.lastSub;
-				dep.lastSub!.next = newLink;
+				newLink.prevSub = dep.lastSub;
+				dep.lastSub!.nextSub = newLink;
 				dep.lastSub = newLink;
 			}
 		}
 		else {
-			sub.depsLength++;
+			sub.lastDep = old;
 		}
+		sub.depsLength++;
 	}
 
 	export function broadcast(dep: Dependency) {
@@ -141,7 +153,7 @@ export namespace Dependency {
 					sub.dirtyLevel = dirtyLevel;
 				}
 
-				current = current.next;
+				current = current.nextSub;
 			}
 			dirtyLevel = DirtyLevels.MaybeDirty;
 			const { broadcastNext } = currentSubHead;
@@ -158,16 +170,16 @@ export namespace Subscriber {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
 			const lastPausedIndex = pausedSubsIndex;
 			pausedSubsIndex = activeSubsDepth;
-			const deps = sub.deps;
 			const depsLength = sub.depsLength;
+			let link = sub.firstDep;
 			for (let i = 0; i < depsLength; i++) {
-				const dep = deps[i].dep;
-				if ('get' in dep) {
-					dep.get();
+				if ('get' in link!.dep) {
+					link!.dep.get();
 					if (sub.dirtyLevel >= DirtyLevels.Dirty) {
 						break;
 					}
 				}
+				link = link!.nextDep;
 			}
 			pausedSubsIndex = lastPausedIndex;
 			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
@@ -181,19 +193,20 @@ export namespace Subscriber {
 		const lastActiveSub = activeSub;
 		activeSub = sub;
 		activeSubsDepth++;
+		sub.lastDep = null;
 		sub.depsLength = 0;
 		sub.version = subVersion++;
 		return lastActiveSub;
 	}
 
 	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | null) {
-		const deps = sub.deps;
-		const depsLength = sub.depsLength;
-		if (deps.length > depsLength) {
-			for (let i = depsLength; i < deps.length; i++) {
-				linkPool.releaseLink(deps[i]);
-			}
-			deps.length = depsLength;
+		if (sub.depsLength === 0 && sub.firstDep) {
+			breakAllDeps(sub.firstDep);
+			linkPool.releaseLink(sub.firstDep);
+			sub.firstDep = null;
+		}
+		if (sub.lastDep) {
+			breakAllDeps(sub.lastDep);
 		}
 		activeSubsDepth--;
 		activeSub = lastActiveSub;
@@ -201,6 +214,15 @@ export namespace Subscriber {
 	}
 }
 
+function breakAllDeps(link: Link) {
+	let toBreak: Link | null = link;
+	while (toBreak?.nextDep) {
+		const { nextDep }: Link = toBreak;
+		toBreak.nextDep = null;
+		linkPool.releaseLink(nextDep);
+		toBreak = nextDep;
+	}
+}
 
 export let activeSub: Subscriber | null = null;
 export let activeSubsDepth = 0;
