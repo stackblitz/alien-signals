@@ -248,7 +248,7 @@ export function batchStart() {
 export function batchEnd() {
 	batchDepth--;
 	while (!batchDepth && queuedEffectFirst) {
-		queuedEffectFirst.run();
+		const effect = queuedEffectFirst;
 		const { queuedNext } = queuedEffectFirst;
 		if (queuedNext) {
 			queuedEffectFirst.queuedNext = null;
@@ -258,5 +258,6 @@ export function batchEnd() {
 			queuedEffectFirst = null;
 			queuedEffectLast = null;
 		}
+		effect.run();
 	}
 }
