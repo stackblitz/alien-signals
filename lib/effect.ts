@@ -58,7 +58,6 @@ export class Effect implements IEffect, Subscriber {
 	// Subscriber
 	firstDep = null;
 	lastDep = null;
-	depsLength = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 

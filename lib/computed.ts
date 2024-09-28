@@ -11,7 +11,6 @@ export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
 	// Subscriber
 	firstDep = null;
 	lastDep = null;
-	depsLength = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 

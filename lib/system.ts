@@ -16,7 +16,6 @@ export interface Dependency {
 export interface Subscriber {
 	dirtyLevel: DirtyLevels;
 	version: number;
-	depsLength: number;
 	firstDep: Link | null;
 	lastDep: Link | null;
 }
@@ -88,9 +87,9 @@ export namespace Dependency {
 			return;
 		}
 		dep.subVersion = sub.version;
-		const old = sub.depsLength === 0
-			? sub.firstDep
-			: sub.lastDep!.nextDep;
+		const old = sub.lastDep
+			? sub.lastDep.nextDep
+			: sub.firstDep;
 		if (old?.dep !== dep) {
 			if (old) {
 				linkPool.releaseLink(old);
@@ -117,7 +116,6 @@ export namespace Dependency {
 		else {
 			sub.lastDep = old;
 		}
-		sub.depsLength++;
 	}
 
 	export function broadcast(dep: Dependency) {
@@ -167,19 +165,24 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
-			const resumeIndex = pauseTracking();
-			const depsLength = sub.depsLength;
-			let link = sub.firstDep;
-			for (let i = 0; i < depsLength; i++) {
-				if ('get' in link!.dep) {
-					link!.dep.get();
-					if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+			const { lastDep } = sub;
+			if (lastDep) {
+				const resumeIndex = pauseTracking();
+				let link = sub.firstDep;
+				while (link) {
+					if ('get' in link.dep) {
+						link.dep.get();
+						if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+							break;
+						}
+					}
+					if (link === lastDep) {
 						break;
 					}
+					link = link.nextDep;
 				}
-				link = link!.nextDep;
+				resetTracking(resumeIndex);
 			}
-			resetTracking(resumeIndex);
 			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.dirtyLevel = DirtyLevels.NotDirty;
 			}
@@ -203,12 +206,11 @@ export namespace Subscriber {
 
 	export function preTrack(sub: Subscriber) {
 		sub.lastDep = null;
-		sub.depsLength = 0;
 		sub.version = subVersion++;
 	}
 
 	export function postTrack(sub: Subscriber) {
-		if (sub.depsLength === 0 && sub.firstDep) {
+		if (!sub.lastDep && sub.firstDep) {
 			breakAllDeps(sub.firstDep);
 			linkPool.releaseLink(sub.firstDep);
 			sub.firstDep = null;
