@@ -2,11 +2,12 @@ import {
 	computed as _computed,
 	signal as _signal,
 	currentEffectScope,
-	DirtyLevels,
-	IEffect,
 	pauseTracking as _pauseTracking,
 	resetTracking as _resetTracking,
 	Subscriber,
+	Computed,
+	Signal,
+	Effect,
 } from './index.js';
 
 export {
@@ -15,8 +16,6 @@ export {
 	effectScope,
 	EffectScope,
 } from './index.js';
-
-export type ShallowRef<T> = { value: T; };
 
 let pausedStack = 0;
 
@@ -37,66 +36,38 @@ export function resetTracking() {
 export function shallowRef<T>(): ShallowRef<T | undefined>;
 export function shallowRef<T>(oldValue: T): ShallowRef<T>;
 export function shallowRef<T>(value?: T) {
-	const s = _signal(value);
-	return {
-		get value() {
-			return s.get();
-		},
-		set value(value: T) {
-			s.set(value);
-		}
-	};
+	return new ShallowRef(value);
 }
 
 export function computed<T>(fn: () => T) {
-	const c = _computed(fn);
-	return {
-		get value() {
-			return c.get();
-		}
-	};
+	return new VueComputed(fn);
 }
 
 export function getCurrentScope() {
 	return currentEffectScope;
 }
 
-export class ReactiveEffect implements IEffect, Subscriber {
-	private scope = currentEffectScope;
-	queuedNext = null;
+class ShallowRef<T = any> extends Signal<T> {
+	get value() {
+		return this.get();
+	}
+	set value(value: T) {
+		this.set(value);
+	}
+}
 
-	// Subscriber
-	firstDep = null;
-	lastDep = null;
-	depsLength = 0;
-	dirtyLevel = DirtyLevels.Dirty;
-	version = -1;
+class VueComputed<T = any> extends Computed<T> {
+	get value() {
+		return this.get();
+	}
+}
 
-	scheduler?: () => void;
-
-	constructor(
-		private fn: () => void
-	) {
-		const lastActiveSub = Subscriber.trackStart(this);
-		fn();
-		Subscriber.trackEnd(this, lastActiveSub);
-		this.scope.effects.add(this);
+export class ReactiveEffect extends Effect {
+	get dirty() {
+		return Subscriber.isDirty(this);
 	}
 
-	run() {
-		if (this.scheduler) {
-			this.scheduler();
-		}
-		else if (Subscriber.isDirty(this)) {
-			const lastActiveSub = Subscriber.trackStart(this);
-			this.fn();
-			Subscriber.trackEnd(this, lastActiveSub);
-		}
-	}
-
-	stop() {
-		const lastActiveSub = Subscriber.trackStart(this);
-		Subscriber.trackEnd(this, lastActiveSub);
-		this.scope.effects.delete(this);
+	set scheduler(fn: () => void) {
+		this.queue = fn;
 	}
 }

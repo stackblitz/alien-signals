@@ -4,8 +4,7 @@ export interface ISignal<T = any> {
 
 export interface IEffect {
 	queuedNext: IEffect | null;
-	run(): void;
-	stop(): void;
+	queue(): void;
 }
 
 export interface Dependency {
@@ -137,7 +136,7 @@ export namespace Dependency {
 						lastSubHead!.broadcastNext = sub.firstSub;
 						lastSubHead = lastSubHead!.broadcastNext;
 					}
-					if ('run' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
+					if ('queue' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
 						if (queuedEffectLast) {
 							queuedEffectLast.queuedNext = sub;
 							queuedEffectLast = sub;
@@ -192,13 +191,23 @@ export namespace Subscriber {
 		const lastActiveSub = activeSub;
 		activeSub = sub;
 		activeSubsDepth++;
-		sub.lastDep = null;
-		sub.depsLength = 0;
-		sub.version = subVersion++;
+		Subscriber.preTrack(sub);
 		return lastActiveSub;
 	}
 
 	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | null) {
+		Subscriber.postTrack(sub);
+		activeSubsDepth--;
+		activeSub = lastActiveSub;
+	}
+
+	export function preTrack(sub: Subscriber) {
+		sub.lastDep = null;
+		sub.depsLength = 0;
+		sub.version = subVersion++;
+	}
+
+	export function postTrack(sub: Subscriber) {
 		if (sub.depsLength === 0 && sub.firstDep) {
 			breakAllDeps(sub.firstDep);
 			linkPool.releaseLink(sub.firstDep);
@@ -207,8 +216,6 @@ export namespace Subscriber {
 		if (sub.lastDep) {
 			breakAllDeps(sub.lastDep);
 		}
-		activeSubsDepth--;
-		activeSub = lastActiveSub;
 		sub.dirtyLevel = DirtyLevels.NotDirty;
 	}
 }
@@ -258,6 +265,6 @@ export function batchEnd() {
 			queuedEffectFirst = null;
 			queuedEffectLast = null;
 		}
-		effect.run();
+		effect.queue();
 	}
 }

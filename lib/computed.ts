@@ -1,7 +1,7 @@
 import { Dependency, DirtyLevels, ISignal, Subscriber } from './system';
 
 export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
-	private oldValue: T | undefined = undefined;
+	oldValue: T | undefined = undefined;
 
 	// Dependency
 	firstSub = null;
@@ -16,7 +16,7 @@ export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
 	version = -1;
 
 	constructor(
-		private getter: (oldValue?: T) => T
+		public getter: (oldValue?: T) => T
 	) { }
 
 	get(): T {

@@ -1,7 +1,8 @@
 import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export class EffectScope {
-	effects = new Set<IEffect>();
+	firstEffect: Effect | null = null;
+	lastEffect: Effect | null = null;
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
@@ -14,8 +15,34 @@ export class EffectScope {
 	}
 
 	stop() {
-		for (const effect of [...this.effects]) {
-			effect.stop();
+		while (this.firstEffect) {
+			this.firstEffect.stop();
+		}
+	}
+
+	add(effect: Effect) {
+		if (this.lastEffect) {
+			this.lastEffect.nextEffect = effect;
+			effect.prevEffect = this.lastEffect;
+			this.lastEffect = effect;
+		}
+		else {
+			this.firstEffect = this.lastEffect = effect;
+		}
+	}
+
+	remove(effect: Effect) {
+		if (effect.prevEffect) {
+			effect.prevEffect.nextEffect = effect.nextEffect;
+		}
+		else {
+			this.firstEffect = effect.nextEffect;
+		}
+		if (effect.nextEffect) {
+			effect.nextEffect.prevEffect = effect.prevEffect;
+		}
+		else {
+			this.lastEffect = effect.prevEffect;
 		}
 	}
 }
@@ -23,8 +50,10 @@ export class EffectScope {
 export let currentEffectScope = new EffectScope();
 
 export class Effect implements IEffect, Subscriber {
-	private scope = currentEffectScope;
-	queuedNext = null;
+	scope = currentEffectScope;
+	queuedNext: Effect | null = null;
+	prevEffect: Effect | null = null;
+	nextEffect: Effect | null = null;
 
 	// Subscriber
 	firstDep = null;
@@ -36,7 +65,11 @@ export class Effect implements IEffect, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		this.scope.effects.add(this);
+		this.scope.add(this);
+		this.run();
+	}
+
+	queue() {
 		this.run();
 	}
 
@@ -49,9 +82,9 @@ export class Effect implements IEffect, Subscriber {
 	}
 
 	stop() {
-		const lastActiveSub = Subscriber.trackStart(this);
-		Subscriber.trackEnd(this, lastActiveSub);
-		this.scope.effects.delete(this);
+		Subscriber.preTrack(this);
+		Subscriber.postTrack(this);
+		this.scope.remove(this);
 	}
 }
 

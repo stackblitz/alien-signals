@@ -7,7 +7,7 @@ export class Signal<T = any> implements ISignal, Dependency {
 	subVersion = -1;
 
 	constructor(
-		private oldValue: T | undefined = undefined
+		public oldValue: T | undefined = undefined
 	) { }
 
 	get() {
