@@ -105,24 +105,27 @@ export namespace Dependency {
 		let lastSubs = currentSubs!;
 
 		while (currentSubs !== null) {
+			dep = currentSubs.dep;
 			let prevSubLink: Link | null = null;
 			let subLink: Link | null = currentSubs;
 
 			while (subLink !== null) {
-				if (subLink.sub === null) {
+				const sub = subLink.sub;
+				const nextSub = subLink.nextSub;
+
+				if (sub === null) {
 					if (prevSubLink !== null) {
-						prevSubLink.nextSub = subLink.nextSub;
+						prevSubLink.nextSub = nextSub;
 					}
 					else {
-						subLink.dep.firstSub = subLink.nextSub;
+						dep.firstSub = nextSub;
 					}
-					if (subLink.nextSub === null) {
-						subLink.dep.lastSub = prevSubLink;
+					if (nextSub === null) {
+						dep.lastSub = prevSubLink;
 					}
 					linkPool.pool.push(subLink);
 				}
 				else {
-					const sub = subLink.sub;
 					const subDirtyLevel = sub.dirtyLevel;
 
 					if (subDirtyLevel === DirtyLevels.NotDirty) {
@@ -151,7 +154,7 @@ export namespace Dependency {
 			}
 
 			dirtyLevel = DirtyLevels.MaybeDirty;
-			const { broadcastNext }: Link = currentSubs;
+			const broadcastNext = currentSubs.broadcastNext;
 			currentSubs.broadcastNext = null;
 			currentSubs = broadcastNext;
 		}
@@ -163,7 +166,7 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
-			const { lastDep } = sub;
+			const lastDep = sub.lastDep;
 			if (lastDep !== null) {
 				const resumeIndex = pauseTracking();
 				let link = sub.firstDep;
@@ -220,7 +223,7 @@ export namespace Subscriber {
 function breakAllDeps(link: Link) {
 	let toBreak: Link = link;
 	while (toBreak.nextDep !== null) {
-		const { nextDep }: Link = toBreak;
+		const nextDep = toBreak.nextDep;
 		toBreak.nextDep = null;
 		nextDep.sub = null;
 		toBreak = nextDep;
@@ -253,7 +256,7 @@ export function batchEnd() {
 	batchDepth--;
 	while (!batchDepth && queuedEffectFirst) {
 		const effect = queuedEffectFirst;
-		const { queuedNext } = queuedEffectFirst;
+		const queuedNext = queuedEffectFirst.queuedNext;
 		if (queuedNext !== null) {
 			queuedEffectFirst.queuedNext = null;
 			queuedEffectFirst = queuedNext;
