@@ -129,12 +129,12 @@ export namespace Dependency {
 					const subDirtyLevel = sub.dirtyLevel;
 
 					if (subDirtyLevel === DirtyLevels.NotDirty) {
-						if ('firstSub' in sub && sub.firstSub) {
+						if ('firstSub' in sub && sub.firstSub !== null) {
 							lastSubs.broadcastNext = sub.firstSub;
 							lastSubs = lastSubs.broadcastNext;
 						}
 						if ('queue' in sub) {
-							if (queuedEffectLast) {
+							if (queuedEffectLast !== null) {
 								queuedEffectLast.queuedNext = sub;
 								queuedEffectLast = sub;
 							}
