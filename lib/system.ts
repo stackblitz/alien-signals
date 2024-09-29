@@ -28,51 +28,32 @@ export const enum DirtyLevels {
 }
 
 class LinkPool {
-	private pool: Link[] = [];
+	pool: Link[] = [];
 
 	getLink(dep: Dependency, sub: Subscriber): Link {
 		if (this.pool.length > 0) {
 			const link = this.pool.pop()!;
 			link.dep = dep;
 			link.sub = sub;
-			link.prevSub = null;
 			link.nextSub = null;
+			link.nextDep = null;
 			return link;
 		} else {
 			return new Link(dep, sub);
 		}
-	}
-
-	releaseLink(link: Link) {
-		const { nextSub, prevSub, dep } = link;
-
-		if (nextSub) {
-			nextSub.prevSub = prevSub;
-		} else {
-			dep.lastSub = prevSub;
-		}
-
-		if (prevSub) {
-			prevSub.nextSub = nextSub;
-		} else {
-			dep.firstSub = nextSub;
-		}
-
-		this.pool.push(link);
 	}
 }
 
 const linkPool = new LinkPool();
 
 export class Link {
-	prevSub: Link | null = null;
 	nextSub: Link | null = null;
 	nextDep: Link | null = null;
 	broadcastNext: Link | null = null;
 
 	constructor(
 		public dep: Dependency & ({} | ISignal),
-		public sub: Subscriber & ({} | IEffect | Dependency)
+		public sub: (Subscriber & ({} | IEffect | Dependency)) | null
 	) { }
 }
 
@@ -91,10 +72,11 @@ export namespace Dependency {
 			? sub.lastDep.nextDep
 			: sub.firstDep;
 		if (old?.dep !== dep) {
-			if (old) {
-				linkPool.releaseLink(old);
-			}
 			const newLink = linkPool.getLink(dep, sub);
+			if (old) {
+				old.sub = null;
+				newLink.nextDep = old.nextDep;
+			}
 			if (!sub.lastDep) {
 				sub.firstDep = newLink;
 				sub.lastDep = newLink;
@@ -108,7 +90,6 @@ export namespace Dependency {
 				dep.lastSub = newLink;
 			}
 			else {
-				newLink.prevSub = dep.lastSub;
 				dep.lastSub!.nextSub = newLink;
 				dep.lastSub = newLink;
 			}
@@ -120,42 +101,59 @@ export namespace Dependency {
 
 	export function broadcast(dep: Dependency) {
 		let dirtyLevel = DirtyLevels.Dirty;
-		let currentSubHead: Link | null = dep.firstSub;
-		let lastSubHead = currentSubHead;
+		let currentSubs = dep.firstSub;
+		let lastSubs = currentSubs!;
 
-		while (currentSubHead) {
-			let current: Link | null = currentSubHead;
-			while (current) {
-				const sub = current.sub;
-				const subDirtyLevel = sub.dirtyLevel;
+		while (currentSubs) {
+			let prevSubLink: Link | null = null;
+			let subLink: Link | null = currentSubs;
 
-				if (subDirtyLevel === DirtyLevels.NotDirty) {
-					if ('firstSub' in sub && sub.firstSub) {
-						lastSubHead!.broadcastNext = sub.firstSub;
-						lastSubHead = lastSubHead!.broadcastNext;
+			while (subLink) {
+				if (!subLink.sub) {
+					if (prevSubLink) {
+						prevSubLink.nextSub = subLink.nextSub;
 					}
-					if ('queue' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
-						if (queuedEffectLast) {
-							queuedEffectLast.queuedNext = sub;
-							queuedEffectLast = sub;
+					else {
+						subLink.dep.firstSub = subLink.nextSub;
+					}
+					if (!subLink.nextSub) {
+						subLink.dep.lastSub = prevSubLink;
+					}
+					linkPool.pool.push(subLink);
+				}
+				else {
+					const sub = subLink.sub;
+					const subDirtyLevel = sub.dirtyLevel;
+
+					if (subDirtyLevel === DirtyLevels.NotDirty) {
+						if ('firstSub' in sub && sub.firstSub) {
+							lastSubs.broadcastNext = sub.firstSub;
+							lastSubs = lastSubs.broadcastNext;
 						}
-						else {
-							queuedEffectFirst = sub;
-							queuedEffectLast = sub;
+						if ('queue' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
+							if (queuedEffectLast) {
+								queuedEffectLast.queuedNext = sub;
+								queuedEffectLast = sub;
+							}
+							else {
+								queuedEffectFirst = sub;
+								queuedEffectLast = sub;
+							}
 						}
 					}
-				}
 
-				if (subDirtyLevel < dirtyLevel) {
-					sub.dirtyLevel = dirtyLevel;
+					if (subDirtyLevel < dirtyLevel) {
+						sub.dirtyLevel = dirtyLevel;
+					}
+					prevSubLink = subLink;
 				}
-
-				current = current.nextSub;
+				subLink = subLink.nextSub;
 			}
+
 			dirtyLevel = DirtyLevels.MaybeDirty;
-			const { broadcastNext } = currentSubHead;
-			currentSubHead.broadcastNext = null;
-			currentSubHead = broadcastNext;
+			const { broadcastNext }: Link = currentSubs;
+			currentSubs.broadcastNext = null;
+			currentSubs = broadcastNext;
 		}
 	}
 }
@@ -212,7 +210,7 @@ export namespace Subscriber {
 	export function postTrack(sub: Subscriber) {
 		if (!sub.lastDep && sub.firstDep) {
 			breakAllDeps(sub.firstDep);
-			linkPool.releaseLink(sub.firstDep);
+			sub.firstDep.sub = null;
 			sub.firstDep = null;
 		}
 		if (sub.lastDep) {
@@ -227,7 +225,7 @@ function breakAllDeps(link: Link) {
 	while (toBreak?.nextDep) {
 		const { nextDep }: Link = toBreak;
 		toBreak.nextDep = null;
-		linkPool.releaseLink(nextDep);
+		nextDep.sub = null;
 		toBreak = nextDep;
 	}
 }
