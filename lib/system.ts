@@ -42,18 +42,44 @@ class LinkPool {
 			return new Link(dep, sub);
 		}
 	}
+
+	releaseLink(link: Link) {
+		const { nextSub, prevSub, dep } = link;
+
+		if (nextSub !== null) {
+			nextSub.prevSub = prevSub;
+		}
+		if (prevSub !== null) {
+			prevSub.nextSub = nextSub;
+		}
+
+		if (nextSub === null) {
+			dep.lastSub = prevSub;
+		}
+		if (prevSub === null) {
+			dep.firstSub = nextSub;
+		}
+
+		// @ts-ignore
+		link.dep = null;
+		// @ts-ignore
+		link.sub = null;
+
+		this.pool.push(link);
+	}
 }
 
 const linkPool = new LinkPool();
 
 export class Link {
+	prevSub: Link | null = null;
 	nextSub: Link | null = null;
 	nextDep: Link | null = null;
 	broadcastNext: Link | null = null;
 
 	constructor(
 		public dep: Dependency & ({} | ISignal),
-		public sub: (Subscriber & ({} | IEffect | Dependency)) | null
+		public sub: Subscriber & ({} | IEffect | Dependency)
 	) { }
 }
 
@@ -74,7 +100,7 @@ export namespace Dependency {
 		if (old === null || old.dep !== dep) {
 			const newLink = linkPool.getLink(dep, sub);
 			if (old !== null) {
-				old.sub = null;
+				linkPool.releaseLink(old);
 				newLink.nextDep = old.nextDep;
 			}
 			if (sub.lastDep === null) {
@@ -87,6 +113,7 @@ export namespace Dependency {
 				dep.lastSub = dep.firstSub = newLink;
 			}
 			else {
+				newLink.prevSub = dep.lastSub;
 				dep.lastSub = dep.lastSub!.nextSub = newLink;
 			}
 		}
@@ -102,47 +129,30 @@ export namespace Dependency {
 
 		while (currentSubs !== null) {
 			dep = currentSubs.dep;
-			let prevSubLink: Link | null = null;
 			let subLink: Link | null = currentSubs;
 
 			while (subLink !== null) {
 				const sub = subLink.sub;
-				const nextSub = subLink.nextSub;
+				const subDirtyLevel = sub.dirtyLevel;
 
-				if (sub === null) {
-					if (prevSubLink !== null) {
-						prevSubLink.nextSub = nextSub;
+				if (subDirtyLevel === DirtyLevels.NotDirty) {
+					if ('firstSub' in sub && sub.firstSub !== null) {
+						lastSubs = lastSubs.broadcastNext = sub.firstSub;
 					}
-					else {
-						dep.firstSub = nextSub;
-					}
-					if (nextSub === null) {
-						dep.lastSub = prevSubLink;
-					}
-					linkPool.pool.push(subLink);
-				}
-				else {
-					const subDirtyLevel = sub.dirtyLevel;
-
-					if (subDirtyLevel === DirtyLevels.NotDirty) {
-						if ('firstSub' in sub && sub.firstSub !== null) {
-							lastSubs = lastSubs.broadcastNext = sub.firstSub;
+					if ('queue' in sub) {
+						if (queuedEffectLast !== null) {
+							queuedEffectLast = queuedEffectLast.queuedNext = sub;
 						}
-						if ('queue' in sub) {
-							if (queuedEffectLast !== null) {
-								queuedEffectLast = queuedEffectLast.queuedNext = sub;
-							}
-							else {
-								queuedEffectFirst = queuedEffectLast = sub;
-							}
+						else {
+							queuedEffectFirst = queuedEffectLast = sub;
 						}
 					}
-
-					if (subDirtyLevel < dirtyLevel) {
-						sub.dirtyLevel = dirtyLevel;
-					}
-					prevSubLink = subLink;
 				}
+
+				if (subDirtyLevel < dirtyLevel) {
+					sub.dirtyLevel = dirtyLevel;
+				}
+
 				subLink = subLink.nextSub;
 			}
 
@@ -205,7 +215,7 @@ export namespace Subscriber {
 	export function postTrack(sub: Subscriber) {
 		if (sub.lastDep === null && sub.firstDep !== null) {
 			breakAllDeps(sub.firstDep);
-			sub.firstDep.sub = null;
+			linkPool.releaseLink(sub.firstDep);
 			sub.firstDep = null;
 		}
 		if (sub.lastDep !== null) {
@@ -220,7 +230,7 @@ function breakAllDeps(link: Link) {
 	while (toBreak.nextDep !== null) {
 		const nextDep = toBreak.nextDep;
 		toBreak.nextDep = null;
-		nextDep.sub = null;
+		linkPool.releaseLink(nextDep);
 		toBreak = nextDep;
 	}
 }
@@ -228,7 +238,7 @@ function breakAllDeps(link: Link) {
 let activeSub: Subscriber | null = null;
 let activeSubsDepth = 0;
 let pausedSubsIndex = 0;
-let pausedSubs = false;
+let pausedSubs = true;
 let batchDepth = 0;
 let subVersion = 0;
 let queuedEffectFirst: IEffect | null = null;
@@ -252,7 +262,7 @@ export function batchStart() {
 
 export function batchEnd() {
 	batchDepth--;
-	while (!batchDepth && queuedEffectFirst) {
+	while (batchDepth === 0 && queuedEffectFirst !== null) {
 		const effect = queuedEffectFirst;
 		const queuedNext = queuedEffectFirst.queuedNext;
 		if (queuedNext !== null) {
