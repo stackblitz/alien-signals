@@ -26,9 +26,12 @@ export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
 				this.oldValue,
 				this.oldValue = this.getter(this.oldValue)
 			)) {
+				Subscriber.trackEnd(this, lastActiveSub);
 				Dependency.broadcast(this);
 			}
-			Subscriber.trackEnd(this, lastActiveSub);
+			else {
+				Subscriber.trackEnd(this, lastActiveSub);
+			}
 		}
 		return this.oldValue!;
 	}

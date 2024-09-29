@@ -60,13 +60,13 @@ export class Link {
 export namespace Dependency {
 
 	export function link(dep: Dependency) {
-		if (activeSubsDepth - pausedSubsIndex <= 0) {
+		if (pausedSubs) {
+			return;
+		}
+		if (dep.subVersion === activeSub!.version) {
 			return;
 		}
 		const sub = activeSub!;
-		if (dep.subVersion === sub.version) {
-			return;
-		}
 		dep.subVersion = sub.version;
 		const old = sub.lastDep !== null
 			? sub.lastDep.nextDep
@@ -78,20 +78,16 @@ export namespace Dependency {
 				newLink.nextDep = old.nextDep;
 			}
 			if (sub.lastDep === null) {
-				sub.firstDep = newLink;
-				sub.lastDep = newLink;
+				sub.lastDep = sub.firstDep = newLink;
 			}
 			else {
-				sub.lastDep!.nextDep = newLink;
-				sub.lastDep = newLink;
+				sub.lastDep = sub.lastDep!.nextDep = newLink;
 			}
 			if (dep.firstSub === null) {
-				dep.firstSub = newLink;
-				dep.lastSub = newLink;
+				dep.lastSub = dep.firstSub = newLink;
 			}
 			else {
-				dep.lastSub!.nextSub = newLink;
-				dep.lastSub = newLink;
+				dep.lastSub = dep.lastSub!.nextSub = newLink;
 			}
 		}
 		else {
@@ -130,17 +126,14 @@ export namespace Dependency {
 
 					if (subDirtyLevel === DirtyLevels.NotDirty) {
 						if ('firstSub' in sub && sub.firstSub !== null) {
-							lastSubs.broadcastNext = sub.firstSub;
-							lastSubs = lastSubs.broadcastNext;
+							lastSubs = lastSubs.broadcastNext = sub.firstSub;
 						}
 						if ('queue' in sub) {
 							if (queuedEffectLast !== null) {
-								queuedEffectLast.queuedNext = sub;
-								queuedEffectLast = sub;
+								queuedEffectLast = queuedEffectLast.queuedNext = sub;
 							}
 							else {
-								queuedEffectFirst = sub;
-								queuedEffectLast = sub;
+								queuedEffectFirst = queuedEffectLast = sub;
 							}
 						}
 					}
@@ -192,6 +185,7 @@ export namespace Subscriber {
 		const lastActiveSub = activeSub;
 		activeSub = sub;
 		activeSubsDepth++;
+		pausedSubs = false;
 		Subscriber.preTrack(sub);
 		return lastActiveSub;
 	}
@@ -199,6 +193,7 @@ export namespace Subscriber {
 	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | null) {
 		Subscriber.postTrack(sub);
 		activeSubsDepth--;
+		pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
 		activeSub = lastActiveSub;
 	}
 
@@ -233,6 +228,7 @@ function breakAllDeps(link: Link) {
 let activeSub: Subscriber | null = null;
 let activeSubsDepth = 0;
 let pausedSubsIndex = 0;
+let pausedSubs = false;
 let batchDepth = 0;
 let subVersion = 0;
 let queuedEffectFirst: IEffect | null = null;
@@ -241,11 +237,13 @@ let queuedEffectLast: IEffect | null = null;
 export function pauseTracking() {
 	const lastPausedIndex = pausedSubsIndex;
 	pausedSubsIndex = activeSubsDepth;
+	pausedSubs = true;
 	return lastPausedIndex;
 }
 
 export function resetTracking(lastPausedIndex: number) {
 	pausedSubsIndex = lastPausedIndex;
+	pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
 }
 
 export function batchStart() {

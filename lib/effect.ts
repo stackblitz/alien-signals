@@ -15,13 +15,13 @@ export class EffectScope {
 	}
 
 	stop() {
-		while (this.firstEffect) {
+		while (this.firstEffect !== null) {
 			this.firstEffect.stop();
 		}
 	}
 
 	add(effect: Effect) {
-		if (this.lastEffect) {
+		if (this.lastEffect !== null) {
 			this.lastEffect.nextEffect = effect;
 			effect.prevEffect = this.lastEffect;
 			this.lastEffect = effect;
@@ -32,13 +32,13 @@ export class EffectScope {
 	}
 
 	remove(effect: Effect) {
-		if (effect.prevEffect) {
+		if (effect.prevEffect !== null) {
 			effect.prevEffect.nextEffect = effect.nextEffect;
 		}
 		else {
 			this.firstEffect = effect.nextEffect;
 		}
-		if (effect.nextEffect) {
+		if (effect.nextEffect !== null) {
 			effect.nextEffect.prevEffect = effect.prevEffect;
 		}
 		else {
