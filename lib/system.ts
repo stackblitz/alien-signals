@@ -68,16 +68,16 @@ export namespace Dependency {
 			return;
 		}
 		dep.subVersion = sub.version;
-		const old = sub.lastDep
+		const old = sub.lastDep !== null
 			? sub.lastDep.nextDep
 			: sub.firstDep;
-		if (old?.dep !== dep) {
+		if (old === null || old.dep !== dep) {
 			const newLink = linkPool.getLink(dep, sub);
-			if (old) {
+			if (old !== null) {
 				old.sub = null;
 				newLink.nextDep = old.nextDep;
 			}
-			if (!sub.lastDep) {
+			if (sub.lastDep === null) {
 				sub.firstDep = newLink;
 				sub.lastDep = newLink;
 			}
@@ -85,7 +85,7 @@ export namespace Dependency {
 				sub.lastDep!.nextDep = newLink;
 				sub.lastDep = newLink;
 			}
-			if (!dep.firstSub) {
+			if (dep.firstSub === null) {
 				dep.firstSub = newLink;
 				dep.lastSub = newLink;
 			}
@@ -104,19 +104,19 @@ export namespace Dependency {
 		let currentSubs = dep.firstSub;
 		let lastSubs = currentSubs!;
 
-		while (currentSubs) {
+		while (currentSubs !== null) {
 			let prevSubLink: Link | null = null;
 			let subLink: Link | null = currentSubs;
 
-			while (subLink) {
-				if (!subLink.sub) {
-					if (prevSubLink) {
+			while (subLink !== null) {
+				if (subLink.sub === null) {
+					if (prevSubLink !== null) {
 						prevSubLink.nextSub = subLink.nextSub;
 					}
 					else {
 						subLink.dep.firstSub = subLink.nextSub;
 					}
-					if (!subLink.nextSub) {
+					if (subLink.nextSub === null) {
 						subLink.dep.lastSub = prevSubLink;
 					}
 					linkPool.pool.push(subLink);
@@ -130,7 +130,7 @@ export namespace Dependency {
 							lastSubs.broadcastNext = sub.firstSub;
 							lastSubs = lastSubs.broadcastNext;
 						}
-						if ('queue' in sub && !sub.queuedNext && sub !== queuedEffectLast) {
+						if ('queue' in sub) {
 							if (queuedEffectLast) {
 								queuedEffectLast.queuedNext = sub;
 								queuedEffectLast = sub;
@@ -164,18 +164,15 @@ export namespace Subscriber {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
 			const { lastDep } = sub;
-			if (lastDep) {
+			if (lastDep !== null) {
 				const resumeIndex = pauseTracking();
 				let link = sub.firstDep;
-				while (link) {
+				while (link !== null) {
 					if ('get' in link.dep) {
 						link.dep.get();
 						if (sub.dirtyLevel >= DirtyLevels.Dirty) {
 							break;
 						}
-					}
-					if (link === lastDep) {
-						break;
 					}
 					link = link.nextDep;
 				}
@@ -208,12 +205,12 @@ export namespace Subscriber {
 	}
 
 	export function postTrack(sub: Subscriber) {
-		if (!sub.lastDep && sub.firstDep) {
+		if (sub.lastDep === null && sub.firstDep !== null) {
 			breakAllDeps(sub.firstDep);
 			sub.firstDep.sub = null;
 			sub.firstDep = null;
 		}
-		if (sub.lastDep) {
+		if (sub.lastDep !== null) {
 			breakAllDeps(sub.lastDep);
 		}
 		sub.dirtyLevel = DirtyLevels.NotDirty;
@@ -221,8 +218,8 @@ export namespace Subscriber {
 }
 
 function breakAllDeps(link: Link) {
-	let toBreak: Link | null = link;
-	while (toBreak?.nextDep) {
+	let toBreak: Link = link;
+	while (toBreak.nextDep !== null) {
 		const { nextDep }: Link = toBreak;
 		toBreak.nextDep = null;
 		nextDep.sub = null;
@@ -257,7 +254,7 @@ export function batchEnd() {
 	while (!batchDepth && queuedEffectFirst) {
 		const effect = queuedEffectFirst;
 		const { queuedNext } = queuedEffectFirst;
-		if (queuedNext) {
+		if (queuedNext !== null) {
 			queuedEffectFirst.queuedNext = null;
 			queuedEffectFirst = queuedNext;
 		}
