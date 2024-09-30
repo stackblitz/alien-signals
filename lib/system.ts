@@ -27,12 +27,12 @@ export const enum DirtyLevels {
 	Dirty,
 }
 
-class LinkPool {
-	pool: Link[] = [];
+export class Link {
+	static pool: Link[] = [];
 
-	getLink(dep: Dependency, sub: Subscriber): Link {
-		if (this.pool.length > 0) {
-			const link = this.pool.pop()!;
+	static get(dep: Dependency, sub: Subscriber): Link {
+		if (Link.pool.length > 0) {
+			const link = Link.pool.pop()!;
 			link.dep = dep;
 			link.sub = sub;
 			return link;
@@ -41,7 +41,7 @@ class LinkPool {
 		}
 	}
 
-	releaseLink(link: Link) {
+	static release(link: Link) {
 		const { nextSub, prevSub, dep } = link;
 
 		if (nextSub !== undefined) {
@@ -66,13 +66,9 @@ class LinkPool {
 		link.nextSub = undefined;
 		link.nextDep = undefined;
 
-		this.pool.push(link);
+		Link.pool.push(link);
 	}
-}
 
-const linkPool = new LinkPool();
-
-export class Link {
 	prevSub: Link | undefined = undefined;
 	nextSub: Link | undefined = undefined;
 	nextDep: Link | undefined = undefined;
@@ -99,10 +95,10 @@ export namespace Dependency {
 			? sub.lastDep.nextDep
 			: sub.firstDep;
 		if (old === undefined || old.dep !== dep) {
-			const newLink = linkPool.getLink(dep, sub);
+			const newLink = Link.get(dep, sub);
 			if (old !== undefined) {
 				const nextDep = old.nextDep;
-				linkPool.releaseLink(old);
+				Link.release(old);
 				newLink.nextDep = nextDep;
 			}
 			if (sub.lastDep === undefined) {
@@ -216,7 +212,7 @@ export namespace Subscriber {
 	export function postTrack(sub: Subscriber) {
 		if (sub.lastDep === undefined && sub.firstDep !== undefined) {
 			releaseAllDeps(sub.firstDep);
-			linkPool.releaseLink(sub.firstDep);
+			Link.release(sub.firstDep);
 			sub.firstDep = undefined;
 		}
 		if (sub.lastDep !== undefined) {
@@ -231,7 +227,7 @@ function releaseAllDeps(toBreak: Link) {
 	while (nextDep !== undefined) {
 		toBreak.nextDep = undefined;
 		const nextNext = nextDep.nextDep;
-		linkPool.releaseLink(nextDep);
+		Link.release(nextDep);
 		toBreak = nextDep;
 		nextDep = nextNext;
 	}
