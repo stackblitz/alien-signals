@@ -100,16 +100,25 @@ export namespace Dependency {
 		}
 		const sub = activeSub!;
 		dep.subVersion = sub.version;
-		const old = sub.depsTail !== undefined
-			? sub.depsTail.nextDep
+
+		const oldPrevDep = sub.depsTail !== undefined
+			? sub.depsTail
+			: undefined;
+		let old = oldPrevDep !== undefined
+			? oldPrevDep.nextDep
 			: sub.deps;
-		if (old === undefined || old.dep !== dep) {
+
+		while (old !== undefined && old.dep !== dep) {
+			const nextDep = old.nextDep;
+			Link.release(old);
+			old = nextDep;
+		}
+		if (oldPrevDep !== undefined) {
+			oldPrevDep.nextDep = old;
+		}
+
+		if (old === undefined) {
 			const newLink = Link.get(dep, sub);
-			if (old !== undefined) {
-				const nextDep = old.nextDep;
-				Link.release(old);
-				newLink.nextDep = nextDep;
-			}
 			if (sub.depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
 			}
