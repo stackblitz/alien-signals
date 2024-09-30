@@ -4,13 +4,13 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	oldValue: T | undefined = undefined;
 
 	// Dependency
-	firstSub = undefined;
-	lastSub = undefined;
+	subs = undefined;
+	subsTail = undefined;
 	subVersion = -1;
 
 	// Subscriber
-	firstDep = undefined;
-	lastDep = undefined;
+	deps = undefined;
+	depsTail = undefined;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 
@@ -36,19 +36,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 
 	get(): T {
 		Dependency.link(this);
-		if (Subscriber.isDirty(this)) {
-			const lastActiveSub = Subscriber.trackStart(this);
-			if (!Object.is(
-				this.oldValue,
-				this.oldValue = this.getter(this.oldValue)
-			)) {
-				Subscriber.trackEnd(this, lastActiveSub);
-				Dependency.broadcast(this);
-			}
-			else {
-				Subscriber.trackEnd(this, lastActiveSub);
-			}
-		}
+		this.update();
 		return this.oldValue!;
 	}
 }

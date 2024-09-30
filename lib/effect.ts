@@ -1,8 +1,8 @@
 import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export class EffectScope {
-	firstEffect: Effect | undefined = undefined;
-	lastEffect: Effect | undefined = undefined;
+	effects: Effect | undefined = undefined;
+	effectsTail: Effect | undefined = undefined;
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
@@ -15,19 +15,19 @@ export class EffectScope {
 	}
 
 	stop() {
-		while (this.firstEffect !== undefined) {
-			this.firstEffect.stop();
+		while (this.effects !== undefined) {
+			this.effects.stop();
 		}
 	}
 
 	add(effect: Effect) {
-		if (this.lastEffect !== undefined) {
-			this.lastEffect.nextEffect = effect;
-			effect.prevEffect = this.lastEffect;
-			this.lastEffect = effect;
+		if (this.effectsTail !== undefined) {
+			this.effectsTail.nextEffect = effect;
+			effect.prevEffect = this.effectsTail;
+			this.effectsTail = effect;
 		}
 		else {
-			this.firstEffect = this.lastEffect = effect;
+			this.effects = this.effectsTail = effect;
 		}
 	}
 
@@ -36,13 +36,13 @@ export class EffectScope {
 			effect.prevEffect.nextEffect = effect.nextEffect;
 		}
 		else {
-			this.firstEffect = effect.nextEffect;
+			this.effects = effect.nextEffect;
 		}
 		if (effect.nextEffect !== undefined) {
 			effect.nextEffect.prevEffect = effect.prevEffect;
 		}
 		else {
-			this.lastEffect = effect.prevEffect;
+			this.effectsTail = effect.prevEffect;
 		}
 	}
 }
@@ -56,8 +56,8 @@ export class Effect implements IEffect, Subscriber {
 	nextEffect: Effect | undefined = undefined;
 
 	// Subscriber
-	firstDep = undefined;
-	lastDep = undefined;
+	deps = undefined;
+	depsTail = undefined;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 
