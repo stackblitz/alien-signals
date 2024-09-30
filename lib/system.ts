@@ -35,8 +35,6 @@ class LinkPool {
 			const link = this.pool.pop()!;
 			link.dep = dep;
 			link.sub = sub;
-			link.nextSub = null;
-			link.nextDep = null;
 			return link;
 		} else {
 			return new Link(dep, sub);
@@ -64,6 +62,9 @@ class LinkPool {
 		link.dep = null;
 		// @ts-ignore
 		link.sub = null;
+		link.prevSub = null;
+		link.nextSub = null;
+		link.nextDep = null;
 
 		this.pool.push(link);
 	}
@@ -100,8 +101,9 @@ export namespace Dependency {
 		if (old === null || old.dep !== dep) {
 			const newLink = linkPool.getLink(dep, sub);
 			if (old !== null) {
+				const nextDep = old.nextDep;
 				linkPool.releaseLink(old);
-				newLink.nextDep = old.nextDep;
+				newLink.nextDep = nextDep;
 			}
 			if (sub.lastDep === null) {
 				sub.lastDep = sub.firstDep = newLink;
