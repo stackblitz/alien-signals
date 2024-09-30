@@ -47,7 +47,7 @@ export function getCurrentScope() {
 	return currentEffectScope;
 }
 
-class ShallowRef<T = any> extends Signal<T> {
+export class ShallowRef<T = any> extends Signal<T> {
 	get value() {
 		return this.get();
 	}
