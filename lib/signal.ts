@@ -2,8 +2,8 @@ import { batchEnd, batchStart, Dependency, ISignal } from './system';
 
 export class Signal<T = any> implements ISignal, Dependency {
 	// Dependency
-	firstSub = null;
-	lastSub = null;
+	firstSub = undefined;
+	lastSub = undefined;
 	subVersion = -1;
 
 	constructor(

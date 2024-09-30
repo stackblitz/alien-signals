@@ -3,21 +3,21 @@ export interface ISignal<T = any> {
 }
 
 export interface IEffect {
-	queuedNext: IEffect | null;
+	queuedNext: IEffect | undefined;
 	queue(): void;
 }
 
 export interface Dependency {
-	firstSub: Link | null;
-	lastSub: Link | null;
+	firstSub: Link | undefined;
+	lastSub: Link | undefined;
 	subVersion: number;
 }
 
 export interface Subscriber {
 	dirtyLevel: DirtyLevels;
 	version: number;
-	firstDep: Link | null;
-	lastDep: Link | null;
+	firstDep: Link | undefined;
+	lastDep: Link | undefined;
 }
 
 export const enum DirtyLevels {
@@ -44,27 +44,27 @@ class LinkPool {
 	releaseLink(link: Link) {
 		const { nextSub, prevSub, dep } = link;
 
-		if (nextSub !== null) {
+		if (nextSub !== undefined) {
 			nextSub.prevSub = prevSub;
 		}
-		if (prevSub !== null) {
+		if (prevSub !== undefined) {
 			prevSub.nextSub = nextSub;
 		}
 
-		if (nextSub === null) {
+		if (nextSub === undefined) {
 			dep.lastSub = prevSub;
 		}
-		if (prevSub === null) {
+		if (prevSub === undefined) {
 			dep.firstSub = nextSub;
 		}
 
 		// @ts-ignore
-		link.dep = null;
+		link.dep = undefined;
 		// @ts-ignore
-		link.sub = null;
-		link.prevSub = null;
-		link.nextSub = null;
-		link.nextDep = null;
+		link.sub = undefined;
+		link.prevSub = undefined;
+		link.nextSub = undefined;
+		link.nextDep = undefined;
 
 		this.pool.push(link);
 	}
@@ -73,10 +73,10 @@ class LinkPool {
 const linkPool = new LinkPool();
 
 export class Link {
-	prevSub: Link | null = null;
-	nextSub: Link | null = null;
-	nextDep: Link | null = null;
-	broadcastNext: Link | null = null;
+	prevSub: Link | undefined = undefined;
+	nextSub: Link | undefined = undefined;
+	nextDep: Link | undefined = undefined;
+	broadcastNext: Link | undefined = undefined;
 
 	constructor(
 		public dep: Dependency & ({} | ISignal),
@@ -95,23 +95,23 @@ export namespace Dependency {
 		}
 		const sub = activeSub!;
 		dep.subVersion = sub.version;
-		const old = sub.lastDep !== null
+		const old = sub.lastDep !== undefined
 			? sub.lastDep.nextDep
 			: sub.firstDep;
-		if (old === null || old.dep !== dep) {
+		if (old === undefined || old.dep !== dep) {
 			const newLink = linkPool.getLink(dep, sub);
-			if (old !== null) {
+			if (old !== undefined) {
 				const nextDep = old.nextDep;
 				linkPool.releaseLink(old);
 				newLink.nextDep = nextDep;
 			}
-			if (sub.lastDep === null) {
+			if (sub.lastDep === undefined) {
 				sub.lastDep = sub.firstDep = newLink;
 			}
 			else {
 				sub.lastDep = sub.lastDep!.nextDep = newLink;
 			}
-			if (dep.firstSub === null) {
+			if (dep.firstSub === undefined) {
 				dep.lastSub = dep.firstSub = newLink;
 			}
 			else {
@@ -129,20 +129,19 @@ export namespace Dependency {
 		let currentSubs = dep.firstSub;
 		let lastSubs = currentSubs!;
 
-		while (currentSubs !== null) {
-			dep = currentSubs.dep;
-			let subLink: Link | null = currentSubs;
+		while (currentSubs !== undefined) {
+			let subLink: Link | undefined = currentSubs;
 
-			while (subLink !== null) {
+			while (subLink !== undefined) {
 				const sub = subLink.sub;
 				const subDirtyLevel = sub.dirtyLevel;
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
-					if ('firstSub' in sub && sub.firstSub !== null) {
+					if ('firstSub' in sub && sub.firstSub !== undefined) {
 						lastSubs = lastSubs.broadcastNext = sub.firstSub;
 					}
 					if ('queue' in sub) {
-						if (queuedEffectLast !== null) {
+						if (queuedEffectLast !== undefined) {
 							queuedEffectLast = queuedEffectLast.queuedNext = sub;
 						}
 						else {
@@ -160,7 +159,7 @@ export namespace Dependency {
 
 			dirtyLevel = DirtyLevels.MaybeDirty;
 			const broadcastNext = currentSubs.broadcastNext;
-			currentSubs.broadcastNext = null;
+			currentSubs.broadcastNext = undefined;
 			currentSubs = broadcastNext;
 		}
 	}
@@ -172,10 +171,10 @@ export namespace Subscriber {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
 			const lastDep = sub.lastDep;
-			if (lastDep !== null) {
+			if (lastDep !== undefined) {
 				const resumeIndex = pauseTracking();
 				let link = sub.firstDep;
-				while (link !== null) {
+				while (link !== undefined) {
 					if ('get' in link.dep) {
 						link.dep.get();
 						if (sub.dirtyLevel >= DirtyLevels.Dirty) {
@@ -202,7 +201,7 @@ export namespace Subscriber {
 		return lastActiveSub;
 	}
 
-	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | null) {
+	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
 		Subscriber.postTrack(sub);
 		activeSubsDepth--;
 		pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
@@ -210,17 +209,17 @@ export namespace Subscriber {
 	}
 
 	export function preTrack(sub: Subscriber) {
-		sub.lastDep = null;
+		sub.lastDep = undefined;
 		sub.version = subVersion++;
 	}
 
 	export function postTrack(sub: Subscriber) {
-		if (sub.lastDep === null && sub.firstDep !== null) {
+		if (sub.lastDep === undefined && sub.firstDep !== undefined) {
 			releaseAllDeps(sub.firstDep);
 			linkPool.releaseLink(sub.firstDep);
-			sub.firstDep = null;
+			sub.firstDep = undefined;
 		}
-		if (sub.lastDep !== null) {
+		if (sub.lastDep !== undefined) {
 			releaseAllDeps(sub.lastDep);
 		}
 		sub.dirtyLevel = DirtyLevels.NotDirty;
@@ -229,8 +228,8 @@ export namespace Subscriber {
 
 function releaseAllDeps(toBreak: Link) {
 	let nextDep = toBreak.nextDep;
-	while (nextDep !== null) {
-		toBreak.nextDep = null;
+	while (nextDep !== undefined) {
+		toBreak.nextDep = undefined;
 		const nextNext = nextDep.nextDep;
 		linkPool.releaseLink(nextDep);
 		toBreak = nextDep;
@@ -238,14 +237,14 @@ function releaseAllDeps(toBreak: Link) {
 	}
 }
 
-let activeSub: Subscriber | null = null;
+let activeSub: Subscriber | undefined = undefined;
 let activeSubsDepth = 0;
 let pausedSubsIndex = 0;
 let pausedSubs = true;
 let batchDepth = 0;
 let subVersion = 0;
-let queuedEffectFirst: IEffect | null = null;
-let queuedEffectLast: IEffect | null = null;
+let queuedEffectFirst: IEffect | undefined = undefined;
+let queuedEffectLast: IEffect | undefined = undefined;
 
 export function pauseTracking() {
 	const lastPausedIndex = pausedSubsIndex;
@@ -265,16 +264,16 @@ export function batchStart() {
 
 export function batchEnd() {
 	batchDepth--;
-	while (batchDepth === 0 && queuedEffectFirst !== null) {
+	while (batchDepth === 0 && queuedEffectFirst !== undefined) {
 		const effect = queuedEffectFirst;
 		const queuedNext = queuedEffectFirst.queuedNext;
-		if (queuedNext !== null) {
-			queuedEffectFirst.queuedNext = null;
+		if (queuedNext !== undefined) {
+			queuedEffectFirst.queuedNext = undefined;
 			queuedEffectFirst = queuedNext;
 		}
 		else {
-			queuedEffectFirst = null;
-			queuedEffectLast = null;
+			queuedEffectFirst = undefined;
+			queuedEffectLast = undefined;
 		}
 		effect.queue();
 	}

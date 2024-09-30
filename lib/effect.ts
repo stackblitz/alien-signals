@@ -1,8 +1,8 @@
 import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export class EffectScope {
-	firstEffect: Effect | null = null;
-	lastEffect: Effect | null = null;
+	firstEffect: Effect | undefined = undefined;
+	lastEffect: Effect | undefined = undefined;
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
@@ -15,13 +15,13 @@ export class EffectScope {
 	}
 
 	stop() {
-		while (this.firstEffect !== null) {
+		while (this.firstEffect !== undefined) {
 			this.firstEffect.stop();
 		}
 	}
 
 	add(effect: Effect) {
-		if (this.lastEffect !== null) {
+		if (this.lastEffect !== undefined) {
 			this.lastEffect.nextEffect = effect;
 			effect.prevEffect = this.lastEffect;
 			this.lastEffect = effect;
@@ -32,13 +32,13 @@ export class EffectScope {
 	}
 
 	remove(effect: Effect) {
-		if (effect.prevEffect !== null) {
+		if (effect.prevEffect !== undefined) {
 			effect.prevEffect.nextEffect = effect.nextEffect;
 		}
 		else {
 			this.firstEffect = effect.nextEffect;
 		}
-		if (effect.nextEffect !== null) {
+		if (effect.nextEffect !== undefined) {
 			effect.nextEffect.prevEffect = effect.prevEffect;
 		}
 		else {
@@ -51,13 +51,13 @@ export let currentEffectScope = new EffectScope();
 
 export class Effect implements IEffect, Subscriber {
 	scope = currentEffectScope;
-	queuedNext: Effect | null = null;
-	prevEffect: Effect | null = null;
-	nextEffect: Effect | null = null;
+	queuedNext = undefined;
+	prevEffect: Effect | undefined = undefined;
+	nextEffect: Effect | undefined = undefined;
 
 	// Subscriber
-	firstDep = null;
-	lastDep = null;
+	firstDep = undefined;
+	lastDep = undefined;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 

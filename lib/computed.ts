@@ -4,13 +4,13 @@ export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
 	oldValue: T | undefined = undefined;
 
 	// Dependency
-	firstSub = null;
-	lastSub = null;
+	firstSub = undefined;
+	lastSub = undefined;
 	subVersion = -1;
 
 	// Subscriber
-	firstDep = null;
-	lastDep = null;
+	firstDep = undefined;
+	lastDep = undefined;
 	dirtyLevel = DirtyLevels.Dirty;
 	version = -1;
 
