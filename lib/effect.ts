@@ -58,8 +58,7 @@ export class Effect implements IEffect, Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	dirtyLevel = DirtyLevels.Dirty;
-	version = -1;
+	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(
 		private fn: () => void

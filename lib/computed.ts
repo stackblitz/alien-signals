@@ -11,8 +11,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	dirtyLevel = DirtyLevels.Dirty;
-	version = -1;
+	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(
 		public getter: (oldValue?: T) => T

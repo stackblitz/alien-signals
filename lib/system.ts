@@ -11,8 +11,11 @@ export interface Dependency {
 }
 
 export interface Subscriber {
-	dirtyLevel: DirtyLevels;
-	version: number;
+	/**
+	 * When tracking, this is version.
+	 * When not tracking, this is dirty level.
+	 */
+	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
 }
@@ -95,15 +98,13 @@ export namespace Dependency {
 		if (pausedSubs) {
 			return;
 		}
-		if (dep.subVersion === activeSub!.version) {
+		if (dep.subVersion === activeSub!.versionOrDirtyLevel) {
 			return;
 		}
 		const sub = activeSub!;
-		dep.subVersion = sub.version;
+		dep.subVersion = sub.versionOrDirtyLevel;
 
-		const oldPrevDep = sub.depsTail !== undefined
-			? sub.depsTail
-			: undefined;
+		const oldPrevDep = sub.depsTail;
 		let old = oldPrevDep !== undefined
 			? oldPrevDep.nextDep
 			: sub.deps;
@@ -148,7 +149,7 @@ export namespace Dependency {
 
 			while (subLink !== undefined) {
 				const sub = subLink.sub;
-				const subDirtyLevel = sub.dirtyLevel;
+				const subDirtyLevel = sub.versionOrDirtyLevel;
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
 					if ('subs' in sub && sub.subs !== undefined) {
@@ -165,7 +166,7 @@ export namespace Dependency {
 				}
 
 				if (subDirtyLevel < dirtyLevel) {
-					sub.dirtyLevel = dirtyLevel;
+					sub.versionOrDirtyLevel = dirtyLevel;
 				}
 
 				subLink = subLink.nextSub;
@@ -182,21 +183,21 @@ export namespace Dependency {
 export namespace Subscriber {
 
 	export function isDirty(sub: Subscriber) {
-		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
-			sub.dirtyLevel = DirtyLevels.QueryingDirty;
+		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
 			for (let link = sub.deps; link !== undefined; link = link.nextDep) {
 				if (link.dep.update !== undefined) {
 					link.dep.update();
-					if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+					if (sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
 						break;
 					}
 				}
 			}
-			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
-				sub.dirtyLevel = DirtyLevels.NotDirty;
+			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
+				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 		}
-		return sub.dirtyLevel === DirtyLevels.Dirty;
+		return sub.versionOrDirtyLevel === DirtyLevels.Dirty;
 	}
 
 	export function trackStart(sub: Subscriber) {
@@ -217,7 +218,7 @@ export namespace Subscriber {
 
 	export function preTrack(sub: Subscriber) {
 		sub.depsTail = undefined;
-		sub.version = subVersion++;
+		sub.versionOrDirtyLevel = subVersion++;
 	}
 
 	export function postTrack(sub: Subscriber) {
@@ -229,7 +230,7 @@ export namespace Subscriber {
 			Link.release(sub.deps);
 			sub.deps = undefined;
 		}
-		sub.dirtyLevel = DirtyLevels.NotDirty;
+		sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 	}
 }
 
