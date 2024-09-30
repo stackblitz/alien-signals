@@ -1,7 +1,3 @@
-export interface ISignal<T = any> {
-	get(): T;
-}
-
 export interface IEffect {
 	queuedNext: IEffect | undefined;
 	queue(): void;
@@ -11,6 +7,7 @@ export interface Dependency {
 	firstSub: Link | undefined;
 	lastSub: Link | undefined;
 	subVersion: number;
+	update?(): void;
 }
 
 export interface Subscriber {
@@ -75,7 +72,7 @@ export class Link {
 	broadcastNext: Link | undefined = undefined;
 
 	constructor(
-		public dep: Dependency & ({} | ISignal),
+		public dep: Dependency,
 		public sub: Subscriber & ({} | IEffect | Dependency)
 	) { }
 }
@@ -166,20 +163,13 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.dirtyLevel = DirtyLevels.QueryingDirty;
-			const lastDep = sub.lastDep;
-			if (lastDep !== undefined) {
-				const resumeIndex = pauseTracking();
-				let link = sub.firstDep;
-				while (link !== undefined) {
-					if ('get' in link.dep) {
-						link.dep.get();
-						if (sub.dirtyLevel >= DirtyLevels.Dirty) {
-							break;
-						}
+			for (let link = sub.firstDep; link !== undefined; link = link.nextDep) {
+				if (link.dep.update !== undefined) {
+					link.dep.update();
+					if (sub.dirtyLevel >= DirtyLevels.Dirty) {
+						break;
 					}
-					link = link.nextDep;
 				}
-				resetTracking(resumeIndex);
 			}
 			if (sub.dirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.dirtyLevel = DirtyLevels.NotDirty;

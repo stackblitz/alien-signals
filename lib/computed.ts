@@ -1,6 +1,6 @@
-import { Dependency, DirtyLevels, ISignal, Subscriber } from './system';
+import { Dependency, DirtyLevels, Subscriber } from './system';
 
-export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
+export class Computed<T = any> implements Dependency, Subscriber {
 	oldValue: T | undefined = undefined;
 
 	// Dependency
@@ -17,6 +17,22 @@ export class Computed<T = any> implements ISignal<T>, Dependency, Subscriber {
 	constructor(
 		public getter: (oldValue?: T) => T
 	) { }
+
+	update() {
+		if (Subscriber.isDirty(this)) {
+			const lastActiveSub = Subscriber.trackStart(this);
+			if (!Object.is(
+				this.oldValue,
+				this.oldValue = this.getter(this.oldValue)
+			)) {
+				Subscriber.trackEnd(this, lastActiveSub);
+				Dependency.broadcast(this);
+			}
+			else {
+				Subscriber.trackEnd(this, lastActiveSub);
+			}
+		}
+	}
 
 	get(): T {
 		Dependency.link(this);

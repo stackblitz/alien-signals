@@ -1,6 +1,6 @@
-import { batchEnd, batchStart, Dependency, ISignal } from './system';
+import { batchEnd, batchStart, Dependency } from './system';
 
-export class Signal<T = any> implements ISignal, Dependency {
+export class Signal<T = any> implements Dependency {
 	// Dependency
 	firstSub = undefined;
 	lastSub = undefined;
