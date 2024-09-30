@@ -104,22 +104,17 @@ export namespace Dependency {
 		const sub = activeSub!;
 		dep.subVersion = sub.versionOrDirtyLevel;
 
-		const oldPrevDep = sub.depsTail;
-		let old = oldPrevDep !== undefined
-			? oldPrevDep.nextDep
+		const old = sub.depsTail !== undefined
+			? sub.depsTail.nextDep
 			: sub.deps;
 
-		while (old !== undefined && old.dep !== dep) {
-			const nextDep = old.nextDep;
-			Link.release(old);
-			old = nextDep;
-		}
-		if (oldPrevDep !== undefined) {
-			oldPrevDep.nextDep = old;
-		}
-
-		if (old === undefined) {
+		if (old === undefined || old.dep !== dep) {
 			const newLink = Link.get(dep, sub);
+			if (old !== undefined) {
+				const nextDep = old.nextDep;
+				Link.release(old);
+				newLink.nextDep = nextDep;
+			}
 			if (sub.depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
 			}
@@ -185,14 +180,18 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
-			for (let link = sub.deps; link !== undefined; link = link.nextDep) {
+			const resumeIndex = pauseTracking();
+			let link = sub.deps;
+			while (link !== undefined) {
 				if (link.dep.update !== undefined) {
 					link.dep.update();
 					if (sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
 						break;
 					}
 				}
+				link = link.nextDep;
 			}
+			resetTracking(resumeIndex);
 			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}

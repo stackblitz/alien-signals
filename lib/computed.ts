@@ -35,7 +35,19 @@ export class Computed<T = any> implements Dependency, Subscriber {
 
 	get(): T {
 		Dependency.link(this);
-		this.update();
+		if (Subscriber.isDirty(this)) {
+			const lastActiveSub = Subscriber.trackStart(this);
+			if (!Object.is(
+				this.oldValue,
+				this.oldValue = this.getter(this.oldValue)
+			)) {
+				Subscriber.trackEnd(this, lastActiveSub);
+				Dependency.broadcast(this);
+			}
+			else {
+				Subscriber.trackEnd(this, lastActiveSub);
+			}
+		}
 		return this.oldValue!;
 	}
 }
