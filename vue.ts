@@ -71,3 +71,7 @@ export class ReactiveEffect extends Effect {
 		this.queue = fn;
 	}
 }
+
+export function onScopeDispose(cb: () => void) {
+	currentEffectScope.onDispose.push(cb);
+}

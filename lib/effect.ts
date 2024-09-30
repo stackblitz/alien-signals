@@ -3,6 +3,7 @@ import { DirtyLevels, IEffect, Subscriber } from './system';
 export class EffectScope {
 	effects: Effect | undefined = undefined;
 	effectsTail: Effect | undefined = undefined;
+	onDispose: (() => void)[] = [];
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
@@ -18,6 +19,8 @@ export class EffectScope {
 		while (this.effects !== undefined) {
 			this.effects.stop();
 		}
+		this.onDispose.forEach(cb => cb());
+		this.onDispose.length = 0;
 	}
 
 	add(effect: Effect) {
