@@ -216,24 +216,25 @@ export namespace Subscriber {
 
 	export function postTrack(sub: Subscriber) {
 		if (sub.lastDep === null && sub.firstDep !== null) {
-			breakAllDeps(sub.firstDep);
+			releaseAllDeps(sub.firstDep);
 			linkPool.releaseLink(sub.firstDep);
 			sub.firstDep = null;
 		}
 		if (sub.lastDep !== null) {
-			breakAllDeps(sub.lastDep);
+			releaseAllDeps(sub.lastDep);
 		}
 		sub.dirtyLevel = DirtyLevels.NotDirty;
 	}
 }
 
-function breakAllDeps(link: Link) {
-	let toBreak: Link = link;
-	while (toBreak.nextDep !== null) {
-		const nextDep = toBreak.nextDep;
+function releaseAllDeps(toBreak: Link) {
+	let nextDep = toBreak.nextDep;
+	while (nextDep !== null) {
 		toBreak.nextDep = null;
+		const nextNext = nextDep.nextDep;
 		linkPool.releaseLink(nextDep);
 		toBreak = nextDep;
+		nextDep = nextNext;
 	}
 }
 
