@@ -67,7 +67,7 @@ export class ReactiveEffect extends Effect {
 	}
 
 	set scheduler(fn: () => void) {
-		this.queue = fn;
+		this.notify = fn;
 	}
 }
 

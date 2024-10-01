@@ -55,7 +55,7 @@ export let currentEffectScope = new EffectScope();
 
 export class Effect implements IEffect, Subscriber {
 	scope = currentEffectScope;
-	nextQueued = undefined;
+	nextNotify = undefined;
 	prevEffect: Effect | undefined = undefined;
 	nextEffect: Effect | undefined = undefined;
 
@@ -71,7 +71,7 @@ export class Effect implements IEffect, Subscriber {
 		this.run();
 	}
 
-	queue() {
+	notify() {
 		this.run();
 	}
 

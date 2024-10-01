@@ -18,7 +18,7 @@ export class Signal<T = any> implements Dependency {
 	set(value: T) {
 		if (!Object.is(this.oldValue, this.oldValue = value)) {
 			System.startBatch();
-			Dependency.broadcast(this);
+			Dependency.propagate(this);
 			System.endBatch();
 		}
 	}

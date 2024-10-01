@@ -25,7 +25,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 				this.oldValue = this.getter(this.oldValue)
 			)) {
 				Subscriber.endTrack(this, lastActiveSub);
-				Dependency.broadcast(this);
+				Dependency.propagate(this);
 			}
 			else {
 				Subscriber.endTrack(this, lastActiveSub);
@@ -42,7 +42,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 				this.oldValue = this.getter(this.oldValue)
 			)) {
 				Subscriber.endTrack(this, lastActiveSub);
-				Dependency.broadcast(this);
+				Dependency.propagate(this);
 			}
 			else {
 				Subscriber.endTrack(this, lastActiveSub);
