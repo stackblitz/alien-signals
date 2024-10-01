@@ -19,16 +19,16 @@ export class Computed<T = any> implements Dependency, Subscriber {
 
 	update() {
 		if (Subscriber.isDirty(this)) {
-			const lastActiveSub = Subscriber.trackStart(this);
+			const lastActiveSub = Subscriber.startTrack(this);
 			if (!Object.is(
 				this.oldValue,
 				this.oldValue = this.getter(this.oldValue)
 			)) {
-				Subscriber.trackEnd(this, lastActiveSub);
+				Subscriber.endTrack(this, lastActiveSub);
 				Dependency.broadcast(this);
 			}
 			else {
-				Subscriber.trackEnd(this, lastActiveSub);
+				Subscriber.endTrack(this, lastActiveSub);
 			}
 		}
 	}
@@ -36,16 +36,16 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	get(): T {
 		Dependency.link(this);
 		if (Subscriber.isDirty(this)) {
-			const lastActiveSub = Subscriber.trackStart(this);
+			const lastActiveSub = Subscriber.startTrack(this);
 			if (!Object.is(
 				this.oldValue,
 				this.oldValue = this.getter(this.oldValue)
 			)) {
-				Subscriber.trackEnd(this, lastActiveSub);
+				Subscriber.endTrack(this, lastActiveSub);
 				Dependency.broadcast(this);
 			}
 			else {
-				Subscriber.trackEnd(this, lastActiveSub);
+				Subscriber.endTrack(this, lastActiveSub);
 			}
 		}
 		return this.oldValue!;

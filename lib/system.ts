@@ -257,7 +257,7 @@ export namespace Subscriber {
 		return sub.versionOrDirtyLevel === DirtyLevels.Dirty;
 	}
 
-	export function trackStart(sub: Subscriber) {
+	export function startTrack(sub: Subscriber) {
 		const lastActiveSub = system.activeSub;
 		system.activeSub = sub;
 		system.activeSubsDepth++;
@@ -265,7 +265,7 @@ export namespace Subscriber {
 		return lastActiveSub;
 	}
 
-	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
+	export function endTrack(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
 		Subscriber.postTrack(sub);
 		system.activeSubsDepth--;
 		system.activeSub = lastActiveSub;
