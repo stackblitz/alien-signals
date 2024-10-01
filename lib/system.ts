@@ -256,11 +256,11 @@ export function resetTracking(lastPausedIndex: number) {
 	pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
 }
 
-export function batchStart() {
+export function startBatch() {
 	batchDepth++;
 }
 
-export function batchEnd() {
+export function endBatch() {
 	batchDepth--;
 	while (batchDepth === 0 && queuedEffects !== undefined) {
 		const effect = queuedEffects;
