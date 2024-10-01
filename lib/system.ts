@@ -43,7 +43,6 @@ export namespace System {
 	export let activeSub: Subscriber | undefined = undefined;
 	export let activeSubsDepth = 0;
 	export let pausedSubsIndex = 0;
-	export let pausedSubs = true;
 	export let batchDepth = 0;
 	export let subVersion = 0;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -52,13 +51,11 @@ export namespace System {
 	export function pauseTracking() {
 		const lastPausedIndex = pausedSubsIndex;
 		pausedSubsIndex = activeSubsDepth;
-		pausedSubs = true;
 		return lastPausedIndex;
 	}
 
 	export function resetTracking(lastPausedIndex: number) {
 		pausedSubsIndex = lastPausedIndex;
-		pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
 	}
 
 	export function startBatch() {
@@ -154,7 +151,7 @@ export namespace Dependency {
 	const system = System;
 
 	export function link(dep: Dependency) {
-		if (system.pausedSubs === true) {
+		if (system.activeSubsDepth - system.pausedSubsIndex <= 0) {
 			return;
 		}
 		if (dep.subVersion === system.activeSub!.versionOrDirtyLevel) {
@@ -264,7 +261,6 @@ export namespace Subscriber {
 		const lastActiveSub = system.activeSub;
 		system.activeSub = sub;
 		system.activeSubsDepth++;
-		system.pausedSubs = false;
 		Subscriber.preTrack(sub);
 		return lastActiveSub;
 	}
@@ -272,7 +268,6 @@ export namespace Subscriber {
 	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
 		Subscriber.postTrack(sub);
 		system.activeSubsDepth--;
-		system.pausedSubs = system.activeSubsDepth - system.pausedSubsIndex <= 0;
 		system.activeSub = lastActiveSub;
 	}
 
