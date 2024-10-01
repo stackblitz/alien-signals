@@ -238,7 +238,6 @@ export namespace Subscriber {
 	export function isDirty(sub: Subscriber) {
 		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
-			const resumeIndex = system.pauseTracking();
 			let link = sub.deps;
 			while (link !== undefined) {
 				if (link.dep.update !== undefined) {
@@ -249,7 +248,6 @@ export namespace Subscriber {
 				}
 				link = link.nextDep;
 			}
-			system.resetTracking(resumeIndex);
 			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
