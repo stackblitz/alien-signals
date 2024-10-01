@@ -2,8 +2,7 @@ import {
 	computed as _computed,
 	signal as _signal,
 	currentEffectScope,
-	pauseTracking as _pauseTracking,
-	resetTracking as _resetTracking,
+	System,
 	Subscriber,
 	Computed,
 	Signal,
@@ -21,7 +20,7 @@ let pausedStack = 0;
 
 export function pauseTracking() {
 	if (pausedStack === 0) {
-		_pauseTracking();
+		System.pauseTracking();
 	}
 	pausedStack++;
 }
@@ -29,7 +28,7 @@ export function pauseTracking() {
 export function resetTracking() {
 	pausedStack--;
 	if (pausedStack === 0) {
-		_resetTracking(pausedStack);
+		System.resetTracking(pausedStack);
 	}
 }
 

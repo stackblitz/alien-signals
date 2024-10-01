@@ -1,4 +1,4 @@
-import { endBatch, startBatch, Dependency } from './system';
+import { System, Dependency } from './system';
 
 export class Signal<T = any> implements Dependency {
 	// Dependency
@@ -17,9 +17,9 @@ export class Signal<T = any> implements Dependency {
 
 	set(value: T) {
 		if (!Object.is(this.oldValue, this.oldValue = value)) {
-			startBatch();
+			System.startBatch();
 			Dependency.broadcast(this);
-			endBatch();
+			System.endBatch();
 		}
 	}
 }

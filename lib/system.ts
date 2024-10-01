@@ -38,7 +38,53 @@ export const enum DirtyLevels {
 	Dirty,
 }
 
+export namespace System {
+
+	export let activeSub: Subscriber | undefined = undefined;
+	export let activeSubsDepth = 0;
+	export let pausedSubsIndex = 0;
+	export let pausedSubs = true;
+	export let batchDepth = 0;
+	export let subVersion = 0;
+	export let queuedEffects: IEffect | undefined = undefined;
+	export let queuedEffectsTail: IEffect | undefined = undefined;
+
+	export function pauseTracking() {
+		const lastPausedIndex = pausedSubsIndex;
+		pausedSubsIndex = activeSubsDepth;
+		pausedSubs = true;
+		return lastPausedIndex;
+	}
+
+	export function resetTracking(lastPausedIndex: number) {
+		pausedSubsIndex = lastPausedIndex;
+		pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
+	}
+
+	export function startBatch() {
+		batchDepth++;
+	}
+
+	export function endBatch() {
+		batchDepth--;
+		while (batchDepth === 0 && queuedEffects !== undefined) {
+			const effect = queuedEffects;
+			const queuedNext = queuedEffects.nextQueued;
+			if (queuedNext !== undefined) {
+				queuedEffects.nextQueued = undefined;
+				queuedEffects = queuedNext;
+			}
+			else {
+				queuedEffects = undefined;
+				queuedEffectsTail = undefined;
+			}
+			effect.queue();
+		}
+	}
+}
+
 export namespace Link {
+
 	let pool: Link | undefined = undefined;
 
 	export function get(dep: Dependency, sub: Subscriber): Link {
@@ -105,14 +151,16 @@ export namespace Link {
 
 export namespace Dependency {
 
+	const system = System;
+
 	export function link(dep: Dependency) {
-		if (pausedSubs === true) {
+		if (system.pausedSubs === true) {
 			return;
 		}
-		if (dep.subVersion === activeSub!.versionOrDirtyLevel) {
+		if (dep.subVersion === system.activeSub!.versionOrDirtyLevel) {
 			return;
 		}
-		const sub = activeSub!;
+		const sub = system.activeSub!;
 		dep.subVersion = sub.versionOrDirtyLevel;
 
 		const old = sub.depsTail !== undefined
@@ -162,11 +210,11 @@ export namespace Dependency {
 						lastSubs = lastSubs.nextBroadcastOrReleased = sub.subs;
 					}
 					if ('queue' in sub) {
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail = queuedEffectsTail.nextQueued = sub;
+						if (system.queuedEffectsTail !== undefined) {
+							system.queuedEffectsTail = system.queuedEffectsTail.nextQueued = sub;
 						}
 						else {
-							queuedEffects = queuedEffectsTail = sub;
+							system.queuedEffects = system.queuedEffectsTail = sub;
 						}
 					}
 				}
@@ -188,10 +236,12 @@ export namespace Dependency {
 
 export namespace Subscriber {
 
+	const system = System;
+
 	export function isDirty(sub: Subscriber) {
 		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
-			const resumeIndex = pauseTracking();
+			const resumeIndex = system.pauseTracking();
 			let link = sub.deps;
 			while (link !== undefined) {
 				if (link.dep.update !== undefined) {
@@ -202,7 +252,7 @@ export namespace Subscriber {
 				}
 				link = link.nextDep;
 			}
-			resetTracking(resumeIndex);
+			system.resetTracking(resumeIndex);
 			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
@@ -211,24 +261,24 @@ export namespace Subscriber {
 	}
 
 	export function trackStart(sub: Subscriber) {
-		const lastActiveSub = activeSub;
-		activeSub = sub;
-		activeSubsDepth++;
-		pausedSubs = false;
+		const lastActiveSub = system.activeSub;
+		system.activeSub = sub;
+		system.activeSubsDepth++;
+		system.pausedSubs = false;
 		Subscriber.preTrack(sub);
 		return lastActiveSub;
 	}
 
 	export function trackEnd(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
 		Subscriber.postTrack(sub);
-		activeSubsDepth--;
-		pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
-		activeSub = lastActiveSub;
+		system.activeSubsDepth--;
+		system.pausedSubs = system.activeSubsDepth - system.pausedSubsIndex <= 0;
+		system.activeSub = lastActiveSub;
 	}
 
 	export function preTrack(sub: Subscriber) {
 		sub.depsTail = undefined;
-		sub.versionOrDirtyLevel = subVersion++;
+		sub.versionOrDirtyLevel = system.subVersion++;
 	}
 
 	export function postTrack(sub: Subscriber) {
@@ -241,47 +291,5 @@ export namespace Subscriber {
 			sub.deps = undefined;
 		}
 		sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
-	}
-}
-
-let activeSub: Subscriber | undefined = undefined;
-let activeSubsDepth = 0;
-let pausedSubsIndex = 0;
-let pausedSubs = true;
-let batchDepth = 0;
-let subVersion = 0;
-let queuedEffects: IEffect | undefined = undefined;
-let queuedEffectsTail: IEffect | undefined = undefined;
-
-export function pauseTracking() {
-	const lastPausedIndex = pausedSubsIndex;
-	pausedSubsIndex = activeSubsDepth;
-	pausedSubs = true;
-	return lastPausedIndex;
-}
-
-export function resetTracking(lastPausedIndex: number) {
-	pausedSubsIndex = lastPausedIndex;
-	pausedSubs = activeSubsDepth - pausedSubsIndex <= 0;
-}
-
-export function startBatch() {
-	batchDepth++;
-}
-
-export function endBatch() {
-	batchDepth--;
-	while (batchDepth === 0 && queuedEffects !== undefined) {
-		const effect = queuedEffects;
-		const queuedNext = queuedEffects.nextQueued;
-		if (queuedNext !== undefined) {
-			queuedEffects.nextQueued = undefined;
-			queuedEffects = queuedNext;
-		}
-		else {
-			queuedEffects = undefined;
-			queuedEffectsTail = undefined;
-		}
-		effect.queue();
 	}
 }
