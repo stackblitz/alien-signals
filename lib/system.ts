@@ -12,8 +12,10 @@ export interface Dependency {
 
 export interface Subscriber {
 	/**
-	 * When tracking, this is version.
-	 * When not tracking, this is dirty level.
+	 * Represents either the version or the dirty level of the dependency.
+	 * 
+	 * - When tracking is active, this property holds the version number.
+	 * - When tracking is not active, this property holds the dirty level.
 	 */
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
