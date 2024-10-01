@@ -1,5 +1,5 @@
 export interface IEffect {
-	queuedNext: IEffect | undefined;
+	nextQueued: IEffect | undefined;
 	queue(): void;
 }
 
@@ -22,6 +22,15 @@ export interface Subscriber {
 	depsTail: Link | undefined;
 }
 
+export interface Link {
+	dep: Dependency;
+	sub: Subscriber & ({} | IEffect | Dependency);
+	prevSub: Link | undefined;
+	nextSub: Link | undefined;
+	nextDep: Link | undefined;
+	nextBroadcastOrReleased: Link | undefined;
+}
+
 export const enum DirtyLevels {
 	NotDirty,
 	QueryingDirty,
@@ -29,31 +38,30 @@ export const enum DirtyLevels {
 	Dirty,
 }
 
-export class Link {
-	static pool: Link[] = [];
+export namespace Link {
+	let pool: Link | undefined = undefined;
 
-	prevSub: Link | undefined = undefined;
-	nextSub: Link | undefined = undefined;
-	nextDep: Link | undefined = undefined;
-	broadcastNext: Link | undefined = undefined;
-
-	constructor(
-		public dep: Dependency,
-		public sub: Subscriber & ({} | IEffect | Dependency)
-	) { }
-
-	static get(dep: Dependency, sub: Subscriber): Link {
-		if (Link.pool.length > 0) {
-			const link = Link.pool.pop()!;
+	export function get(dep: Dependency, sub: Subscriber): Link {
+		if (pool !== undefined) {
+			const link = pool;
+			pool = link.nextBroadcastOrReleased;
+			link.nextBroadcastOrReleased = undefined;
 			link.dep = dep;
 			link.sub = sub;
 			return link;
 		} else {
-			return new Link(dep, sub);
+			return {
+				dep,
+				sub,
+				prevSub: undefined,
+				nextSub: undefined,
+				nextDep: undefined,
+				nextBroadcastOrReleased: undefined,
+			};
 		}
 	}
 
-	static releaseDeps(toBreak: Link) {
+	export function releaseDeps(toBreak: Link) {
 		let nextDep = toBreak.nextDep;
 		while (nextDep !== undefined) {
 			toBreak.nextDep = undefined;
@@ -64,7 +72,7 @@ export class Link {
 		}
 	}
 
-	static release(link: Link) {
+	export function release(link: Link) {
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSub;
 
@@ -90,14 +98,15 @@ export class Link {
 		link.nextSub = undefined;
 		link.nextDep = undefined;
 
-		Link.pool.push(link);
+		link.nextBroadcastOrReleased = pool;
+		pool = link;
 	}
 }
 
 export namespace Dependency {
 
 	export function link(dep: Dependency) {
-		if (pausedSubs) {
+		if (pausedSubs === true) {
 			return;
 		}
 		if (dep.subVersion === activeSub!.versionOrDirtyLevel) {
@@ -150,11 +159,11 @@ export namespace Dependency {
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
 					if ('subs' in sub && sub.subs !== undefined) {
-						lastSubs = lastSubs.broadcastNext = sub.subs;
+						lastSubs = lastSubs.nextBroadcastOrReleased = sub.subs;
 					}
 					if ('queue' in sub) {
 						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail = queuedEffectsTail.queuedNext = sub;
+							queuedEffectsTail = queuedEffectsTail.nextQueued = sub;
 						}
 						else {
 							queuedEffects = queuedEffectsTail = sub;
@@ -170,8 +179,8 @@ export namespace Dependency {
 			}
 
 			dirtyLevel = DirtyLevels.MaybeDirty;
-			const broadcastNext = currentSubs.broadcastNext;
-			currentSubs.broadcastNext = undefined;
+			const broadcastNext = currentSubs.nextBroadcastOrReleased;
+			currentSubs.nextBroadcastOrReleased = undefined;
 			currentSubs = broadcastNext;
 		}
 	}
@@ -264,9 +273,9 @@ export function endBatch() {
 	batchDepth--;
 	while (batchDepth === 0 && queuedEffects !== undefined) {
 		const effect = queuedEffects;
-		const queuedNext = queuedEffects.queuedNext;
+		const queuedNext = queuedEffects.nextQueued;
 		if (queuedNext !== undefined) {
-			queuedEffects.queuedNext = undefined;
+			queuedEffects.nextQueued = undefined;
 			queuedEffects = queuedNext;
 		}
 		else {

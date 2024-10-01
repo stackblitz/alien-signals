@@ -19,8 +19,9 @@ export class EffectScope {
 		while (this.effects !== undefined) {
 			this.effects.stop();
 		}
-		this.onDispose.forEach(cb => cb());
-		this.onDispose.length = 0;
+		for (const cb of this.onDispose) {
+			cb();
+		}
 	}
 
 	add(effect: Effect) {
@@ -54,7 +55,7 @@ export let currentEffectScope = new EffectScope();
 
 export class Effect implements IEffect, Subscriber {
 	scope = currentEffectScope;
-	queuedNext = undefined;
+	nextQueued = undefined;
 	prevEffect: Effect | undefined = undefined;
 	nextEffect: Effect | undefined = undefined;
 
