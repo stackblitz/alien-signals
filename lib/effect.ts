@@ -72,15 +72,13 @@ export class Effect implements IEffect, Subscriber {
 	}
 
 	notify() {
-		this.run();
+		Subscriber.update(this);
 	}
 
 	run() {
-		if (Subscriber.isDirty(this)) {
-			const lastActiveSub = Subscriber.startTrack(this);
-			this.fn();
-			Subscriber.endTrack(this, lastActiveSub);
-		}
+		const lastActiveSub = Subscriber.startTrack(this);
+		this.fn();
+		Subscriber.endTrack(this, lastActiveSub);
 	}
 
 	stop() {

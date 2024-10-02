@@ -7,6 +7,7 @@ import {
 	Computed,
 	Signal,
 	Effect,
+	DirtyLevels,
 } from './index.js';
 
 export {
@@ -16,16 +17,15 @@ export {
 	EffectScope,
 } from './index.js';
 
-let pausedIndex = 0;
-const pausedIndexes: number[] = [];
+const pausedSubsDepths: number[] = [];
 
 export function pauseTracking() {
-	pausedIndexes.push(pausedIndex);
-	pausedIndex = System.activeSubsDepth;
+	pausedSubsDepths.push(System.activeSubsDepth);
+	System.activeSubsDepth = 0;
 }
 
 export function resetTracking() {
-	pausedIndex = pausedIndexes.pop()!;
+	System.activeSubsDepth = pausedSubsDepths.pop()!;
 }
 
 export function shallowRef<T>(): ShallowRef<T | undefined>;
@@ -44,9 +44,6 @@ export function getCurrentScope() {
 
 export class ShallowRef<T = any> extends Signal<T> {
 	get value() {
-		if (System.activeSubsDepth - pausedIndex <= 0) {
-			return this.value;
-		}
 		return this.get();
 	}
 	set value(value: T) {
@@ -56,17 +53,14 @@ export class ShallowRef<T = any> extends Signal<T> {
 
 class VueComputed<T = any> extends Computed<T> {
 	get value() {
-		if (System.activeSubsDepth - pausedIndex <= 0) {
-			this.update();
-			return this.cachedValue;
-		}
 		return this.get();
 	}
 }
 
 export class ReactiveEffect extends Effect {
 	get dirty() {
-		return Subscriber.isDirty(this);
+		Subscriber.update(this, false);
+		return this.versionOrDirtyLevel >= DirtyLevels.Dirty;
 	}
 
 	set scheduler(fn: () => void) {

@@ -7,7 +7,6 @@ export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	subVersion: number;
-	update?(): void;
 }
 
 export interface Subscriber {
@@ -20,6 +19,7 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
+	run(): void;
 }
 
 export interface Link {
@@ -213,9 +213,9 @@ export namespace Dependency {
 			}
 
 			dirtyLevel = DirtyLevels.MaybeDirty;
-			const broadcastNext = currentSubs.nextPropagateOrReleased;
+			const nextPropagate = currentSubs.nextPropagateOrReleased;
 			currentSubs.nextPropagateOrReleased = undefined;
-			currentSubs = broadcastNext;
+			currentSubs = nextPropagate;
 		}
 	}
 }
@@ -224,13 +224,13 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function isDirty(sub: Subscriber) {
+	export function update(sub: Subscriber, run = true) {
 		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
 			let link = sub.deps;
 			while (link !== undefined) {
-				if (link.dep.update !== undefined) {
-					link.dep.update();
+				if ('deps' in link.dep) {
+					update(link.dep as Dependency & Subscriber);
 					if (sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
 						break;
 					}
@@ -241,7 +241,9 @@ export namespace Subscriber {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 		}
-		return sub.versionOrDirtyLevel === DirtyLevels.Dirty;
+		if (run && sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
+			sub.run();
+		}
 	}
 
 	export function startTrack(sub: Subscriber) {
