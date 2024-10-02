@@ -62,6 +62,7 @@ export class Effect implements IEffect, Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
+	prevUpdate = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(

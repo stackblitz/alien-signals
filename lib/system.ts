@@ -19,6 +19,7 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
+	prevUpdate: Link | undefined;
 	run(): void;
 }
 
@@ -225,24 +226,73 @@ export namespace Subscriber {
 	const system = System;
 
 	export function update(sub: Subscriber, run = true) {
-		while (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+		if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
 			let link = sub.deps;
+
 			while (link !== undefined) {
-				if ('deps' in link.dep) {
-					update(link.dep as Dependency & Subscriber);
+				const nextSub = link.dep as Dependency | Dependency & Subscriber;
+
+				if ('deps' in nextSub && nextSub.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
+					flatUpdate(nextSub);
+
 					if (sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
 						break;
 					}
 				}
+
 				link = link.nextDep;
 			}
+
 			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 		}
-		if (run && sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
+
+		if (run && sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
 			sub.run();
+		}
+	}
+
+	export function flatUpdate(sub: Subscriber) {
+		let link = sub.deps;
+
+		top: while (true) {
+
+			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+				while (link !== undefined) {
+					const nextSub = link.dep as Dependency | Dependency & Subscriber;
+
+					if ('deps' in nextSub && nextSub.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
+						nextSub.prevUpdate = link;
+						sub = nextSub;
+						link = nextSub.deps;
+
+						continue top;
+					}
+
+					link = link.nextDep;
+				}
+			}
+
+			if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
+				sub.run();
+			}
+			else if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
+			}
+
+			const prevLink = sub.prevUpdate;
+
+			if (prevLink !== undefined) {
+				sub.prevUpdate = undefined;
+				sub = prevLink.sub;
+				link = prevLink.nextDep;
+
+				continue top;
+			}
+
+			break;
 		}
 	}
 
