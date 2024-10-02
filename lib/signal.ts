@@ -7,16 +7,16 @@ export class Signal<T = any> implements Dependency {
 	subVersion = -1;
 
 	constructor(
-		public oldValue: T | undefined = undefined
+		public currentValue: T | undefined = undefined
 	) { }
 
 	get() {
 		Dependency.link(this);
-		return this.oldValue!;
+		return this.currentValue!;
 	}
 
 	set(value: T) {
-		if (!Object.is(this.oldValue, this.oldValue = value)) {
+		if (!Object.is(this.currentValue, this.currentValue = value)) {
 			System.startBatch();
 			Dependency.propagate(this);
 			System.endBatch();

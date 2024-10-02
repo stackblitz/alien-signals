@@ -16,20 +16,16 @@ export {
 	EffectScope,
 } from './index.js';
 
-let pausedStack = 0;
+let pausedIndex = 0;
+const pausedIndexes: number[] = [];
 
 export function pauseTracking() {
-	if (pausedStack === 0) {
-		System.pauseTracking();
-	}
-	pausedStack++;
+	pausedIndexes.push(pausedIndex);
+	pausedIndex = System.activeSubsDepth;
 }
 
 export function resetTracking() {
-	pausedStack--;
-	if (pausedStack === 0) {
-		System.resetTracking(pausedStack);
-	}
+	pausedIndex = pausedIndexes.pop()!;
 }
 
 export function shallowRef<T>(): ShallowRef<T | undefined>;
@@ -48,6 +44,9 @@ export function getCurrentScope() {
 
 export class ShallowRef<T = any> extends Signal<T> {
 	get value() {
+		if (System.activeSubsDepth - pausedIndex <= 0) {
+			return this.value;
+		}
 		return this.get();
 	}
 	set value(value: T) {
@@ -57,6 +56,10 @@ export class ShallowRef<T = any> extends Signal<T> {
 
 class VueComputed<T = any> extends Computed<T> {
 	get value() {
+		if (System.activeSubsDepth - pausedIndex <= 0) {
+			this.update();
+			return this.cachedValue;
+		}
 		return this.get();
 	}
 }

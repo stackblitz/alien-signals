@@ -42,21 +42,10 @@ export namespace System {
 
 	export let activeSub: Subscriber | undefined = undefined;
 	export let activeSubsDepth = 0;
-	export let pausedSubsIndex = 0;
 	export let batchDepth = 0;
 	export let subVersion = 0;
 	export let queuedEffects: IEffect | undefined = undefined;
 	export let queuedEffectsTail: IEffect | undefined = undefined;
-
-	export function pauseTracking() {
-		const lastPausedIndex = pausedSubsIndex;
-		pausedSubsIndex = activeSubsDepth;
-		return lastPausedIndex;
-	}
-
-	export function resetTracking(lastPausedIndex: number) {
-		pausedSubsIndex = lastPausedIndex;
-	}
 
 	export function startBatch() {
 		batchDepth++;
@@ -151,13 +140,13 @@ export namespace Dependency {
 	const system = System;
 
 	export function link(dep: Dependency) {
-		if (system.activeSubsDepth - system.pausedSubsIndex <= 0) {
-			return;
-		}
-		if (dep.subVersion === system.activeSub!.versionOrDirtyLevel) {
+		if (system.activeSubsDepth === 0) {
 			return;
 		}
 		const sub = system.activeSub!;
+		if (dep.subVersion === sub.versionOrDirtyLevel) {
+			return;
+		}
 		dep.subVersion = sub.versionOrDirtyLevel;
 
 		const old = sub.depsTail !== undefined

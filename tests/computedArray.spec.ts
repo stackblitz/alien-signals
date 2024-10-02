@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { effect, signal } from '..';
-import { computedArray } from '../lib/computeds/computedArray';
+import { computedArray } from '../extras/computedArray';
 
 describe('computedArray', () => {
 	it('should get updated item value', () => {

@@ -1,4 +1,4 @@
-import { computed } from '../computed';
+import { computed } from '..';
 
 export function computedSet<T>(getter: () => Set<T>) {
 	return computed<Set<T>>((oldValue) => {
