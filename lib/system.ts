@@ -34,7 +34,6 @@ export interface Link {
 
 export const enum DirtyLevels {
 	NotDirty,
-	QueryingDirty,
 	MaybeDirty,
 	Dirty,
 }
