@@ -71,7 +71,7 @@ export class Effect implements IEffect, Subscriber {
 
 	notify() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.confirmDirtyLevel(this);
+			Subscriber.confirmMaybeDirty(this);
 		}
 		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 			this.run();

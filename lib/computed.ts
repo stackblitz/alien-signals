@@ -22,7 +22,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 		Dependency.link(this);
 		const versionOrDirtyLevel = this.versionOrDirtyLevel;
 		if (versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.confirmDirtyLevel(this);
+			Subscriber.confirmMaybeDirty(this);
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.run();
 			}

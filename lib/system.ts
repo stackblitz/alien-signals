@@ -239,7 +239,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function confirmDirtyLevel(sub: Subscriber) {
+	export function confirmMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
 
 		top: while (true) {
@@ -285,7 +285,7 @@ export namespace Subscriber {
 				sub = prevLink.sub;
 				link = prevLink.nextDep;
 
-				continue top;
+				continue;
 			}
 
 			break;
