@@ -1,6 +1,4 @@
 import {
-	computed as _computed,
-	signal as _signal,
 	currentEffectScope,
 	System,
 	Subscriber,
@@ -11,9 +9,7 @@ import {
 } from './index.js';
 
 export {
-	effect,
 	Effect,
-	effectScope,
 	EffectScope,
 } from './index.js';
 

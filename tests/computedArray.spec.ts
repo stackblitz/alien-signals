@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { effect, signal } from '..';
+import { Effect, Signal } from '..';
 import { computedArray } from '../extras/computedArray';
 
 describe('computedArray', () => {
 	it('should get updated item value', () => {
-		const src = signal([1]);
+		const src = new Signal([1]);
 		const arr = computedArray(src, item => {
 			return () => item.get() + 1;
 		});
@@ -13,11 +13,11 @@ describe('computedArray', () => {
 
 	it('should watch item value change', () => {
 		const spy = vi.fn();
-		const src = signal([1]);
+		const src = new Signal([1]);
 		const arr = computedArray(src, item => {
 			return () => item.get() + 1;
 		});
-		effect(() => {
+		new Effect(() => {
 			spy();
 			arr[0];
 		});
@@ -28,11 +28,11 @@ describe('computedArray', () => {
 
 	it('should not trigger if item value did not change', () => {
 		const spy = vi.fn();
-		const src = signal([1]);
+		const src = new Signal([1]);
 		const arr = computedArray(src, item => {
 			return () => item.get() + 1;
 		});
-		effect(() => {
+		new Effect(() => {
 			spy();
 			arr[0];
 		});
@@ -43,7 +43,7 @@ describe('computedArray', () => {
 
 	it('should not trigger first item computed if source item did not change', () => {
 		const spy = vi.fn();
-		const src = signal([1]);
+		const src = new Signal([1]);
 		const arr = computedArray(src, (item, i) => {
 			return () => {
 				if (i === 0) {
@@ -52,7 +52,7 @@ describe('computedArray', () => {
 				return item.get() + 1;
 			};
 		});
-		effect(() => arr[0]);
+		new Effect(() => arr[0]);
 		expect(spy).toHaveBeenCalledTimes(1);
 		src.set([1, 2]);
 		expect(spy).toHaveBeenCalledTimes(1);
@@ -62,11 +62,11 @@ describe('computedArray', () => {
 
 	it('should watch length change', () => {
 		const spy = vi.fn();
-		const src = signal([1]);
+		const src = new Signal([1]);
 		const arr = computedArray(src, item => {
 			return () => item.get() + 1;
 		});
-		effect(() => {
+		new Effect(() => {
 			spy();
 			arr.length;
 		});
@@ -79,11 +79,11 @@ describe('computedArray', () => {
 
 	it('should watch item remove', () => {
 		const spy = vi.fn();
-		const src = signal([1, 2]);
+		const src = new Signal([1, 2]);
 		const arr = computedArray(src, item => {
 			return () => item.get() + 1;
 		});
-		effect(() => {
+		new Effect(() => {
 			spy();
 			arr[0];
 		});
@@ -96,14 +96,14 @@ describe('computedArray', () => {
 
 	it('should only trigger access items', () => {
 		const spy = vi.fn();
-		const src = signal([1, 2, 3, 4]);
+		const src = new Signal([1, 2, 3, 4]);
 		const arr = computedArray(src, item => {
 			return () => {
 				spy();
 				return item.get() + 1;
 			};
 		});
-		effect(() => {
+		new Effect(() => {
 			arr[0];
 			arr[1];
 		});

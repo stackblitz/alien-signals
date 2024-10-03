@@ -1,30 +1,34 @@
-import { Computed, computed } from '../lib/computed';
+import { Computed } from '../lib/computed';
 import { Signal } from '../lib/signal';
 
 export function computedArray<I, O>(
 	arr: Signal<I[]>,
 	getGetter: (item: Computed<I>, index: number) => () => O
 ) {
-	const length = computed(() => arr.get().length);
-	const keys = computed(() => {
-		const keys: string[] = [];
-		for (let i = 0; i < length.get(); i++) {
-			keys.push(String(i));
+	const length = new Computed(() => arr.get().length);
+	const keys = new Computed(
+		() => {
+			const keys: string[] = [];
+			for (let i = 0; i < length.get(); i++) {
+				keys.push(String(i));
+			}
+			return keys;
 		}
-		return keys;
-	});
-	const items = computed<Computed<O>[]>((array) => {
-		array ??= [];
-		while (array.length < length.get()) {
-			const index = array.length;
-			const item = computed(() => arr.get()[index]);
-			array.push(computed(getGetter(item, index)));
+	);
+	const items = new Computed<Computed<O>[]>(
+		(array) => {
+			array ??= [];
+			while (array.length < length.get()) {
+				const index = array.length;
+				const item = new Computed(() => arr.get()[index]);
+				array.push(new Computed(getGetter(item, index)));
+			}
+			if (array.length > length.get()) {
+				array.length = length.get();
+			}
+			return array;
 		}
-		if (array.length > length.get()) {
-			array.length = length.get();
-		}
-		return array;
-	});
+	);
 
 	return new Proxy({}, {
 		get(_, p, receiver) {

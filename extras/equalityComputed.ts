@@ -57,7 +57,3 @@ export class EqualityComputed<T = any> extends Computed<T> {
 		return false;
 	}
 }
-
-export function equalityComputed<T>(getter: () => T) {
-	return new EqualityComputed(getter);
-}

@@ -90,11 +90,3 @@ export class Effect implements IEffect, Subscriber {
 		this.scope.remove(this);
 	}
 }
-
-export function effect(fn: () => void) {
-	return new Effect(fn);
-}
-
-export function effectScope() {
-	return new EffectScope();
-}

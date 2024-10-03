@@ -1,6 +1,6 @@
 import { Dependency, DirtyLevels, Subscriber } from './system';
 
-export class Computed<T = any> implements Dependency, Subscriber {
+export class Computed<T = unknown> implements Dependency, Subscriber {
 	cachedValue: T | undefined = undefined;
 
 	// Dependency
@@ -43,8 +43,4 @@ export class Computed<T = any> implements Dependency, Subscriber {
 		}
 		return newValue;
 	}
-}
-
-export function computed<T>(getter: (oldValue?: T) => T) {
-	return new Computed(getter);
 }
