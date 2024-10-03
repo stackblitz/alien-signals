@@ -60,8 +60,7 @@ export namespace System {
 			if (queuedNext !== undefined) {
 				queuedEffects.nextNotify = undefined;
 				queuedEffects = queuedNext;
-			}
-			else {
+			} else {
 				queuedEffects = undefined;
 				queuedEffectsTail = undefined;
 			}
@@ -165,22 +164,19 @@ export namespace Dependency {
 			}
 			if (depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
-			}
-			else {
+			} else {
 				sub.depsTail = depsTail.nextDep = newLink;
 			}
 			if (dep.subs === undefined) {
 				dep.subs = newLink;
 				dep.subsTail = newLink;
-			}
-			else {
+			} else {
 				const oldTail = dep.subsTail!;
 				newLink.prevSub = oldTail;
 				oldTail.nextSub = newLink;
 				dep.subsTail = newLink;
 			}
-		}
-		else {
+		} else {
 			sub.depsTail = old;
 		}
 	}
@@ -213,8 +209,7 @@ export namespace Dependency {
 						if (queuedEffectsTail !== undefined) {
 							queuedEffectsTail.nextNotify = sub;
 							system.queuedEffectsTail = sub;
-						}
-						else {
+						} else {
 							system.queuedEffectsTail = sub;
 							system.queuedEffects = sub;
 						}
@@ -261,8 +256,7 @@ export namespace Subscriber {
 						link = dep.deps;
 
 						continue top;
-					}
-					else if (depDirtyLevel === DirtyLevels.Dirty) {
+					} else if (depDirtyLevel === DirtyLevels.Dirty) {
 						dep.run();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
@@ -320,8 +314,7 @@ export namespace Subscriber {
 	export function postTrack(sub: Subscriber) {
 		if (sub.depsTail !== undefined) {
 			Link.releaseDeps(sub.depsTail);
-		}
-		else if (sub.deps !== undefined) {
+		} else if (sub.deps !== undefined) {
 			Link.releaseDeps(sub.deps);
 			Link.release(sub.deps);
 			sub.deps = undefined;

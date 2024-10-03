@@ -29,8 +29,7 @@ export class EffectScope {
 			this.effectsTail.nextEffect = effect;
 			effect.prevEffect = this.effectsTail;
 			this.effectsTail = effect;
-		}
-		else {
+		} else {
 			this.effects = this.effectsTail = effect;
 		}
 	}
@@ -38,14 +37,12 @@ export class EffectScope {
 	remove(effect: Effect) {
 		if (effect.prevEffect !== undefined) {
 			effect.prevEffect.nextEffect = effect.nextEffect;
-		}
-		else {
+		} else {
 			this.effects = effect.nextEffect;
 		}
 		if (effect.nextEffect !== undefined) {
 			effect.nextEffect.prevEffect = effect.prevEffect;
-		}
-		else {
+		} else {
 			this.effectsTail = effect.prevEffect;
 		}
 	}

@@ -26,8 +26,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.run();
 			}
-		}
-		else if (versionOrDirtyLevel === DirtyLevels.Dirty) {
+		} else if (versionOrDirtyLevel === DirtyLevels.Dirty) {
 			return this.run();
 		}
 		return this.cachedValue!;
