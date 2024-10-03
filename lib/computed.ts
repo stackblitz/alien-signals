@@ -20,24 +20,29 @@ export class Computed<T = any> implements Dependency, Subscriber {
 
 	get(): T {
 		Dependency.link(this);
-		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+		const versionOrDirtyLevel = this.versionOrDirtyLevel;
+		if (versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.confirmDirtyLevel(this);
+			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+				return this.run();
+			}
 		}
-		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
-			this.run();
+		else if (versionOrDirtyLevel === DirtyLevels.Dirty) {
+			return this.run();
 		}
 		return this.cachedValue!;
 	}
 
 	run() {
 		const lastActiveSub = Subscriber.startTrack(this);
-		if (this.cachedValue !== (this.cachedValue = this.getter(this.cachedValue))) {
-			Subscriber.endTrack(this, lastActiveSub);
+		const oldValue = this.cachedValue;
+		const newValue = this.getter(oldValue);
+		Subscriber.endTrack(this, lastActiveSub);
+		if (oldValue !== newValue) {
+			this.cachedValue = newValue;
 			Dependency.propagate(this);
 		}
-		else {
-			Subscriber.endTrack(this, lastActiveSub);
-		}
+		return newValue;
 	}
 }
 

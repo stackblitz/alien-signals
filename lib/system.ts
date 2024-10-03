@@ -44,7 +44,7 @@ export namespace System {
 	export let activeSub: Subscriber | undefined = undefined;
 	export let activeSubsDepth = 0;
 	export let batchDepth = 0;
-	export let subVersion = 0;
+	export let subVersion = DirtyLevels.Dirty + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
 	export let queuedEffectsTail: IEffect | undefined = undefined;
 
@@ -145,13 +145,15 @@ export namespace Dependency {
 			return;
 		}
 		const sub = system.activeSub!;
-		if (dep.subVersion === sub.versionOrDirtyLevel) {
+		const subVersion = sub.versionOrDirtyLevel;
+		if (dep.subVersion === subVersion) {
 			return;
 		}
-		dep.subVersion = sub.versionOrDirtyLevel;
+		dep.subVersion = subVersion;
 
-		const old = sub.depsTail !== undefined
-			? sub.depsTail.nextDep
+		const depsTail = sub.depsTail;
+		const old = depsTail !== undefined
+			? depsTail.nextDep
 			: sub.deps;
 
 		if (old === undefined || old.dep !== dep) {
@@ -161,18 +163,21 @@ export namespace Dependency {
 				Link.release(old);
 				newLink.nextDep = nextDep;
 			}
-			if (sub.depsTail === undefined) {
+			if (depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
 			}
 			else {
-				sub.depsTail = sub.depsTail!.nextDep = newLink;
+				sub.depsTail = depsTail.nextDep = newLink;
 			}
 			if (dep.subs === undefined) {
-				dep.subsTail = dep.subs = newLink;
+				dep.subs = newLink;
+				dep.subsTail = newLink;
 			}
 			else {
-				newLink.prevSub = dep.subsTail;
-				dep.subsTail = dep.subsTail!.nextSub = newLink;
+				const oldTail = dep.subsTail!;
+				newLink.prevSub = oldTail;
+				oldTail.nextSub = newLink;
+				dep.subsTail = newLink;
 			}
 		}
 		else {
@@ -186,22 +191,32 @@ export namespace Dependency {
 		let lastSubs = currentSubs!;
 
 		while (currentSubs !== undefined) {
-			let subLink: Link | undefined = currentSubs;
+			let subLink = currentSubs;
 
-			while (subLink !== undefined) {
+			while (true) {
 				const sub = subLink.sub;
 				const subDirtyLevel = sub.versionOrDirtyLevel;
 
 				if (subDirtyLevel === DirtyLevels.NotDirty) {
-					if ('subs' in sub && sub.subs !== undefined) {
-						lastSubs = lastSubs.nextPropagateOrReleased = sub.subs;
+
+					if ('subs' in sub) {
+						const subSubs = sub.subs;
+
+						if (subSubs !== undefined) {
+							lastSubs.nextPropagateOrReleased = subSubs;
+							lastSubs = subSubs;
+						}
 					}
 					if ('notify' in sub) {
-						if (system.queuedEffectsTail !== undefined) {
-							system.queuedEffectsTail = system.queuedEffectsTail.nextNotify = sub;
+						const queuedEffectsTail = system.queuedEffectsTail;
+
+						if (queuedEffectsTail !== undefined) {
+							queuedEffectsTail.nextNotify = sub;
+							system.queuedEffectsTail = sub;
 						}
 						else {
-							system.queuedEffects = system.queuedEffectsTail = sub;
+							system.queuedEffectsTail = sub;
+							system.queuedEffects = sub;
 						}
 					}
 				}
@@ -210,7 +225,11 @@ export namespace Dependency {
 					sub.versionOrDirtyLevel = dirtyLevel;
 				}
 
-				subLink = subLink.nextSub;
+				const nextSub = subLink.nextSub;
+				if (nextSub === undefined) {
+					break;
+				}
+				subLink = nextSub;
 			}
 
 			dirtyLevel = DirtyLevels.MaybeDirty;
@@ -230,30 +249,41 @@ export namespace Subscriber {
 
 		top: while (true) {
 
-			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-				while (link !== undefined) {
-					const dep = link.dep as Dependency | Dependency & Subscriber;
+			while (link !== undefined) {
+				const dep = link.dep as Dependency | Dependency & Subscriber;
 
-					if ('deps' in dep && dep.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
+				if ('deps' in dep) {
+					const depDirtyLevel = dep.versionOrDirtyLevel;
+
+					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
 						dep.prevUpdate = link;
 						sub = dep;
 						link = dep.deps;
 
 						continue top;
 					}
+					else if (depDirtyLevel === DirtyLevels.Dirty) {
+						dep.run();
 
-					link = link.nextDep;
+						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
+							break;
+						}
+					}
 				}
+
+				link = link.nextDep;
 			}
 
-			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			const dirtyLevel = sub.versionOrDirtyLevel;
+
+			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 
 			const prevLink = sub.prevUpdate;
 
 			if (prevLink !== undefined) {
-				if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
+				if (dirtyLevel === DirtyLevels.Dirty) {
 					sub.run();
 				}
 
