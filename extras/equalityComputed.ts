@@ -1,4 +1,4 @@
-import { Computed } from '..';
+import { Computed } from '../lib/computed';
 
 export class EqualityComputed<T = any> extends Computed<T> {
 	constructor(

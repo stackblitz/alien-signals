@@ -9,5 +9,5 @@
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
 	},
-	"include": [ "*", "lib/**/*" ],
+	"include": [ "*", "lib", "extras" ],
 }
