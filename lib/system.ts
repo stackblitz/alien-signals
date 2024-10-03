@@ -246,11 +246,11 @@ export namespace Subscriber {
 				}
 			}
 
-			const prevLink = sub.prevUpdate;
-
 			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
+
+			const prevLink = sub.prevUpdate;
 
 			if (prevLink !== undefined) {
 				if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
