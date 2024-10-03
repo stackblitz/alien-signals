@@ -20,7 +20,12 @@ export class Computed<T = any> implements Dependency, Subscriber {
 
 	get(): T {
 		Dependency.link(this);
-		Subscriber.update(this);
+		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			Subscriber.confirmDirtyLevel(this);
+		}
+		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+			this.run();
+		}
 		return this.cachedValue!;
 	}
 

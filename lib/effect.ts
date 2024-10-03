@@ -73,7 +73,12 @@ export class Effect implements IEffect, Subscriber {
 	}
 
 	notify() {
-		Subscriber.update(this);
+		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			Subscriber.confirmDirtyLevel(this);
+		}
+		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+			this.run();
+		}
 	}
 
 	run() {

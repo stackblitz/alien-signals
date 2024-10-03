@@ -225,48 +225,19 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function update(sub: Subscriber, run = true) {
-		if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			sub.versionOrDirtyLevel = DirtyLevels.QueryingDirty;
-			let link = sub.deps;
-
-			while (link !== undefined) {
-				const nextSub = link.dep as Dependency | Dependency & Subscriber;
-
-				if ('deps' in nextSub && nextSub.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
-					flatUpdate(nextSub);
-
-					if (sub.versionOrDirtyLevel >= DirtyLevels.Dirty) {
-						break;
-					}
-				}
-
-				link = link.nextDep;
-			}
-
-			if (sub.versionOrDirtyLevel === DirtyLevels.QueryingDirty) {
-				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
-			}
-		}
-
-		if (run && sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
-			sub.run();
-		}
-	}
-
-	export function flatUpdate(sub: Subscriber) {
-		let link = sub.deps;
+	export function confirmDirtyLevel(computed: Subscriber) {
+		let link = computed.deps;
 
 		top: while (true) {
 
-			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			if (computed.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 				while (link !== undefined) {
-					const nextSub = link.dep as Dependency | Dependency & Subscriber;
+					const dep = link.dep as Dependency | Dependency & Subscriber;
 
-					if ('deps' in nextSub && nextSub.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
-						nextSub.prevUpdate = link;
-						sub = nextSub;
-						link = nextSub.deps;
+					if ('deps' in dep && dep.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
+						dep.prevUpdate = link;
+						computed = dep;
+						link = dep.deps;
 
 						continue top;
 					}
@@ -275,18 +246,19 @@ export namespace Subscriber {
 				}
 			}
 
-			if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
-				sub.run();
-			}
-			else if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
-			}
+			const prevLink = computed.prevUpdate;
 
-			const prevLink = sub.prevUpdate;
+			if (computed.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+				computed.versionOrDirtyLevel = DirtyLevels.NotDirty;
+			}
 
 			if (prevLink !== undefined) {
-				sub.prevUpdate = undefined;
-				sub = prevLink.sub;
+				if (computed.versionOrDirtyLevel === DirtyLevels.Dirty) {
+					computed.run();
+				}
+
+				computed.prevUpdate = undefined;
+				computed = prevLink.sub;
 				link = prevLink.nextDep;
 
 				continue top;

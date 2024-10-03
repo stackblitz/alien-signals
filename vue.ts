@@ -59,8 +59,10 @@ class VueComputed<T = any> extends Computed<T> {
 
 export class ReactiveEffect extends Effect {
 	get dirty() {
-		Subscriber.update(this, false);
-		return this.versionOrDirtyLevel >= DirtyLevels.Dirty;
+		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			Subscriber.confirmDirtyLevel(this);
+		}
+		return this.versionOrDirtyLevel === DirtyLevels.Dirty;
 	}
 
 	set scheduler(fn: () => void) {
