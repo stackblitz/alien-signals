@@ -225,18 +225,18 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function confirmDirtyLevel(computed: Subscriber) {
-		let link = computed.deps;
+	export function confirmDirtyLevel(sub: Subscriber) {
+		let link = sub.deps;
 
 		top: while (true) {
 
-			if (computed.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 				while (link !== undefined) {
 					const dep = link.dep as Dependency | Dependency & Subscriber;
 
 					if ('deps' in dep && dep.versionOrDirtyLevel >= DirtyLevels.MaybeDirty) {
 						dep.prevUpdate = link;
-						computed = dep;
+						sub = dep;
 						link = dep.deps;
 
 						continue top;
@@ -246,19 +246,19 @@ export namespace Subscriber {
 				}
 			}
 
-			const prevLink = computed.prevUpdate;
+			const prevLink = sub.prevUpdate;
 
-			if (computed.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-				computed.versionOrDirtyLevel = DirtyLevels.NotDirty;
+			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 
 			if (prevLink !== undefined) {
-				if (computed.versionOrDirtyLevel === DirtyLevels.Dirty) {
-					computed.run();
+				if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
+					sub.run();
 				}
 
-				computed.prevUpdate = undefined;
-				computed = prevLink.sub;
+				sub.prevUpdate = undefined;
+				sub = prevLink.sub;
 				link = prevLink.nextDep;
 
 				continue top;
