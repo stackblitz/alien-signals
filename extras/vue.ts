@@ -6,12 +6,12 @@ import {
 	Signal,
 	Effect,
 	DirtyLevels,
-} from './index.js';
+} from '../index.js';
 
 export {
 	Effect,
 	EffectScope,
-} from './index.js';
+} from '../index.js';
 
 const pausedSubsDepths: number[] = [];
 
