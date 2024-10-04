@@ -19,14 +19,13 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
-	prevUpdate: Link | undefined;
 	run(): void;
 }
 
 export interface Link {
 	dep: Dependency;
 	sub: Subscriber & ({} | IEffect | Dependency);
-	prevSub: Link | undefined;
+	prevSubOrUpdate: Link | undefined;
 	nextSub: Link | undefined;
 	nextDep: Link | undefined;
 	nextPropagateOrReleased: Link | undefined;
@@ -84,7 +83,7 @@ export namespace Link {
 			return {
 				dep,
 				sub,
-				prevSub: undefined,
+				prevSubOrUpdate: undefined,
 				nextSub: undefined,
 				nextDep: undefined,
 				nextPropagateOrReleased: undefined,
@@ -105,10 +104,10 @@ export namespace Link {
 
 	export function release(link: Link) {
 		const nextSub = link.nextSub;
-		const prevSub = link.prevSub;
+		const prevSub = link.prevSubOrUpdate;
 
 		if (nextSub !== undefined) {
-			nextSub.prevSub = prevSub;
+			nextSub.prevSubOrUpdate = prevSub;
 		}
 		if (prevSub !== undefined) {
 			prevSub.nextSub = nextSub;
@@ -125,7 +124,7 @@ export namespace Link {
 		link.dep = undefined;
 		// @ts-ignore
 		link.sub = undefined;
-		link.prevSub = undefined;
+		link.prevSubOrUpdate = undefined;
 		link.nextSub = undefined;
 		link.nextDep = undefined;
 
@@ -171,7 +170,7 @@ export namespace Dependency {
 				dep.subsTail = newLink;
 			} else {
 				const oldTail = dep.subsTail!;
-				newLink.prevSub = oldTail;
+				newLink.prevSubOrUpdate = oldTail;
 				oldTail.nextSub = newLink;
 				dep.subsTail = newLink;
 			}
@@ -238,7 +237,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function confirmMaybeDirty(sub: Subscriber) {
+	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
 
 		top: while (true) {
@@ -250,7 +249,7 @@ export namespace Subscriber {
 					const depDirtyLevel = dep.versionOrDirtyLevel;
 
 					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
-						dep.prevUpdate = link;
+						dep.subs!.prevSubOrUpdate = link;
 						sub = dep;
 						link = dep.deps;
 
@@ -273,18 +272,22 @@ export namespace Subscriber {
 				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 			}
 
-			const prevLink = sub.prevUpdate;
+			const subSubs = (sub as Dependency & Subscriber).subs;
+			if (subSubs !== undefined) {
 
-			if (prevLink !== undefined) {
-				if (dirtyLevel === DirtyLevels.Dirty) {
-					sub.run();
+				const prevLink = subSubs.prevSubOrUpdate;
+
+				if (prevLink !== undefined) {
+					if (dirtyLevel === DirtyLevels.Dirty) {
+						sub.run();
+					}
+
+					subSubs.prevSubOrUpdate = undefined;
+					sub = prevLink.sub;
+					link = prevLink.nextDep;
+
+					continue;
 				}
-
-				sub.prevUpdate = undefined;
-				sub = prevLink.sub;
-				link = prevLink.nextDep;
-
-				continue;
 			}
 
 			break;

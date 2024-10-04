@@ -59,7 +59,6 @@ export class Effect implements IEffect, Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	prevUpdate = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(
@@ -71,7 +70,7 @@ export class Effect implements IEffect, Subscriber {
 
 	notify() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.confirmMaybeDirty(this);
+			Subscriber.resolveMaybeDirty(this);
 		}
 		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 			this.run();

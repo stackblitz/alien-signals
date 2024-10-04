@@ -56,7 +56,7 @@ class VueComputed<T = any> extends Computed<T> {
 export class ReactiveEffect extends Effect {
 	get dirty() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.confirmMaybeDirty(this);
+			Subscriber.resolveMaybeDirty(this);
 		}
 		return this.versionOrDirtyLevel === DirtyLevels.Dirty;
 	}

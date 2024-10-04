@@ -11,7 +11,6 @@ export class Computed<T = unknown> implements Dependency, Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	prevUpdate = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(
@@ -22,7 +21,7 @@ export class Computed<T = unknown> implements Dependency, Subscriber {
 		Dependency.link(this);
 		const versionOrDirtyLevel = this.versionOrDirtyLevel;
 		if (versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.confirmMaybeDirty(this);
+			Subscriber.resolveMaybeDirty(this);
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.run();
 			}
