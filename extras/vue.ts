@@ -54,6 +54,8 @@ class VueComputed<T = any> extends Computed<T> {
 }
 
 export class ReactiveEffect extends Effect {
+	onDispose: (() => void)[] = [];
+
 	get dirty() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
@@ -64,8 +66,19 @@ export class ReactiveEffect extends Effect {
 	set scheduler(fn: () => void) {
 		this.notify = fn;
 	}
+
+	stop() {
+		super.stop();
+		for (const cb of this.onDispose) {
+			cb();
+		}
+		this.onDispose.length = 0;
+	}
 }
 
+
 export function onScopeDispose(cb: () => void) {
-	currentEffectScope.onDispose.push(cb);
+	if (currentEffectScope instanceof ReactiveEffect) {
+		currentEffectScope.onDispose.push(cb);
+	}
 }

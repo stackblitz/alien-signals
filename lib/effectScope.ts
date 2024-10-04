@@ -3,7 +3,6 @@ import { Effect } from './effect';
 export class EffectScope {
 	effects: Effect | undefined = undefined;
 	effectsTail: Effect | undefined = undefined;
-	onDispose: (() => void)[] = [];
 
 	run<T>(fn: () => T) {
 		const original = currentEffectScope;
@@ -18,9 +17,6 @@ export class EffectScope {
 	stop() {
 		while (this.effects !== undefined) {
 			this.effects.stop();
-		}
-		for (const cb of this.onDispose) {
-			cb();
 		}
 	}
 
