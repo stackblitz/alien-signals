@@ -16,8 +16,19 @@ export function effect(fn: () => void) {
 	return new ReactiveEffect(fn);
 }
 
+class VueEffectScope extends EffectScope {
+	onDispose: (() => void)[] = [];
+
+	stop() {
+		super.stop();
+		for (const cb of this.onDispose) {
+			cb();
+		}
+	}
+}
+
 export function effectScope() {
-	return new EffectScope();
+	return new VueEffectScope();
 }
 
 export function triggerRef(ref: ShallowRef) {
@@ -89,12 +100,11 @@ export class ReactiveEffect extends Effect {
 		for (const cb of this.onDispose) {
 			cb();
 		}
-		this.onDispose.length = 0;
 	}
 }
 
 export function onScopeDispose(cb: () => void) {
-	if (currentEffectScope instanceof ReactiveEffect) {
+	if (currentEffectScope instanceof VueEffectScope) {
 		currentEffectScope.onDispose.push(cb);
 	}
 }
