@@ -21,9 +21,7 @@ class VueEffectScope extends EffectScope {
 
 	stop() {
 		super.stop();
-		for (const cb of this.onDispose) {
-			cb();
-		}
+		this.onDispose.forEach(cb => cb());
 	}
 }
 
@@ -78,12 +76,6 @@ class VueComputed<T = any> extends Computed<T> {
 }
 
 export class ReactiveEffect extends Effect {
-	onDispose: (() => void)[] = [];
-
-	constructor(fn: () => void) {
-		super(fn);
-	}
-
 	get dirty() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
@@ -97,9 +89,6 @@ export class ReactiveEffect extends Effect {
 
 	stop() {
 		Subscriber.clearTrack(this);
-		for (const cb of this.onDispose) {
-			cb();
-		}
 	}
 }
 
