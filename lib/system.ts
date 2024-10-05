@@ -298,22 +298,27 @@ export namespace Subscriber {
 		const lastActiveSub = system.activeSub;
 		system.activeSub = sub;
 		system.activeSubsDepth++;
-		Subscriber.preTrack(sub);
+		preTrack(sub);
 		return lastActiveSub;
 	}
 
 	export function endTrack(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
-		Subscriber.postTrack(sub);
+		postTrack(sub);
 		system.activeSubsDepth--;
 		system.activeSub = lastActiveSub;
 	}
 
-	export function preTrack(sub: Subscriber) {
+	export function clearTrack(sub: Subscriber) {
+		preTrack(sub);
+		postTrack(sub);
+	}
+
+	function preTrack(sub: Subscriber) {
 		sub.depsTail = undefined;
 		sub.versionOrDirtyLevel = system.subVersion++;
 	}
 
-	export function postTrack(sub: Subscriber) {
+	function postTrack(sub: Subscriber) {
 		if (sub.depsTail !== undefined) {
 			Link.releaseDeps(sub.depsTail);
 		} else if (sub.deps !== undefined) {

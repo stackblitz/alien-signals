@@ -1,6 +1,6 @@
 import { System, Dependency } from './system';
 
-export class Signal<T = unknown> implements Dependency {
+export class Signal<T = any> implements Dependency {
 	// Dependency
 	subs = undefined;
 	subsTail = undefined;

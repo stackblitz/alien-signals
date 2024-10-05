@@ -1,6 +1,7 @@
+import { currentEffectScope } from './effectScope';
 import { Dependency, DirtyLevels, Subscriber } from './system';
 
-export class Computed<T = unknown> implements Dependency, Subscriber {
+export class Computed<T = any> implements Dependency, Subscriber {
 	cachedValue: T | undefined = undefined;
 
 	// Dependency
@@ -15,7 +16,9 @@ export class Computed<T = unknown> implements Dependency, Subscriber {
 
 	constructor(
 		public getter: (oldValue?: T) => T
-	) { }
+	) {
+		currentEffectScope?.subs.push(this);
+	}
 
 	get(): T {
 		Dependency.link(this);

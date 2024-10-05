@@ -2,10 +2,7 @@ import { currentEffectScope } from './effectScope';
 import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export class Effect implements IEffect, Subscriber {
-	scope = currentEffectScope;
 	nextNotify = undefined;
-	prevEffect: Effect | undefined = undefined;
-	nextEffect: Effect | undefined = undefined;
 
 	// Subscriber
 	deps = undefined;
@@ -15,7 +12,7 @@ export class Effect implements IEffect, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		this.scope.add(this);
+		currentEffectScope?.subs.push(this);
 		this.run();
 	}
 
@@ -32,11 +29,5 @@ export class Effect implements IEffect, Subscriber {
 		const lastActiveSub = Subscriber.startTrack(this);
 		this.fn();
 		Subscriber.endTrack(this, lastActiveSub);
-	}
-
-	stop() {
-		Subscriber.preTrack(this);
-		Subscriber.postTrack(this);
-		this.scope.remove(this);
 	}
 }

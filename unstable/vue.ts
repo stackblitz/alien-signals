@@ -81,7 +81,7 @@ export class ReactiveEffect extends Effect {
 	}
 
 	stop() {
-		super.stop();
+		Subscriber.clearTrack(this);
 		for (const cb of this.onDispose) {
 			cb();
 		}
