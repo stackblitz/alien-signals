@@ -1,17 +1,21 @@
 import {
-	currentEffectScope,
-	System,
-	Subscriber,
 	Computed,
-	Signal,
-	Effect,
+	currentEffectScope,
 	DirtyLevels,
-} from '../index.js';
-
-export {
 	Effect,
 	EffectScope,
+	Signal,
+	Subscriber,
+	System,
 } from '../index.js';
+
+export function effect(fn: () => void) {
+	return new ReactiveEffect(fn);
+}
+
+export function effectScope() {
+	return new EffectScope();
+}
 
 const pausedSubsDepths: number[] = [];
 
@@ -75,7 +79,6 @@ export class ReactiveEffect extends Effect {
 		this.onDispose.length = 0;
 	}
 }
-
 
 export function onScopeDispose(cb: () => void) {
 	if (currentEffectScope instanceof ReactiveEffect) {
