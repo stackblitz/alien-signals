@@ -71,7 +71,6 @@ export class ReactiveEffect extends Effect {
 
 	constructor(fn: () => void) {
 		super(fn);
-		this.run(); // TODO: should we run it here?
 	}
 
 	get dirty() {
