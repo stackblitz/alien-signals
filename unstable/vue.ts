@@ -10,6 +10,8 @@ import {
 	System,
 } from '../index.js';
 
+export { EffectScope };
+
 export function effect(fn: () => void) {
 	return new ReactiveEffect(fn);
 }
