@@ -29,12 +29,12 @@ Since Vue 3.5 switched to a Pull reactivity system in https://github.com/vuejs/c
 ### Basic
 
 ```ts
-import { Signal, Computed, Effect } from 'native-signals';
+import { signal, computed, effect } from 'native-signals';
 
-const count = new Signal(1);
-const doubleCount = new Computed(() => count.get() * 2);
+const count = signal(1);
+const doubleCount = computed(() => count.get() * 2);
 
-new Effect(() => {
+effect(() => {
   console.log(`Count is: ${count.get()}`);
 }); // Console: Count is: 1
 
@@ -48,10 +48,10 @@ console.log(doubleCount.get()); // 4
 ### Effect Scope
 
 ```ts
-import { Signal, EffectScope } from 'native-signals';
+import { signal, effectScope } from 'native-signals';
 
-const count = new Signal(1);
-const scope = new EffectScope();
+const count = signal(1);
+const scope = effectScope();
 
 scope.run(() => {
   effect(() => {

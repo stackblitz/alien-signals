@@ -1,6 +1,12 @@
 import { currentEffectScope } from './effectScope';
 import { DirtyLevels, IEffect, Subscriber } from './system';
 
+export function effect(fn: () => void) {
+	const e = new Effect(fn);
+	e.run();
+	return e;
+}
+
 export class Effect implements IEffect, Subscriber {
 	nextNotify = undefined;
 
@@ -13,7 +19,6 @@ export class Effect implements IEffect, Subscriber {
 		private fn: () => void
 	) {
 		currentEffectScope?.subs.push(this);
-		this.run();
 	}
 
 	notify() {

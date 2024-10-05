@@ -1,5 +1,9 @@
 import { Computed } from '../lib/computed';
 
+export function equalityComputed<T>(getter: () => T) {
+	return new EqualityComputed(getter);
+}
+
 export class EqualityComputed<T = any> extends Computed<T> {
 	constructor(
 		getter: () => T,

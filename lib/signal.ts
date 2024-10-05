@@ -1,5 +1,11 @@
 import { System, Dependency } from './system';
 
+export function signal<T>(): Signal<T | undefined>;
+export function signal<T>(oldValue: T): Signal<T>;
+export function signal<T>(oldValue?: T): Signal<T | undefined> {
+	return new Signal(oldValue);
+}
+
 export class Signal<T = any> implements Dependency {
 	// Dependency
 	subs = undefined;

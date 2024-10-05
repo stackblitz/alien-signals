@@ -69,6 +69,11 @@ class VueComputed<T = any> extends Computed<T> {
 export class ReactiveEffect extends Effect {
 	onDispose: (() => void)[] = [];
 
+	constructor(fn: () => void) {
+		super(fn);
+		this.run(); // TODO: should we run it here?
+	}
+
 	get dirty() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
