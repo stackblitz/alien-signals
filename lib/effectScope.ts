@@ -6,12 +6,12 @@ export class EffectScope {
 	subs: Subscriber[] = [];
 
 	run<T>(fn: () => T) {
-		const original = currentEffectScope;
+		const lastEffectScope = currentEffectScope;
 		try {
 			currentEffectScope = this;
 			return fn();
 		} finally {
-			currentEffectScope = original;
+			currentEffectScope = lastEffectScope;
 		}
 	}
 

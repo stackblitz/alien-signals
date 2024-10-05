@@ -8,6 +8,7 @@ export function effect(fn: () => void) {
 }
 
 export class Effect implements IEffect, Subscriber {
+	scope = currentEffectScope;
 	nextNotify = undefined;
 
 	// Subscriber
@@ -32,7 +33,12 @@ export class Effect implements IEffect, Subscriber {
 
 	run() {
 		const lastActiveSub = Subscriber.startTrack(this);
-		this.fn();
+		if (this.scope !== undefined) {
+			this.scope.run(this.fn);
+		}
+		else {
+			this.fn();
+		}
 		Subscriber.endTrack(this, lastActiveSub);
 	}
 }
