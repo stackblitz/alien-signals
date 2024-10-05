@@ -1,6 +1,7 @@
 import {
 	Computed,
 	currentEffectScope,
+	Dependency,
 	DirtyLevels,
 	Effect,
 	EffectScope,
@@ -15,6 +16,12 @@ export function effect(fn: () => void) {
 
 export function effectScope() {
 	return new EffectScope();
+}
+
+export function triggerRef(ref: ShallowRef) {
+	System.startBatch();
+	Dependency.propagate(ref);
+	System.endBatch();
 }
 
 const pausedSubsDepths: number[] = [];
