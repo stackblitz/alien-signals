@@ -12,7 +12,8 @@
 		"url": "git+https://github.com/johnsoncodehk/native-signals.git"
 	},
 	"scripts": {
-		"build": "tsc"
+		"build": "tsc",
+		"test": "vitest run"
 	},
 	"devDependencies": {
 		"vite": "latest",
