@@ -103,6 +103,7 @@ export namespace Link {
 	}
 
 	export function release(link: Link) {
+		const dep = link.dep as Dependency & ({} | Subscriber);
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSubOrUpdate;
 
@@ -130,6 +131,10 @@ export namespace Link {
 
 		link.nextPropagateOrReleased = pool;
 		pool = link;
+
+		if (dep.subs === undefined && 'deps' in dep) {
+			Subscriber.clearTrack(dep);
+		}
 	}
 }
 
@@ -156,9 +161,7 @@ export namespace Dependency {
 		if (old === undefined || old.dep !== dep) {
 			const newLink = Link.get(dep, sub);
 			if (old !== undefined) {
-				const nextDep = old.nextDep;
-				Link.release(old);
-				newLink.nextDep = nextDep;
+				newLink.nextDep = old;
 			}
 			if (depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
