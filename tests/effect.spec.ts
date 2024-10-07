@@ -12,3 +12,29 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 	Subscriber.clearTrack(effect1);
 	expect(!!double.subs).toBe(false);
 });
+
+test('should not run untracked inner effect', () => {
+	const msg = signal(3);
+	const c = computed(() => msg.get() > 0);
+
+	effect(() => {
+		if (c.get()) {
+			effect(() => {
+				// console.log("inner", msg.get());
+				if (msg.get() == 0) {
+					throw new Error("bad");
+				}
+			});
+		} else {
+			// console.log("inner shouldn't run");
+		}
+	});
+
+	decrement();
+	decrement();
+	decrement();
+
+	function decrement() {
+		msg.set(msg.get() - 1);
+	}
+});

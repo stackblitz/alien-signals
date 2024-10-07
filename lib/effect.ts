@@ -35,8 +35,10 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	}
 
 	run() {
-		const lastActiveSub = Subscriber.startTrack(this);
+		const prevScope = Subscriber.startScopeTrack(this);
+		const prevSub = Subscriber.startTrack(this);
 		this.fn();
-		Subscriber.endTrack(this, lastActiveSub);
+		Subscriber.endTrack(this, prevSub);
+		Subscriber.endScopeTrack(this, prevScope);
 	}
 }
