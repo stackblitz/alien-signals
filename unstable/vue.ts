@@ -1,6 +1,5 @@
 import {
 	Computed,
-	currentEffectScope,
 	Dependency,
 	DirtyLevels,
 	Effect,
@@ -16,8 +15,18 @@ export function effect(fn: () => void) {
 	return new ReactiveEffect(fn);
 }
 
+let currentEffectScope: VueEffectScope | undefined = undefined;
+
 class VueEffectScope extends EffectScope {
 	onDispose: (() => void)[] = [];
+
+	run<T>(fn: () => T): T {
+		const prevScope = currentEffectScope;
+		currentEffectScope = this;
+		const res = super.run(fn);
+		currentEffectScope = prevScope;
+		return res;
+	}
 
 	stop() {
 		super.stop();
@@ -93,7 +102,5 @@ export class ReactiveEffect extends Effect {
 }
 
 export function onScopeDispose(cb: () => void) {
-	if (currentEffectScope instanceof VueEffectScope) {
-		currentEffectScope.onDispose.push(cb);
-	}
+	currentEffectScope?.onDispose.push(cb);
 }

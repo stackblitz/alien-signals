@@ -1,5 +1,4 @@
-import { currentEffectScope } from './effectScope';
-import { DirtyLevels, IEffect, Subscriber } from './system';
+import { Dependency, DirtyLevels, IEffect, Subscriber } from './system';
 
 export function effect(fn: () => void) {
 	const e = new Effect(fn);
@@ -7,9 +6,13 @@ export function effect(fn: () => void) {
 	return e;
 }
 
-export class Effect implements IEffect, Subscriber {
-	scope = currentEffectScope;
+export class Effect implements IEffect, Dependency, Subscriber {
 	nextNotify = undefined;
+
+	// Dependency
+	subs = undefined;
+	subsTail = undefined;
+	subVersion = -1;
 
 	// Subscriber
 	deps = undefined;
@@ -19,7 +22,7 @@ export class Effect implements IEffect, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		currentEffectScope?.subs.push(this);
+		Dependency.linkSubscriberScope(this);
 	}
 
 	notify() {
@@ -33,12 +36,7 @@ export class Effect implements IEffect, Subscriber {
 
 	run() {
 		const lastActiveSub = Subscriber.startTrack(this);
-		if (this.scope !== undefined) {
-			this.scope.run(this.fn);
-		}
-		else {
-			this.fn();
-		}
+		this.fn();
 		Subscriber.endTrack(this, lastActiveSub);
 	}
 }

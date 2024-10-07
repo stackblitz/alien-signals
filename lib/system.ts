@@ -7,6 +7,7 @@ export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	subVersion: number;
+	run?(): void;
 }
 
 export interface Subscriber {
@@ -19,7 +20,6 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
-	run(): void;
 }
 
 export interface Link {
@@ -40,6 +40,7 @@ export const enum DirtyLevels {
 export namespace System {
 
 	export let activeSub: Subscriber | undefined = undefined;
+	export let activeSubScope: Subscriber | undefined = undefined;
 	export let activeSubsDepth = 0;
 	export let batchDepth = 0;
 	export let subVersion = DirtyLevels.Dirty + 1;
@@ -142,11 +143,54 @@ export namespace Dependency {
 
 	const system = System;
 
-	export function link(dep: Dependency) {
+	export function linkSubscriber(dep: Dependency) {
 		if (system.activeSubsDepth === 0) {
 			return;
 		}
 		const sub = system.activeSub!;
+		const subVersion = sub.versionOrDirtyLevel;
+		if (dep.subVersion === subVersion) {
+			return;
+		}
+		dep.subVersion = subVersion;
+
+		const depsTail = sub.depsTail;
+		const old = depsTail !== undefined
+			? depsTail.nextDep
+			: sub.deps;
+
+		if (old === undefined || old.dep !== dep) {
+			const newLink = Link.get(dep, sub);
+			if (old !== undefined) {
+				newLink.nextDep = old;
+			}
+			if (depsTail === undefined) {
+				sub.depsTail = sub.deps = newLink;
+			} else {
+				sub.depsTail = depsTail.nextDep = newLink;
+			}
+			if (dep.subs === undefined) {
+				dep.subs = newLink;
+				dep.subsTail = newLink;
+			} else {
+				const oldTail = dep.subsTail!;
+				newLink.prevSubOrUpdate = oldTail;
+				oldTail.nextSub = newLink;
+				dep.subsTail = newLink;
+			}
+		} else {
+			sub.depsTail = old;
+		}
+	}
+
+	/**
+	 * @deprecated TODO: Reuse linkSubscriber without performance regression
+	 */
+	export function linkSubscriberScope(dep: Dependency) {
+		if (system.activeSubScope === undefined) {
+			return;
+		}
+		const sub = system.activeSubScope!;
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
 			return;
@@ -240,7 +284,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function resolveMaybeDirty(sub: Subscriber) {
+	export function resolveMaybeDirty(sub: Dependency & Subscriber) {
 		let link = sub.deps;
 
 		top: while (true) {
@@ -258,7 +302,7 @@ export namespace Subscriber {
 
 						continue top;
 					} else if (depDirtyLevel === DirtyLevels.Dirty) {
-						dep.run();
+						dep.run!();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
 							break;
@@ -282,11 +326,11 @@ export namespace Subscriber {
 
 				if (prevLink !== undefined) {
 					if (dirtyLevel === DirtyLevels.Dirty) {
-						sub.run();
+						sub.run!();
 					}
 
 					subSubs.prevSubOrUpdate = undefined;
-					sub = prevLink.sub;
+					sub = prevLink.sub as Dependency & Subscriber;
 					link = prevLink.nextDep;
 
 					continue;
@@ -309,6 +353,18 @@ export namespace Subscriber {
 		postTrack(sub);
 		system.activeSubsDepth--;
 		system.activeSub = lastActiveSub;
+	}
+
+	export function startScopeTrack(sub: Subscriber) {
+		const lastActiveSub = system.activeSubScope;
+		system.activeSubScope = sub;
+		preTrack(sub);
+		return lastActiveSub;
+	}
+
+	export function endScopeTrack(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
+		postTrack(sub);
+		system.activeSubScope = lastActiveSub;
 	}
 
 	export function clearTrack(sub: Subscriber) {

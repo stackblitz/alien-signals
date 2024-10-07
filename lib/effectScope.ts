@@ -1,27 +1,23 @@
-import { Subscriber } from './system';
-
-export let currentEffectScope: EffectScope | undefined = undefined;
+import { DirtyLevels, Subscriber } from './system';
 
 export function effectScope() {
 	return new EffectScope();
 }
 
-export class EffectScope {
-	subs: Subscriber[] = [];
+export class EffectScope implements Subscriber {
+	// Subscriber
+	deps = undefined;
+	depsTail = undefined;
+	versionOrDirtyLevel = DirtyLevels.NotDirty;
 
 	run<T>(fn: () => T) {
-		const lastEffectScope = currentEffectScope;
-		try {
-			currentEffectScope = this;
-			return fn();
-		} finally {
-			currentEffectScope = lastEffectScope;
-		}
+		const prevActiveSub = Subscriber.startScopeTrack(this);
+		const res = fn();
+		Subscriber.endScopeTrack(this, prevActiveSub);
+		return res;
 	}
 
 	stop() {
-		for (const sub of this.subs) {
-			Subscriber.clearTrack(sub);
-		}
+		Subscriber.clearTrack(this);
 	}
 }
