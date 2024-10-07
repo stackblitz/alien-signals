@@ -1,6 +1,6 @@
 {
 	"name": "native-signals",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
 	"files": [
