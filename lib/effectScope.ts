@@ -2,6 +2,10 @@ import { Subscriber } from './system';
 
 export let currentEffectScope: EffectScope | undefined = undefined;
 
+export function effectScope() {
+	return new EffectScope();
+}
+
 export class EffectScope {
 	subs: Subscriber[] = [];
 
