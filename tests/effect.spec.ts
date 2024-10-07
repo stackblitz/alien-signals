@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 import { computed, effect, signal, Subscriber } from '..';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
