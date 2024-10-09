@@ -4,6 +4,9 @@ Project Status: **Preview**
 
 The goal of `native-signals` is to create a Signal library with the lowest overhead.
 
+> [!NOTE]  
+> `native-signals` is not related to the TC39 Signals proposal. The term "native" is used because this library avoids using JavaScript's dynamic language features.
+
 We have set the following scheduling logic constraints:
 
 1. Based on Push-Pull
@@ -70,5 +73,5 @@ count.set(3); // No console output
 
 | Version | Savings                                        |
 |---------|------------------------------------------------|
-| v0.1    | Satisfies use cases for Vue Vapor Mode         |
-| v0.0    | Satisfies use cases for `vuejs/language-tools` |
+| 0.1    | Satisfies use cases for Vue Vapor Mode         |
+| 0.0    | Satisfies use cases for `vuejs/language-tools` |
