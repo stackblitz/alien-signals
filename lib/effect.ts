@@ -34,6 +34,10 @@ export class Effect implements IEffect, Dependency, Subscriber {
 		}
 	}
 
+	notifyLostSubs(): void {
+		Subscriber.clearTrack(this);
+	}
+
 	run() {
 		const prevScope = Subscriber.startScopeTrack(this);
 		const prevSub = Subscriber.startTrack(this);

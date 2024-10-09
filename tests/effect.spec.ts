@@ -11,6 +11,9 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 	expect(!!double.subs).toBe(true);
 	Subscriber.clearTrack(effect1);
 	expect(!!double.subs).toBe(false);
+
+	src.set(2);
+	expect(double.get()).toBe(4);
 });
 
 test('should not run untracked inner effect', () => {

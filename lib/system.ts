@@ -8,6 +8,7 @@ export interface Dependency {
 	subsTail: Link | undefined;
 	subVersion: number;
 	update?(): void;
+	notifyLostSubs?(): void;
 }
 
 export interface Subscriber {
@@ -133,8 +134,8 @@ export namespace Link {
 		link.prevPropagateOrNextReleased = pool;
 		pool = link;
 
-		if (dep.subs === undefined && 'deps' in dep) {
-			Subscriber.clearTrack(dep);
+		if (dep.subs === undefined && dep.notifyLostSubs !== undefined) {
+			dep.notifyLostSubs();
 		}
 	}
 }
