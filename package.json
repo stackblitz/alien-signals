@@ -1,5 +1,5 @@
 {
-	"name": "native-signals",
+	"name": "alien-signals",
 	"version": "0.0.3",
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
@@ -9,7 +9,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/johnsoncodehk/native-signals.git"
+		"url": "git+https://github.com/johnsoncodehk/signals.git"
 	},
 	"scripts": {
 		"build": "tsc",
