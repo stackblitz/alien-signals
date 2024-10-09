@@ -64,3 +64,24 @@ test('should run outer effect first', () => {
 	a.set(0);
 	System.endBatch();
 });
+
+test('should not trigger inner effect when resolve maybe dirty', () => {
+	const a = signal(0);
+	const b = computed(() => a.get() % 2);
+
+	let innerTriggerTimes = 0;
+
+	effect(() => {
+		// console.log("outer");
+		effect(() => {
+			// console.log("inner");
+			b.get();
+			innerTriggerTimes++;
+			if (innerTriggerTimes > 1) {
+				throw new Error("bad");
+			}
+		});
+	});
+
+	a.set(2);
+});

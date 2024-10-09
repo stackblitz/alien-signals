@@ -319,7 +319,7 @@ export namespace Subscriber {
 			while (link !== undefined) {
 				const dep = link.dep as Dependency | Dependency & Subscriber;
 
-				if ('deps' in dep) {
+				if (dep.update !== undefined && 'deps' in dep) {
 					const depDirtyLevel = dep.versionOrDirtyLevel;
 
 					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
@@ -328,7 +328,7 @@ export namespace Subscriber {
 						link = dep.deps;
 
 						continue top;
-					} else if (depDirtyLevel === DirtyLevels.Dirty && dep.update !== undefined) {
+					} else if (depDirtyLevel === DirtyLevels.Dirty) {
 						dep.update();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
@@ -352,8 +352,8 @@ export namespace Subscriber {
 				const prevLink = subSubs.prevSubOrUpdate;
 
 				if (prevLink !== undefined) {
-					if (dirtyLevel === DirtyLevels.Dirty && sub.update !== undefined) {
-						sub.update();
+					if (dirtyLevel === DirtyLevels.Dirty) {
+						sub.update!();
 					}
 
 					subSubs.prevSubOrUpdate = undefined;
