@@ -313,26 +313,35 @@ export namespace Subscriber {
 
 	export function resolveMaybeDirty(sub: Dependency & Subscriber) {
 		let link = sub.deps;
+		let hasDirtyInnerEffects = false;
 
 		top: while (true) {
 
 			while (link !== undefined) {
 				const dep = link.dep as Dependency | Dependency & Subscriber;
 
-				if (dep.update !== undefined && 'deps' in dep) {
-					const depDirtyLevel = dep.versionOrDirtyLevel;
+				if ('deps' in dep) {
+					if (dep.update !== undefined) {
+						const depDirtyLevel = dep.versionOrDirtyLevel;
 
-					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
-						dep.subs!.prevSubOrUpdate = link;
-						sub = dep;
-						link = dep.deps;
+						if (depDirtyLevel === DirtyLevels.MaybeDirty) {
+							dep.subs!.prevSubOrUpdate = link;
+							sub = dep;
+							link = dep.deps;
 
-						continue top;
-					} else if (depDirtyLevel === DirtyLevels.Dirty) {
-						dep.update();
+							continue top;
+						} else if (depDirtyLevel === DirtyLevels.Dirty) {
+							dep.update();
 
-						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
-							break;
+							if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
+								break;
+							}
+						}
+					} else if ('notify' in dep) {
+						const depDirtyLevel = dep.versionOrDirtyLevel;
+
+						if (depDirtyLevel === DirtyLevels.MaybeDirty || depDirtyLevel === DirtyLevels.Dirty) {
+							hasDirtyInnerEffects = true;
 						}
 					}
 				}
@@ -365,6 +374,18 @@ export namespace Subscriber {
 			}
 
 			break;
+		}
+
+		if (hasDirtyInnerEffects && sub.versionOrDirtyLevel === DirtyLevels.NotDirty) {
+			let link = sub.deps;
+
+			while (link !== undefined) {
+				const dep = link.dep as Dependency | Dependency & IEffect;
+				if ('notify' in dep) {
+					dep.notify();
+				}
+				link = link.nextDep;
+			}
 		}
 	}
 

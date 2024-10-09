@@ -85,3 +85,32 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 
 	a.set(2);
 });
+
+test('should trigger inner effects in sequence', () => {
+	const a = signal(0);
+	const b = signal(0);
+	const order: string[] = [];
+
+	effect(() => {
+
+		effect(() => {
+			order.push('first inner');
+			a.get();
+		});
+
+		effect(() => {
+			order.push('last inner');
+			a.get();
+			b.get();
+		});
+	});
+
+	order.length = 0;
+
+	System.startBatch();
+	b.set(1);
+	a.set(1);
+	System.endBatch();
+
+	expect(order).toEqual(['first inner', 'last inner']);
+});
