@@ -27,15 +27,15 @@ export class Computed<T = any> implements Dependency, Subscriber {
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
-				return this.run();
+				return this.update();
 			}
 		} else if (dirtyLevel === DirtyLevels.Dirty) {
-			return this.run();
+			return this.update();
 		}
 		return this.cachedValue!;
 	}
 
-	run() {
+	update() {
 		const lastActiveSub = Subscriber.startTrack(this);
 		const oldValue = this.cachedValue;
 		const newValue = this.getter(oldValue);

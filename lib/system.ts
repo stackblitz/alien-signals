@@ -7,7 +7,7 @@ export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	subVersion: number;
-	run?(): void;
+	update?(): void;
 }
 
 export interface Subscriber {
@@ -328,8 +328,8 @@ export namespace Subscriber {
 						link = dep.deps;
 
 						continue top;
-					} else if (depDirtyLevel === DirtyLevels.Dirty) {
-						dep.run!();
+					} else if (depDirtyLevel === DirtyLevels.Dirty && dep.update !== undefined) {
+						dep.update();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
 							break;
@@ -352,8 +352,8 @@ export namespace Subscriber {
 				const prevLink = subSubs.prevSubOrUpdate;
 
 				if (prevLink !== undefined) {
-					if (dirtyLevel === DirtyLevels.Dirty) {
-						sub.run!();
+					if (dirtyLevel === DirtyLevels.Dirty && sub.update !== undefined) {
+						sub.update();
 					}
 
 					subSubs.prevSubOrUpdate = undefined;
