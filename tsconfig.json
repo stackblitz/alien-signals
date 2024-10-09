@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"target": "ES2021",
 		"lib": [ "ES2021" ],
-		"module": "ESNext",
+		"module": "CommonJS",
 		"declaration": true,
 		"strict": true,
 		"noUnusedLocals": true,
