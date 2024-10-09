@@ -311,7 +311,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function resolveMaybeDirty(sub: Dependency & Subscriber) {
+	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
 		let hasDirtyInnerEffects = false;
 
@@ -362,7 +362,7 @@ export namespace Subscriber {
 
 				if (prevLink !== undefined) {
 					if (dirtyLevel === DirtyLevels.Dirty) {
-						sub.update!();
+						(sub as Dependency & Subscriber).update!();
 					}
 
 					subSubs.prevSubOrUpdate = undefined;

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, signal, Subscriber, System } from '..';
+import { computed, effect, effectScope, signal, Subscriber, System } from '..';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	const src = signal(1);
@@ -92,6 +92,36 @@ test('should trigger inner effects in sequence', () => {
 	const order: string[] = [];
 
 	effect(() => {
+
+		effect(() => {
+			order.push('first inner');
+			a.get();
+		});
+
+		effect(() => {
+			order.push('last inner');
+			a.get();
+			b.get();
+		});
+	});
+
+	order.length = 0;
+
+	System.startBatch();
+	b.set(1);
+	a.set(1);
+	System.endBatch();
+
+	expect(order).toEqual(['first inner', 'last inner']);
+});
+
+test('should trigger inner effects in sequence in effect scope', () => {
+	const a = signal(0);
+	const b = signal(0);
+	const scope = effectScope();
+	const order: string[] = [];
+
+	scope.run(() => {
 
 		effect(() => {
 			order.push('first inner');
