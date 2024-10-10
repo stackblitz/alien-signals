@@ -2,30 +2,41 @@ import { expect, test } from 'vitest';
 import { computed, effect, effectScope, signal, Subscriber, System } from '..';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
-	const src = signal(1);
-	const double = computed(() => src.get() * 2);
+	const a = signal(1);
+	const b = computed(() => {
+		return a.get() * 2;
+	});
+	const c = computed(() => {
+		cRunTimes++;
+		return b.get() % 2;
+	});
 	const effect1 = effect(() => {
-		double.get();
+		b.get();
 	});
 
-	expect(!!double.subs).toBe(true);
-	Subscriber.clearTrack(effect1);
-	expect(!!double.subs).toBe(false);
+	let cRunTimes = 0;
 
-	src.set(2);
-	expect(double.get()).toBe(4);
+	expect(!!b.subs).toBe(true);
+	Subscriber.clearTrack(effect1);
+	expect(!!b.subs).toBe(false);
+
+	c.get();
+	expect(cRunTimes).toBe(1);
+	a.set(2);
+	expect(b.get()).toBe(4);
+	expect(cRunTimes).toBe(1);
 });
 
 test('should not run untracked inner effect', () => {
-	const msg = signal(3);
-	const c = computed(() => msg.get() > 0);
+	const a = signal(3);
+	const b = computed(() => a.get() > 0);
 
 	effect(() => {
 		// console.log("outer");
-		if (c.get()) {
+		if (b.get()) {
 			effect(() => {
 				// console.log("inner", msg.get());
-				if (msg.get() == 0) {
+				if (a.get() == 0) {
 					throw new Error("bad");
 				}
 			});
@@ -39,7 +50,7 @@ test('should not run untracked inner effect', () => {
 	decrement();
 
 	function decrement() {
-		msg.set(msg.get() - 1);
+		a.set(a.get() - 1);
 	}
 });
 

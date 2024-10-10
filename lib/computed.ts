@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, Subscriber } from './system';
+import { Dependency, DirtyLevels, Link, Subscriber } from './system';
 
 export function computed<T>(getter: (cachedValue?: T) => T) {
 	return new Computed<T>(getter);
@@ -11,9 +11,10 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	subs = undefined;
 	subsTail = undefined;
 	subVersion = -1;
+	depVersion = 0;
 
 	// Subscriber
-	deps = undefined;
+	deps: Link | undefined = undefined;
 	depsTail = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
@@ -22,16 +23,27 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	) { }
 
 	notifyLostSubs(): void {
-		Subscriber.clearTrack(this);
-		this.cachedValue = undefined;
-		this.versionOrDirtyLevel = DirtyLevels.Dirty;
+		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+			Subscriber.clearTrack(this);
+		} else {
+			let link = this.deps;
+			while (link !== undefined) {
+				Link.unlinkSub(link);
+				link = link.nextDep;
+			}
+			this.versionOrDirtyLevel = DirtyLevels.MaybeDirty;
+		}
 	}
 
 	get(): T {
-		Dependency.linkSubscriber(this);
+		Dependency.link(this, true);
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.resolveMaybeDirty(this);
+			if (this.deps?.sub !== undefined) {
+				Subscriber.resolveMaybeDirty(this);
+			} else {
+				Subscriber.relinkDeps(this);
+			}
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.update();
 			}

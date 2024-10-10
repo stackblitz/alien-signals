@@ -13,6 +13,7 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	subs = undefined;
 	subsTail = undefined;
 	subVersion = -1;
+	depVersion = 0;
 
 	// Subscriber
 	deps = undefined;
@@ -22,7 +23,7 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		Dependency.linkSubscriberScope(this);
+		Dependency.link(this, true);
 	}
 
 	notify() {
@@ -36,13 +37,12 @@ export class Effect implements IEffect, Dependency, Subscriber {
 
 	notifyLostSubs(): void {
 		Subscriber.clearTrack(this);
+		this.versionOrDirtyLevel = DirtyLevels.NotDirty;
 	}
 
 	run() {
-		const prevScope = Subscriber.startScopeTrack(this);
 		const prevSub = Subscriber.startTrack(this);
 		this.fn();
 		Subscriber.endTrack(this, prevSub);
-		Subscriber.endScopeTrack(this, prevScope);
 	}
 }
