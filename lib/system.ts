@@ -381,8 +381,8 @@ export namespace Subscriber {
 			let link = sub.deps;
 
 			while (link !== undefined) {
-				const dep = link.dep as Dependency | Dependency & IEffect;
-				if ('notify' in dep) {
+				const dep = link.dep as Dependency | Dependency & Subscriber & IEffect;
+				if ('notify' in dep && dep.versionOrDirtyLevel !== DirtyLevels.NotDirty) {
 					dep.notify();
 				}
 				link = link.nextDep;
