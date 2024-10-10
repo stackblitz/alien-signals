@@ -13,11 +13,8 @@ export class EffectScope implements IEffect, Subscriber {
 	versionOrDirtyLevel = DirtyLevels.NotDirty;
 
 	notify() {
-		const dirtyLevel = this.versionOrDirtyLevel;
-		if (dirtyLevel === DirtyLevels.MaybeDirty || dirtyLevel === DirtyLevels.Dirty) {
-			Subscriber.resolveMaybeDirty(this);
-			this.versionOrDirtyLevel = DirtyLevels.NotDirty;
-		}
+		Subscriber.resolveMaybeDirty(this);
+		this.versionOrDirtyLevel = DirtyLevels.NotDirty;
 	}
 
 	run<T>(fn: () => T) {
