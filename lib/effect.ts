@@ -30,11 +30,19 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	}
 
 	notify() {
-		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.resolveMaybeDirty(this);
-		}
-		if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
-			this.run();
+		const dirtyLevel = this.versionOrDirtyLevel;
+		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
+			this.versionOrDirtyLevel = DirtyLevels.None;
+			Subscriber.runInnerEffects(this);
+		} else {
+			if (dirtyLevel === DirtyLevels.MaybeDirty) {
+				Subscriber.resolveMaybeDirty(this);
+			}
+			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+				this.run();
+			} else {
+				Subscriber.runInnerEffects(this);
+			}
 		}
 	}
 

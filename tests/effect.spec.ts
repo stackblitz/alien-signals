@@ -89,12 +89,14 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 	a.set(2);
 });
 
-test.skip('should trigger inner effects in sequence', () => {
+test('should trigger inner effects in sequence', () => {
 	const a = signal(0);
 	const b = signal(0);
+	const c = computed(() => a.get() - b.get());
 	const order: string[] = [];
 
 	effect(() => {
+		c.get();
 
 		effect(() => {
 			order.push('first inner');
@@ -118,7 +120,7 @@ test.skip('should trigger inner effects in sequence', () => {
 	expect(order).toEqual(['first inner', 'last inner']);
 });
 
-test.skip('should trigger inner effects in sequence in effect scope', () => {
+test('should trigger inner effects in sequence in effect scope', () => {
 	const a = signal(0);
 	const b = signal(0);
 	const scope = effectScope();

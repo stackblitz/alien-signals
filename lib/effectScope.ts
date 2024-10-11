@@ -1,16 +1,25 @@
-import { DirtyLevels, Subscriber } from './system';
+import { DirtyLevels, IEffect, Subscriber } from './system';
 
 export function effectScope() {
 	return new EffectScope();
 }
 
-export class EffectScope implements Subscriber {
+export class EffectScope implements IEffect, Subscriber {
+	nextNotify = undefined;
+
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.Dirty;
+	versionOrDirtyLevel = DirtyLevels.None;
 
 	notifyLostSubs() { }
+
+	notify() {
+		if (this.versionOrDirtyLevel !== DirtyLevels.None) {
+			this.versionOrDirtyLevel = DirtyLevels.None;
+			Subscriber.runInnerEffects(this);
+		}
+	}
 
 	run<T>(fn: () => T) {
 		const prevActiveSub = Subscriber.startTrack(this, true);

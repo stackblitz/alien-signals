@@ -33,7 +33,8 @@ export interface Link {
 }
 
 export const enum DirtyLevels {
-	NotDirty,
+	None,
+	SideEffectsOnly,
 	MaybeDirty,
 	Dirty,
 }
@@ -228,6 +229,7 @@ export namespace Dependency {
 	}
 
 	export function propagate(dep: Dependency) {
+		let depIsEffect = false;
 		let link = dep.subs;
 		let dirtyLevel = DirtyLevels.Dirty;
 		let depth = 0;
@@ -242,19 +244,25 @@ export namespace Dependency {
 					sub.versionOrDirtyLevel = dirtyLevel;
 				}
 
-				if (subDirtyLevel === DirtyLevels.NotDirty) {
+				if (subDirtyLevel === DirtyLevels.None) {
+					const subIsEffect = 'notify' in sub;
 
 					if ('subs' in sub) {
 						sub.deps!.prevPropagateOrNextReleased = link;
 						dep = sub;
+						depIsEffect = subIsEffect;
 						link = sub.subs;
-						dirtyLevel = DirtyLevels.MaybeDirty;
+						if (subIsEffect) {
+							dirtyLevel = DirtyLevels.SideEffectsOnly;
+						} else {
+							dirtyLevel = DirtyLevels.MaybeDirty;
+						}
 						depth++;
 
 						continue top;
 					}
 
-					if ('notify' in sub) {
+					if (subIsEffect) {
 						const queuedEffectsTail = system.queuedEffectsTail;
 
 						if (queuedEffectsTail !== undefined) {
@@ -278,11 +286,16 @@ export namespace Dependency {
 				if (prevLink !== undefined) {
 					depDeps.prevPropagateOrNextReleased = undefined;
 					dep = prevLink.dep;
+					depIsEffect = 'notify' in dep;
 					link = prevLink.nextSub;
 					depth--;
 
 					if (depth === 0) {
 						dirtyLevel = DirtyLevels.Dirty;
+					} else if (depIsEffect) {
+						dirtyLevel = DirtyLevels.SideEffectsOnly;
+					} else {
+						dirtyLevel = DirtyLevels.MaybeDirty;
 					}
 
 					const prevSub = prevLink.sub;
@@ -311,6 +324,17 @@ export namespace Dependency {
 export namespace Subscriber {
 
 	const system = System;
+
+	export function runInnerEffects(sub: Subscriber) {
+		let link = sub.deps as Link | undefined;
+		while (link !== undefined) {
+			const dep = link.dep as Dependency | Dependency & IEffect;
+			if ('notify' in dep) {
+				dep.notify();
+			}
+			link = link.nextDep;
+		}
+	}
 
 	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
@@ -344,7 +368,7 @@ export namespace Subscriber {
 			const dirtyLevel = sub.versionOrDirtyLevel;
 
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
+				sub.versionOrDirtyLevel = DirtyLevels.None;
 			}
 
 			const subSubs = (sub as Dependency & Subscriber).subs;
@@ -417,6 +441,6 @@ export namespace Subscriber {
 			Link.release(sub.deps);
 			sub.deps = undefined;
 		}
-		sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
+		sub.versionOrDirtyLevel = DirtyLevels.None;
 	}
 }
