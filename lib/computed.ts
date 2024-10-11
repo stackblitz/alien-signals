@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, Link, Subscriber } from './system';
+import { Dependency, DirtyLevels, Subscriber } from './system';
 
 export function computed<T>(getter: (cachedValue?: T) => T) {
 	return new Computed<T>(getter);
@@ -14,7 +14,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	depVersion = 0;
 
 	// Subscriber
-	deps: Link | undefined = undefined;
+	deps = undefined;
 	depsTail = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
