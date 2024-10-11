@@ -13,7 +13,6 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	subs = undefined;
 	subsTail = undefined;
 	subVersion = -1;
-	depVersion = 0;
 
 	// Subscriber
 	deps = undefined;
@@ -23,7 +22,7 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		Dependency.link(this, true);
+		Dependency.link(this);
 	}
 
 	notify() {

@@ -11,7 +11,6 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	subs = undefined;
 	subsTail = undefined;
 	subVersion = -1;
-	depVersion = 0;
 
 	// Subscriber
 	deps = undefined;
@@ -23,15 +22,10 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	) { }
 
 	get(): T {
-		Dependency.link(this, true);
+		Dependency.link(this);
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
-			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
-				return this.update();
-			}
-		} else if (dirtyLevel === DirtyLevels.Unlinked) {
-			Subscriber.relinkDeps(this);
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.update();
 			}

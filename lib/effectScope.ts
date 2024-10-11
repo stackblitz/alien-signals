@@ -1,25 +1,17 @@
-import { DirtyLevels, IEffect, Subscriber } from './system';
+import { DirtyLevels, Subscriber } from './system';
 
 export function effectScope() {
 	return new EffectScope();
 }
 
-export class EffectScope implements IEffect, Subscriber {
-	nextNotify = undefined;
-
+export class EffectScope implements Subscriber {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.NotDirty;
-	isScope = true;
-
-	notify() {
-		Subscriber.resolveMaybeDirty(this);
-		this.versionOrDirtyLevel = DirtyLevels.NotDirty;
-	}
+	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	run<T>(fn: () => T) {
-		const prevActiveSub = Subscriber.startTrack(this);
+		const prevActiveSub = Subscriber.startTrack(this, true);
 		const res = fn();
 		Subscriber.endTrack(this, prevActiveSub);
 		return res;

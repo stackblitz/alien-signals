@@ -11,14 +11,13 @@ export class Signal<T = any> implements Dependency {
 	subs = undefined;
 	subsTail = undefined;
 	subVersion = -1;
-	depVersion = 0;
 
 	constructor(
 		public currentValue: T
 	) { }
 
 	get() {
-		Dependency.link(this, false);
+		Dependency.linkSubOnly(this);
 		return this.currentValue!;
 	}
 

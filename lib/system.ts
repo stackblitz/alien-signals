@@ -6,7 +6,6 @@ export interface IEffect {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	depVersion: number;
 	subVersion: number;
 	update?(): void;
 }
@@ -21,12 +20,10 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
-	isScope?: boolean;
 }
 
 export interface Link {
 	dep: Dependency;
-	depVersion: number;
 	sub: Subscriber & ({} | IEffect | Dependency);
 	prevSubOrUpdate: Link | undefined;
 	nextSub: Link | undefined;
@@ -36,7 +33,6 @@ export interface Link {
 
 export const enum DirtyLevels {
 	NotDirty,
-	Unlinked,
 	MaybeDirty,
 	Dirty,
 }
@@ -45,6 +41,7 @@ export namespace System {
 
 	export let activeSub: Subscriber | undefined = undefined;
 	export let activeSubsDepth = 0;
+	export let activeSubIsScopeOrNothing = true;
 	export let batchDepth = 0;
 	export let subVersion = DirtyLevels.Dirty + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -86,7 +83,6 @@ export namespace Link {
 		} else {
 			return {
 				dep,
-				depVersion: -1,
 				sub,
 				prevSubOrUpdate: undefined,
 				nextSub: undefined,
@@ -108,15 +104,6 @@ export namespace Link {
 	}
 
 	export function release(link: Link) {
-		unlinkSub(link);
-		// @ts-ignore
-		link.dep = undefined;
-		link.prevPropagateOrNextReleased = pool;
-		pool = link;
-	}
-
-	export function unlinkSub(link: Link) {
-		const dep = link.dep as Dependency & ({} | Subscriber);
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSubOrUpdate;
 
@@ -128,25 +115,22 @@ export namespace Link {
 		}
 
 		if (nextSub === undefined) {
-			dep.subsTail = prevSub;
+			link.dep.subsTail = prevSub;
 		}
 		if (prevSub === undefined) {
-			dep.subs = nextSub;
+			link.dep.subs = nextSub;
 		}
 
+		// @ts-ignore
+		link.dep = undefined;
 		// @ts-ignore
 		link.sub = undefined;
 		link.prevSubOrUpdate = undefined;
 		link.nextSub = undefined;
+		link.nextDep = undefined;
 
-		if (dep.subs === undefined && 'deps' in dep) {
-			let link = dep.deps;
-			while (link !== undefined) {
-				Link.unlinkSub(link);
-				link = link.nextDep;
-			}
-			dep.versionOrDirtyLevel = DirtyLevels.Unlinked;
-		}
+		link.prevPropagateOrNextReleased = pool;
+		pool = link;
 	}
 }
 
@@ -154,14 +138,12 @@ export namespace Dependency {
 
 	const system = System;
 
-	export function link(dep: Dependency, allowScope: boolean) {
-		if (system.activeSubsDepth === 0) {
+	// TODO: remove duplication
+	export function linkSubOnly(dep: Dependency) {
+		if (system.activeSubIsScopeOrNothing) {
 			return;
 		}
 		const sub = system.activeSub!;
-		if (!allowScope && sub.isScope) {
-			return;
-		}
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
 			return;
@@ -175,7 +157,6 @@ export namespace Dependency {
 
 		if (old === undefined || old.dep !== dep) {
 			const newLink = Link.get(dep, sub);
-			newLink.depVersion = dep.depVersion;
 			if (old !== undefined) {
 				newLink.nextDep = old;
 			}
@@ -194,14 +175,53 @@ export namespace Dependency {
 				dep.subsTail = newLink;
 			}
 		} else {
-			old.depVersion = dep.depVersion;
+			sub.depsTail = old;
+		}
+	}
+
+	export function link(dep: Dependency) {
+		if (system.activeSubsDepth === 0) {
+			return;
+		}
+		const sub = system.activeSub!;
+		const subVersion = sub.versionOrDirtyLevel;
+		if (dep.subVersion === subVersion) {
+			return;
+		}
+		dep.subVersion = subVersion;
+
+		const depsTail = sub.depsTail;
+		const old = depsTail !== undefined
+			? depsTail.nextDep
+			: sub.deps;
+
+		if (old === undefined || old.dep !== dep) {
+			const newLink = Link.get(dep, sub);
+			if (old !== undefined) {
+				const nextDep = old.nextDep;
+				Link.release(old);
+				newLink.nextDep = nextDep;
+			}
+			if (depsTail === undefined) {
+				sub.depsTail = sub.deps = newLink;
+			} else {
+				sub.depsTail = depsTail.nextDep = newLink;
+			}
+			if (dep.subs === undefined) {
+				dep.subs = newLink;
+				dep.subsTail = newLink;
+			} else {
+				const oldTail = dep.subsTail!;
+				newLink.prevSubOrUpdate = oldTail;
+				oldTail.nextSub = newLink;
+				dep.subsTail = newLink;
+			}
+		} else {
 			sub.depsTail = old;
 		}
 	}
 
 	export function propagate(dep: Dependency) {
-		dep.depVersion++;
-
 		let link = dep.subs;
 		let dirtyLevel = DirtyLevels.Dirty;
 		let depth = 0;
@@ -286,84 +306,8 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function relinkDeps(sub: Subscriber) {
-		let link = sub.deps;
-
-		top: while (true) {
-
-			while (link !== undefined) {
-				const dep = link.dep as Dependency | Dependency & Subscriber;
-
-				if (dep.subs === undefined) {
-					dep.subs = link;
-					dep.subsTail = link;
-				} else {
-					const oldTail = dep.subsTail!;
-					link.prevSubOrUpdate = oldTail;
-					oldTail.nextSub = link;
-					dep.subsTail = link;
-				}
-				link.sub = sub;
-
-				if (dep.depVersion !== link.depVersion) {
-					link.depVersion = dep.depVersion;
-					sub.versionOrDirtyLevel = DirtyLevels.Dirty;
-				} else if ('deps' in dep) {
-					if (dep.update !== undefined) {
-						if (dep.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
-							dep.subs!.prevSubOrUpdate = link;
-							sub = dep;
-							link = dep.deps;
-
-							continue top;
-						} else if (dep.versionOrDirtyLevel === DirtyLevels.Dirty) {
-							dep.update();
-
-							if (dep.depVersion !== link.depVersion) {
-								sub.versionOrDirtyLevel = DirtyLevels.Dirty;
-							}
-						}
-					}
-				}
-
-				link = link.nextDep;
-			}
-
-			const dirtyLevel = sub.versionOrDirtyLevel;
-
-			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
-			}
-
-			const subSubs = (sub as Dependency & Subscriber).subs;
-			if (subSubs !== undefined) {
-
-				const prevLink = subSubs.prevSubOrUpdate;
-
-				if (prevLink !== undefined) {
-					if (dirtyLevel === DirtyLevels.Dirty) {
-						(sub as Dependency & Subscriber).update!();
-
-						if ((sub as Dependency & Subscriber).depVersion !== prevLink.depVersion) {
-							prevLink.sub.versionOrDirtyLevel = DirtyLevels.Dirty;
-						}
-					}
-
-					subSubs.prevSubOrUpdate = undefined;
-					sub = prevLink.sub as Dependency & Subscriber;
-					link = prevLink.nextDep;
-
-					continue;
-				}
-			}
-
-			break;
-		}
-	}
-
 	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
-		let hasDirtyInnerEffects = false;
 
 		top: while (true) {
 
@@ -371,27 +315,19 @@ export namespace Subscriber {
 				const dep = link.dep as Dependency | Dependency & Subscriber;
 
 				if ('deps' in dep) {
-					if (dep.update !== undefined) {
-						const depDirtyLevel = dep.versionOrDirtyLevel;
+					const depDirtyLevel = dep.versionOrDirtyLevel;
 
-						if (depDirtyLevel === DirtyLevels.MaybeDirty) {
-							dep.subs!.prevSubOrUpdate = link;
-							sub = dep;
-							link = dep.deps;
+					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
+						dep.subs!.prevSubOrUpdate = link;
+						sub = dep;
+						link = dep.deps;
 
-							continue top;
-						} else if (depDirtyLevel === DirtyLevels.Dirty) {
-							dep.update();
+						continue top;
+					} else if (depDirtyLevel === DirtyLevels.Dirty && dep.update !== undefined) {
+						dep.update();
 
-							if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
-								break;
-							}
-						}
-					} else if ('notify' in dep) {
-						const depDirtyLevel = dep.versionOrDirtyLevel;
-
-						if (depDirtyLevel === DirtyLevels.MaybeDirty || depDirtyLevel === DirtyLevels.Dirty) {
-							hasDirtyInnerEffects = true;
+						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
+							break;
 						}
 					}
 				}
@@ -416,7 +352,7 @@ export namespace Subscriber {
 					}
 
 					subSubs.prevSubOrUpdate = undefined;
-					sub = prevLink.sub as Dependency & Subscriber;
+					sub = prevLink.sub;
 					link = prevLink.nextDep;
 
 					continue;
@@ -425,43 +361,46 @@ export namespace Subscriber {
 
 			break;
 		}
-
-		if (hasDirtyInnerEffects && sub.versionOrDirtyLevel === DirtyLevels.NotDirty) {
-			let link = sub.deps;
-
-			while (link !== undefined) {
-				const dep = link.dep as Dependency | Dependency & Subscriber & IEffect;
-				if ('notify' in dep && dep.versionOrDirtyLevel !== DirtyLevels.NotDirty) {
-					dep.notify();
-				}
-				link = link.nextDep;
-			}
-		}
 	}
 
-	export function startTrack(sub: Subscriber) {
+	export function startTrack(sub: Subscriber, isScope?: boolean) {
 		const lastActiveSub = system.activeSub;
 		system.activeSub = sub;
 		system.activeSubsDepth++;
-		sub.versionOrDirtyLevel = system.subVersion++;
-		preTrack(sub);
+		if (isScope) {
+			if (system.subVersion % 2 === 0) {
+				system.subVersion += 1;
+			} else {
+				system.subVersion += 2;
+			}
+			system.activeSubIsScopeOrNothing = true;
+		} else {
+			if (system.subVersion % 2 === 0) {
+				system.subVersion += 2;
+			} else {
+				system.subVersion += 1;
+			}
+			system.activeSubIsScopeOrNothing = false;
+		}
+		sub.depsTail = undefined;
+		sub.versionOrDirtyLevel = system.subVersion;
 		return lastActiveSub;
 	}
 
 	export function endTrack(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
-		postTrack(sub);
-		sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 		system.activeSubsDepth--;
 		system.activeSub = lastActiveSub;
+		if (lastActiveSub !== undefined) {
+			system.activeSubIsScopeOrNothing = lastActiveSub.versionOrDirtyLevel % 2 === 1;
+		} else {
+			system.activeSubIsScopeOrNothing = true;
+		}
+		postTrack(sub);
 	}
 
 	export function clearTrack(sub: Subscriber) {
-		preTrack(sub);
-		postTrack(sub);
-	}
-
-	function preTrack(sub: Subscriber) {
 		sub.depsTail = undefined;
+		postTrack(sub);
 	}
 
 	function postTrack(sub: Subscriber) {
@@ -472,5 +411,6 @@ export namespace Subscriber {
 			Link.release(sub.deps);
 			sub.deps = undefined;
 		}
+		sub.versionOrDirtyLevel = DirtyLevels.NotDirty;
 	}
 }

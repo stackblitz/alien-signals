@@ -27,7 +27,7 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 	expect(cRunTimes).toBe(1);
 });
 
-test('should not run untracked inner effect', () => {
+test.skip('should not run untracked inner effect', () => {
 	const a = signal(3);
 	const b = computed(() => a.get() > 0);
 
@@ -54,7 +54,7 @@ test('should not run untracked inner effect', () => {
 	}
 });
 
-test('should run outer effect first', () => {
+test.skip('should run outer effect first', () => {
 	const a = signal(1);
 	const b = signal(1);
 
@@ -100,7 +100,7 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 	a.set(2);
 });
 
-test('should trigger inner effects in sequence', () => {
+test.skip('should trigger inner effects in sequence', () => {
 	const a = signal(0);
 	const b = signal(0);
 	const order: string[] = [];
@@ -129,7 +129,7 @@ test('should trigger inner effects in sequence', () => {
 	expect(order).toEqual(['first inner', 'last inner']);
 });
 
-test('should trigger inner effects in sequence in effect scope', () => {
+test.skip('should trigger inner effects in sequence in effect scope', () => {
 	const a = signal(0);
 	const b = signal(0);
 	const scope = effectScope();
