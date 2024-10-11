@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { effect, effectScope, signal } from '..';
 
-test.skip('should not trigger after stop', () => {
+test('should not trigger after stop', () => {
 	const count = signal(1);
 	const scope = effectScope();
 

@@ -20,6 +20,7 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
+	notifyLostSubs(): void;
 }
 
 export interface Link {
@@ -104,6 +105,7 @@ export namespace Link {
 	}
 
 	export function release(link: Link) {
+		const dep = link.dep as Dependency & ({} | Subscriber);
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSubOrUpdate;
 
@@ -131,6 +133,10 @@ export namespace Link {
 
 		link.prevPropagateOrNextReleased = pool;
 		pool = link;
+
+		if (dep.subs === undefined && 'notifyLostSubs' in dep) {
+			dep.notifyLostSubs();
+		}
 	}
 }
 

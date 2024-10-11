@@ -10,6 +10,8 @@ export class EffectScope implements Subscriber {
 	depsTail = undefined;
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
+	notifyLostSubs() { }
+
 	run<T>(fn: () => T) {
 		const prevActiveSub = Subscriber.startTrack(this, true);
 		const res = fn();

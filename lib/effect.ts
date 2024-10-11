@@ -25,6 +25,10 @@ export class Effect implements IEffect, Dependency, Subscriber {
 		Dependency.link(this);
 	}
 
+	notifyLostSubs() {
+		Subscriber.clearTrack(this);
+	}
+
 	notify() {
 		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);

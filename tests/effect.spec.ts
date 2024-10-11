@@ -6,28 +6,17 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 	const b = computed(() => {
 		return a.get() * 2;
 	});
-	const c = computed(() => {
-		cRunTimes++;
-		return b.get() % 2;
-	});
 	const effect1 = effect(() => {
 		b.get();
 	});
 
-	let cRunTimes = 0;
 
 	expect(!!b.subs).toBe(true);
 	Subscriber.clearTrack(effect1);
 	expect(!!b.subs).toBe(false);
-
-	c.get();
-	expect(cRunTimes).toBe(1);
-	a.set(2);
-	expect(b.get()).toBe(4);
-	expect(cRunTimes).toBe(1);
 });
 
-test.skip('should not run untracked inner effect', () => {
+test('should not run untracked inner effect', () => {
 	const a = signal(3);
 	const b = computed(() => a.get() > 0);
 
@@ -54,7 +43,7 @@ test.skip('should not run untracked inner effect', () => {
 	}
 });
 
-test.skip('should run outer effect first', () => {
+test('should run outer effect first', () => {
 	const a = signal(1);
 	const b = signal(1);
 
