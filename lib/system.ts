@@ -9,7 +9,6 @@ export interface Dependency {
 	depVersion: number;
 	subVersion: number;
 	update?(): void;
-	notifyLostSubs?(): void;
 }
 
 export interface Subscriber {
@@ -37,6 +36,7 @@ export interface Link {
 
 export const enum DirtyLevels {
 	NotDirty,
+	Unlinked,
 	MaybeDirty,
 	Dirty,
 }
@@ -139,8 +139,13 @@ export namespace Link {
 		link.prevSubOrUpdate = undefined;
 		link.nextSub = undefined;
 
-		if (dep.subs === undefined && dep.notifyLostSubs !== undefined) {
-			dep.notifyLostSubs();
+		if (dep.subs === undefined && 'deps' in dep) {
+			let link = dep.deps;
+			while (link !== undefined) {
+				Link.unlinkSub(link);
+				link = link.nextDep;
+			}
+			dep.versionOrDirtyLevel = DirtyLevels.Unlinked;
 		}
 	}
 }
