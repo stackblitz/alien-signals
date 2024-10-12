@@ -41,10 +41,10 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	}
 
 	update() {
-		const lastActiveSub = Subscriber.startTrack(this);
+		const prevSub = Subscriber.startTrack(this);
 		const oldValue = this.cachedValue;
 		const newValue = this.getter(oldValue);
-		Subscriber.endTrack(this, lastActiveSub);
+		Subscriber.endTrack(this, prevSub);
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;
 			Dependency.propagate(this);

@@ -45,7 +45,7 @@ export namespace System {
 	export let activeSubsDepth = 0;
 	export let activeSubIsScopeOrNothing = true;
 	export let batchDepth = 0;
-	export let subVersion = DirtyLevels.Dirty + 1;
+	export let lastSubVersion = DirtyLevels.Dirty + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
 	export let queuedEffectsTail: IEffect | undefined = undefined;
 
@@ -392,34 +392,35 @@ export namespace Subscriber {
 	}
 
 	export function startTrack(sub: Subscriber, isScope?: boolean) {
-		const lastActiveSub = system.activeSub;
+		const prevSub = system.activeSub;
 		system.activeSub = sub;
 		system.activeSubsDepth++;
+
+		let version = system.lastSubVersion + 1;
 		if (isScope) {
-			if (system.subVersion % 2 === 0) {
-				system.subVersion += 1;
-			} else {
-				system.subVersion += 2;
+			if (version % 2 === 0) {
+				version += 1;
 			}
 			system.activeSubIsScopeOrNothing = true;
 		} else {
-			if (system.subVersion % 2 === 0) {
-				system.subVersion += 2;
-			} else {
-				system.subVersion += 1;
+			if (version % 2 === 1) {
+				version += 1;
 			}
 			system.activeSubIsScopeOrNothing = false;
 		}
+		system.lastSubVersion = version;
+
 		sub.depsTail = undefined;
-		sub.versionOrDirtyLevel = system.subVersion;
-		return lastActiveSub;
+		sub.versionOrDirtyLevel = version;
+
+		return prevSub;
 	}
 
-	export function endTrack(sub: Subscriber, lastActiveSub: Subscriber | undefined) {
+	export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined) {
 		system.activeSubsDepth--;
-		system.activeSub = lastActiveSub;
-		if (lastActiveSub !== undefined) {
-			system.activeSubIsScopeOrNothing = lastActiveSub.versionOrDirtyLevel % 2 === 1;
+		system.activeSub = prevSub;
+		if (prevSub !== undefined) {
+			system.activeSubIsScopeOrNothing = prevSub.versionOrDirtyLevel % 2 === 1;
 		} else {
 			system.activeSubIsScopeOrNothing = true;
 		}
