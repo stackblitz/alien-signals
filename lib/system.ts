@@ -338,14 +338,6 @@ export namespace Dependency {
 
 				if (subDirtyLevel === DirtyLevels.None) {
 
-					if ('subs' in sub) {
-						const subSubs = sub.subs;
-
-						if (subSubs !== undefined) {
-							lastSubs.queuedPropagateOrNextReleased = subSubs;
-							lastSubs = subSubs;
-						}
-					}
 					if ('notify' in sub) {
 						const queuedEffectsTail = system.queuedEffectsTail;
 
@@ -355,6 +347,13 @@ export namespace Dependency {
 						} else {
 							system.queuedEffectsTail = sub;
 							system.queuedEffects = sub;
+						}
+					} else if ('subs' in sub) {
+						const subSubs = sub.subs;
+
+						if (subSubs !== undefined) {
+							lastSubs.queuedPropagateOrNextReleased = subSubs;
+							lastSubs = subSubs;
 						}
 					}
 				}
