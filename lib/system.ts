@@ -7,7 +7,6 @@ export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	subVersion: number;
-	notifyLostSubs?(): void;
 	update?(): void;
 }
 
@@ -37,6 +36,7 @@ export const enum DirtyLevels {
 	SideEffectsOnly,
 	MaybeDirty,
 	Dirty,
+	Released,
 }
 
 export namespace System {
@@ -45,7 +45,7 @@ export namespace System {
 	export let activeSubsDepth = 0;
 	export let activeSubIsScopeOrNothing = true;
 	export let batchDepth = 0;
-	export let lastSubVersion = DirtyLevels.Dirty + 1;
+	export let lastSubVersion = DirtyLevels.Released + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
 	export let queuedEffectsTail: IEffect | undefined = undefined;
 
@@ -135,8 +135,13 @@ export namespace Link {
 		link.queuedPropagateOrNextReleased = pool;
 		pool = link;
 
-		if (dep.subs === undefined && 'notifyLostSubs' in dep) {
-			dep.notifyLostSubs!();
+		if (dep.subs === undefined && 'deps' in dep) {
+			if (dep.deps !== undefined) {
+				Link.releaseDeps(dep.deps);
+				Link.release(dep.deps);
+				dep.deps = undefined;
+			}
+			dep.versionOrDirtyLevel = DirtyLevels.Released;
 		}
 	}
 }
@@ -479,15 +484,7 @@ export namespace Subscriber {
 		} else {
 			system.activeSubIsScopeOrNothing = true;
 		}
-		postTrack(sub);
-	}
 
-	export function clearTrack(sub: Subscriber) {
-		sub.depsTail = undefined;
-		postTrack(sub);
-	}
-
-	function postTrack(sub: Subscriber) {
 		if (sub.depsTail !== undefined) {
 			Link.releaseDeps(sub.depsTail);
 		} else if (sub.deps !== undefined) {

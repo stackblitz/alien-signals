@@ -14,7 +14,7 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 
 
 	expect(!!b.subs).toBe(true);
-	Subscriber.clearTrack(effect1);
+	Subscriber.endTrack(effect1, Subscriber.startTrack(effect1));
 	expect(!!b.subs).toBe(false);
 });
 

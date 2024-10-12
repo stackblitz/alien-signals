@@ -21,11 +21,6 @@ export class Computed<T = any> implements Dependency, Subscriber {
 		public getter: (cachedValue?: T) => T
 	) { }
 
-	notifyLostSubs() {
-		Subscriber.clearTrack(this);
-		this.versionOrDirtyLevel = DirtyLevels.Dirty;
-	}
-
 	get(): T {
 		Dependency.linkSubOnly(this);
 		const dirtyLevel = this.versionOrDirtyLevel;
@@ -34,7 +29,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				return this.update();
 			}
-		} else if (dirtyLevel === DirtyLevels.Dirty) {
+		} else if (dirtyLevel >= DirtyLevels.Dirty) {
 			return this.update();
 		}
 		return this.cachedValue!;

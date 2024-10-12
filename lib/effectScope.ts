@@ -1,4 +1,4 @@
-import { DirtyLevels, IEffect, Subscriber } from './system.js';
+import { DirtyLevels, IEffect, Link, Subscriber } from './system.js';
 
 export function effectScope() {
 	return new EffectScope();
@@ -27,6 +27,11 @@ export class EffectScope implements IEffect, Subscriber {
 	}
 
 	stop() {
-		Subscriber.clearTrack(this);
+		if (this.deps !== undefined) {
+			Link.releaseDeps(this.deps);
+			Link.release(this.deps);
+			this.deps = undefined;
+		}
+		this.versionOrDirtyLevel = DirtyLevels.None;
 	}
 }

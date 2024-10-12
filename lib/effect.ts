@@ -25,10 +25,6 @@ export class Effect implements IEffect, Dependency, Subscriber {
 		Dependency.link(this);
 	}
 
-	notifyLostSubs() {
-		Subscriber.clearTrack(this);
-	}
-
 	notify() {
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
