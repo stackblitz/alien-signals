@@ -247,7 +247,7 @@ export namespace Dependency {
 				if (subDirtyLevel === DirtyLevels.None) {
 					const subIsEffect = 'notify' in sub;
 
-					if ('subs' in sub) {
+					if ('subs' in sub && sub.subs !== undefined) {
 						sub.deps!.prevPropagateOrNextReleased = link;
 						dep = sub;
 						depIsEffect = subIsEffect;
@@ -260,9 +260,7 @@ export namespace Dependency {
 						depth++;
 
 						continue top;
-					}
-
-					if (subIsEffect) {
+					} else if (subIsEffect) {
 						const queuedEffectsTail = system.queuedEffectsTail;
 
 						if (queuedEffectsTail !== undefined) {
