@@ -29,7 +29,7 @@ export interface Link {
 	prevSubOrUpdate: Link | undefined;
 	nextSub: Link | undefined;
 	nextDep: Link | undefined;
-	prevPropagateOrNextReleased: Link | undefined;
+	queuedPropagateOrNextReleased: Link | undefined;
 }
 
 export const enum DirtyLevels {
@@ -77,8 +77,8 @@ export namespace Link {
 	export function get(dep: Dependency, sub: Subscriber): Link {
 		if (pool !== undefined) {
 			const link = pool;
-			pool = link.prevPropagateOrNextReleased;
-			link.prevPropagateOrNextReleased = undefined;
+			pool = link.queuedPropagateOrNextReleased;
+			link.queuedPropagateOrNextReleased = undefined;
 			link.dep = dep;
 			link.sub = sub;
 			return link;
@@ -89,7 +89,7 @@ export namespace Link {
 				prevSubOrUpdate: undefined,
 				nextSub: undefined,
 				nextDep: undefined,
-				prevPropagateOrNextReleased: undefined,
+				queuedPropagateOrNextReleased: undefined,
 			};
 		}
 	}
@@ -132,7 +132,7 @@ export namespace Link {
 		link.nextSub = undefined;
 		link.nextDep = undefined;
 
-		link.prevPropagateOrNextReleased = pool;
+		link.queuedPropagateOrNextReleased = pool;
 		pool = link;
 
 		if (dep.subs === undefined && 'notifyLostSubs' in dep) {
@@ -144,6 +144,8 @@ export namespace Link {
 export namespace Dependency {
 
 	const system = System;
+
+	export let propagate = fastPropagate;
 
 	// TODO: remove duplication
 	export function linkSubOnly(dep: Dependency) {
@@ -228,7 +230,7 @@ export namespace Dependency {
 		}
 	}
 
-	export function propagate(dep: Dependency) {
+	export function effectsPropagate(dep: Dependency) {
 		let depIsEffect = false;
 		let link = dep.subs;
 		let dirtyLevel = DirtyLevels.Dirty;
@@ -248,7 +250,7 @@ export namespace Dependency {
 					const subIsEffect = 'notify' in sub;
 
 					if ('subs' in sub && sub.subs !== undefined) {
-						sub.deps!.prevPropagateOrNextReleased = link;
+						sub.deps!.queuedPropagateOrNextReleased = link;
 						dep = sub;
 						depIsEffect = subIsEffect;
 						link = sub.subs;
@@ -279,10 +281,10 @@ export namespace Dependency {
 			const depDeps = (dep as Dependency & Subscriber).deps;
 			if (depDeps !== undefined) {
 
-				const prevLink = depDeps.prevPropagateOrNextReleased;
+				const prevLink = depDeps.queuedPropagateOrNextReleased;
 
 				if (prevLink !== undefined) {
-					depDeps.prevPropagateOrNextReleased = undefined;
+					depDeps.queuedPropagateOrNextReleased = undefined;
 					dep = prevLink.dep;
 					depIsEffect = 'notify' in dep;
 					link = prevLink.nextSub;
@@ -315,6 +317,60 @@ export namespace Dependency {
 			}
 
 			break;
+		}
+	}
+
+	export function fastPropagate(dep: Dependency) {
+		let dirtyLevel = DirtyLevels.Dirty;
+		let currentSubs = dep.subs;
+		let lastSubs = currentSubs!;
+
+		while (currentSubs !== undefined) {
+			let subLink = currentSubs;
+
+			while (true) {
+				const sub = subLink.sub;
+				const subDirtyLevel = sub.versionOrDirtyLevel;
+
+				if (subDirtyLevel < dirtyLevel) {
+					sub.versionOrDirtyLevel = dirtyLevel;
+				}
+
+				if (subDirtyLevel === DirtyLevels.None) {
+
+					if ('subs' in sub) {
+						const subSubs = sub.subs;
+
+						if (subSubs !== undefined) {
+							lastSubs.queuedPropagateOrNextReleased = subSubs;
+							lastSubs = subSubs;
+						}
+					}
+					if ('notify' in sub) {
+						const queuedEffectsTail = system.queuedEffectsTail;
+
+						if (queuedEffectsTail !== undefined) {
+							queuedEffectsTail.nextNotify = sub;
+							system.queuedEffectsTail = sub;
+						} else {
+							system.queuedEffectsTail = sub;
+							system.queuedEffects = sub;
+						}
+					}
+				}
+
+				const nextSub = subLink.nextSub;
+				if (nextSub === undefined) {
+					break;
+				}
+				subLink = nextSub;
+			}
+
+			const nextPropagate = currentSubs.queuedPropagateOrNextReleased;
+			currentSubs.queuedPropagateOrNextReleased = undefined;
+			currentSubs = nextPropagate;
+
+			dirtyLevel = DirtyLevels.MaybeDirty;
 		}
 	}
 }

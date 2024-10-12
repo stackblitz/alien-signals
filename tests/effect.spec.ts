@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, signal, Subscriber, System } from '..';
+import { computed, effect, effectScope, enableEffectsPropagation, signal, Subscriber, System } from '..';
+
+enableEffectsPropagation();
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	const a = signal(1);
