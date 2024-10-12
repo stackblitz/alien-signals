@@ -1,4 +1,4 @@
-import { System, Dependency } from './system';
+import { System, Dependency } from './system.js';
 
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;

@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, Subscriber } from './system';
+import { Dependency, DirtyLevels, Subscriber } from './system.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T) {
 	return new Computed<T>(getter);

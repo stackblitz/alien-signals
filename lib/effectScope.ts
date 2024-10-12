@@ -1,4 +1,4 @@
-import { DirtyLevels, IEffect, Subscriber } from './system';
+import { DirtyLevels, IEffect, Subscriber } from './system.js';
 
 export function effectScope() {
 	return new EffectScope();

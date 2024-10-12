@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, IEffect, Subscriber } from './system';
+import { Dependency, DirtyLevels, IEffect, Subscriber } from './system.js';
 
 export function effect(fn: () => void) {
 	const e = new Effect(fn);
