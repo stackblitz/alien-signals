@@ -12,8 +12,6 @@ export class EffectScope implements IEffect, Subscriber {
 	depsTail = undefined;
 	versionOrDirtyLevel = DirtyLevels.None;
 
-	notifyLostSubs() { }
-
 	notify() {
 		if (this.versionOrDirtyLevel !== DirtyLevels.None) {
 			this.versionOrDirtyLevel = DirtyLevels.None;

@@ -7,6 +7,7 @@ export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	subVersion: number;
+	notifyLostSubs?(): void;
 	update?(): void;
 }
 
@@ -20,7 +21,6 @@ export interface Subscriber {
 	versionOrDirtyLevel: number | DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
-	notifyLostSubs(): void;
 }
 
 export interface Link {
@@ -136,7 +136,7 @@ export namespace Link {
 		pool = link;
 
 		if (dep.subs === undefined && 'notifyLostSubs' in dep) {
-			dep.notifyLostSubs();
+			dep.notifyLostSubs!();
 		}
 	}
 }
