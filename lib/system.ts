@@ -308,55 +308,63 @@ export namespace Dependency {
 		}
 	 */
 	export function fastPropagate(dep: Dependency) {
+		let subsHead = dep.subs!;
+		if (subsHead === undefined) {
+			return;
+		}
+
 		let dirtyLevel = DirtyLevels.Dirty;
-		let currentSubs = dep.subs;
-		let lastSubs = currentSubs!;
+		let lastSubs = subsHead;
+		let link = subsHead;
+		let remainingQuantity = 0;
 
-		while (currentSubs !== undefined) {
-			let subLink = currentSubs;
+		while (true) {
+			const sub = link.sub;
+			const subDirtyLevel = sub.versionOrDirtyLevel;
 
-			while (true) {
-				const sub = subLink.sub;
-				const subDirtyLevel = sub.versionOrDirtyLevel;
-
-				if (subDirtyLevel < dirtyLevel) {
-					sub.versionOrDirtyLevel = dirtyLevel;
-				}
-
-				if (subDirtyLevel === DirtyLevels.None) {
-
-					if ('notify' in sub) {
-						const queuedEffectsTail = system.queuedEffectsTail;
-
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.nextNotify = sub;
-							system.queuedEffectsTail = sub;
-						} else {
-							system.queuedEffectsTail = sub;
-							system.queuedEffects = sub;
-						}
-					} else if ('subs' in sub) {
-						const subSubs = sub.subs;
-
-						if (subSubs !== undefined) {
-							lastSubs.queuedPropagateOrNextReleased = subSubs;
-							lastSubs = subSubs;
-						}
-					}
-				}
-
-				const nextSub = subLink.nextSub;
-				if (nextSub === undefined) {
-					break;
-				}
-				subLink = nextSub;
+			if (subDirtyLevel < dirtyLevel) {
+				sub.versionOrDirtyLevel = dirtyLevel;
 			}
 
-			const nextPropagate = currentSubs.queuedPropagateOrNextReleased;
-			currentSubs.queuedPropagateOrNextReleased = undefined;
-			currentSubs = nextPropagate;
+			if (subDirtyLevel === DirtyLevels.None) {
 
-			dirtyLevel = DirtyLevels.MaybeDirty;
+				if ('notify' in sub) {
+					const queuedEffectsTail = system.queuedEffectsTail;
+
+					if (queuedEffectsTail !== undefined) {
+						queuedEffectsTail.nextNotify = sub;
+						system.queuedEffectsTail = sub;
+					} else {
+						system.queuedEffectsTail = sub;
+						system.queuedEffects = sub;
+					}
+				} else if ('subs' in sub) {
+					const subSubs = sub.subs;
+
+					if (subSubs !== undefined) {
+						lastSubs.queuedPropagateOrNextReleased = subSubs;
+						lastSubs = subSubs;
+						remainingQuantity++;
+					}
+				}
+			}
+
+			const nextSub = link.nextSub;
+			if (nextSub === undefined) {
+				if (remainingQuantity > 0) {
+					const nextPropagate = subsHead.queuedPropagateOrNextReleased!;
+					subsHead.queuedPropagateOrNextReleased = undefined;
+					subsHead = nextPropagate;
+					link = subsHead;
+
+					dirtyLevel = DirtyLevels.MaybeDirty;
+					remainingQuantity--;
+					continue;
+				}
+				break;
+			}
+
+			link = nextSub;
 		}
 	}
 }
