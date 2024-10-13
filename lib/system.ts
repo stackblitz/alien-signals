@@ -274,6 +274,39 @@ export namespace Dependency {
 		}
 	}
 
+	/**
+	 * @example Original
+		export function fastPropagate(dep: Dependency, dirtyLevel = DirtyLevels.Dirty) {
+			let link = dep.subs;
+
+			while (link !== undefined) {
+				const sub = link.sub;
+				const subDirtyLevel = sub.versionOrDirtyLevel;
+
+				if (subDirtyLevel < dirtyLevel) {
+					sub.versionOrDirtyLevel = dirtyLevel;
+				}
+
+				if (subDirtyLevel === DirtyLevels.None) {
+					if ('notify' in sub) {
+						const queuedEffectsTail = system.queuedEffectsTail;
+
+						if (queuedEffectsTail !== undefined) {
+							queuedEffectsTail.nextNotify = sub;
+							system.queuedEffectsTail = sub;
+						} else {
+							system.queuedEffectsTail = sub;
+							system.queuedEffects = sub;
+						}
+					} else if ('subs' in sub) {
+						fastPropagate(sub, DirtyLevels.MaybeDirty);
+					}
+				}
+
+				link = link.nextSub;
+			}
+		}
+	 */
 	export function fastPropagate(dep: Dependency) {
 		let dirtyLevel = DirtyLevels.Dirty;
 		let currentSubs = dep.subs;
