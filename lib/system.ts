@@ -343,6 +343,32 @@ export namespace Subscriber {
 		}
 	}
 
+	/**
+	 * @example Original
+		export function resolveMaybeDirty(sub: Subscriber) {
+			let link = sub.deps;
+
+			while (link !== undefined) {
+				const dep = link.dep as Dependency | Dependency & Subscriber;
+				if ('deps' in dep) {
+					if (dep.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+						resolveMaybeDirty(dep);
+					}
+					if (dep.versionOrDirtyLevel === DirtyLevels.Dirty && 'update' in dep) {
+						dep.update!();
+						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
+							break;
+						}
+					}
+				}
+				link = link.nextDep;
+			}
+
+			if (sub.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+				sub.versionOrDirtyLevel = DirtyLevels.None;
+			}
+		}
+	 */
 	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
 
