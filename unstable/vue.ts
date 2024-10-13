@@ -48,12 +48,12 @@ export function triggerRef(ref: ShallowRef) {
 const pausedSubsDepths: number[] = [];
 
 export function pauseTracking() {
-	pausedSubsDepths.push(System.activeSubsDepth);
-	System.activeSubsDepth = 0;
+	pausedSubsDepths.push(System.activeDepsSubsDepth);
+	System.activeDepsSubsDepth = 0;
 }
 
 export function resetTracking() {
-	System.activeSubsDepth = pausedSubsDepths.pop()!;
+	System.activeDepsSubsDepth = pausedSubsDepths.pop()!;
 }
 
 export function shallowRef<T>(): ShallowRef<T | undefined>;

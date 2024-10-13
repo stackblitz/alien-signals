@@ -41,9 +41,10 @@ export const enum DirtyLevels {
 
 export namespace System {
 
-	export let activeSub: Subscriber | undefined = undefined;
-	export let activeSubsDepth = 0;
-	export let activeSubIsScopeOrNothing = true;
+	export let activeDepsSub: Subscriber | undefined = undefined;
+	export let activeEffectsSub: Subscriber | undefined = undefined;
+	export let activeDepsSubsDepth = 0;
+	export let activeEffectsSubsDepth = 0;
 	export let batchDepth = 0;
 	export let lastSubVersion = DirtyLevels.Released + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -152,15 +153,14 @@ export namespace Dependency {
 
 	export let propagate = fastPropagate;
 
-	// TODO: remove duplication
-	export function linkSubOnly(dep: Dependency) {
-		if (system.activeSubIsScopeOrNothing) {
-			return;
+	export function linkDepsSub(dep: Dependency) {
+		if (system.activeDepsSubsDepth === 0) {
+			return false;
 		}
-		const sub = system.activeSub!;
+		const sub = system.activeDepsSub!;
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
-			return;
+			return true;
 		}
 		dep.subVersion = subVersion;
 
@@ -191,16 +191,17 @@ export namespace Dependency {
 		} else {
 			sub.depsTail = old;
 		}
+		return true;
 	}
 
-	export function link(dep: Dependency) {
-		if (system.activeSubsDepth === 0) {
-			return;
+	export function linkEffectsSub(dep: Dependency) {
+		if (system.activeEffectsSubsDepth === 0) {
+			return false;
 		}
-		const sub = system.activeSub!;
+		const sub = system.activeEffectsSub!;
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
-			return;
+			return true;
 		}
 		dep.subVersion = subVersion;
 
@@ -212,9 +213,7 @@ export namespace Dependency {
 		if (old === undefined || old.dep !== dep) {
 			const newLink = Link.get(dep, sub);
 			if (old !== undefined) {
-				const nextDep = old.nextDep;
-				Link.release(old);
-				newLink.nextDep = nextDep;
+				newLink.nextDep = old;
 			}
 			if (depsTail === undefined) {
 				sub.depsTail = sub.deps = newLink;
@@ -233,6 +232,7 @@ export namespace Dependency {
 		} else {
 			sub.depsTail = old;
 		}
+		return true;
 	}
 
 	export function effectsPropagate(dep: Dependency) {
@@ -451,39 +451,45 @@ export namespace Subscriber {
 		}
 	}
 
-	export function startTrack(sub: Subscriber, isScope?: boolean) {
-		const prevSub = system.activeSub;
-		system.activeSub = sub;
-		system.activeSubsDepth++;
-
-		let version = system.lastSubVersion + 1;
-		if (isScope) {
-			if (version % 2 === 0) {
-				version += 1;
-			}
-			system.activeSubIsScopeOrNothing = true;
-		} else {
-			if (version % 2 === 1) {
-				version += 1;
-			}
-			system.activeSubIsScopeOrNothing = false;
-		}
-		system.lastSubVersion = version;
+	export function startTrackDeps(sub: Subscriber) {
+		const prevSub = system.activeDepsSub;
+		system.activeDepsSub = sub;
+		system.activeDepsSubsDepth++;
 
 		sub.depsTail = undefined;
-		sub.versionOrDirtyLevel = version;
+		sub.versionOrDirtyLevel = system.lastSubVersion++;
 
 		return prevSub;
 	}
 
-	export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined) {
-		system.activeSubsDepth--;
-		system.activeSub = prevSub;
-		if (prevSub !== undefined) {
-			system.activeSubIsScopeOrNothing = prevSub.versionOrDirtyLevel % 2 === 1;
-		} else {
-			system.activeSubIsScopeOrNothing = true;
+	export function endTrackDeps(sub: Subscriber, prevSub: Subscriber | undefined) {
+		system.activeDepsSubsDepth--;
+		system.activeDepsSub = prevSub;
+
+		if (sub.depsTail !== undefined) {
+			Link.releaseDeps(sub.depsTail);
+		} else if (sub.deps !== undefined) {
+			Link.releaseDeps(sub.deps);
+			Link.release(sub.deps);
+			sub.deps = undefined;
 		}
+		sub.versionOrDirtyLevel = DirtyLevels.None;
+	}
+
+	export function startTrackEffects(sub: Subscriber) {
+		const prevSub = system.activeEffectsSub;
+		system.activeEffectsSub = sub;
+		system.activeEffectsSubsDepth++;
+
+		sub.depsTail = undefined;
+		sub.versionOrDirtyLevel = system.lastSubVersion++;
+
+		return prevSub;
+	}
+
+	export function endTrackEffects(sub: Subscriber, prevSub: Subscriber | undefined) {
+		system.activeEffectsSubsDepth--;
+		system.activeEffectsSub = prevSub;
 
 		if (sub.depsTail !== undefined) {
 			Link.releaseDeps(sub.depsTail);

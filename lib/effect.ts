@@ -22,7 +22,9 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	constructor(
 		private fn: () => void
 	) {
-		Dependency.link(this);
+		if (!Dependency.linkDepsSub(this)) {
+			Dependency.linkEffectsSub(this);
+		}
 	}
 
 	notify() {
@@ -43,8 +45,8 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	}
 
 	run() {
-		const prevSub = Subscriber.startTrack(this);
+		const prevSub = Subscriber.startTrackDeps(this);
 		this.fn();
-		Subscriber.endTrack(this, prevSub);
+		Subscriber.endTrackDeps(this, prevSub);
 	}
 }

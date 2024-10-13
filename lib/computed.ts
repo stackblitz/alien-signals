@@ -22,7 +22,7 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	) { }
 
 	get(): T {
-		Dependency.linkSubOnly(this);
+		Dependency.linkDepsSub(this);
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
@@ -36,10 +36,10 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	}
 
 	update() {
-		const prevSub = Subscriber.startTrack(this);
+		const prevSub = Subscriber.startTrackDeps(this);
 		const oldValue = this.cachedValue;
 		const newValue = this.getter(oldValue);
-		Subscriber.endTrack(this, prevSub);
+		Subscriber.endTrackDeps(this, prevSub);
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;
 			Dependency.propagate(this);
