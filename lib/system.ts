@@ -411,8 +411,8 @@ export namespace Subscriber {
 						link = dep.deps;
 
 						continue top;
-					} else if (depDirtyLevel === DirtyLevels.Dirty && dep.update !== undefined) {
-						dep.update();
+					} else if (depDirtyLevel === DirtyLevels.Dirty && 'update' in dep) {
+						dep.update!();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
 							break;
