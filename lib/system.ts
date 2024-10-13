@@ -102,6 +102,10 @@ export namespace Dependency {
 
 	export let propagate = fastPropagate;
 
+	export function setPropagationMode(mode: 'strict' | 'fast') {
+		propagate = mode === 'strict' ? strictPropagate : fastPropagate;
+	}
+
 	export function linkDepsSub(dep: Dependency) {
 		if (system.activeDepsSubsDepth === 0) {
 			return false;
@@ -184,7 +188,7 @@ export namespace Dependency {
 		return true;
 	}
 
-	export function effectsPropagate(dep: Dependency) {
+	export function strictPropagate(dep: Dependency) {
 		let depIsEffect = false;
 		let link = dep.subs;
 		let dirtyLevel = DirtyLevels.Dirty;
