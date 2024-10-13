@@ -70,5 +70,5 @@ count.set(3); // No console output
 
 | Version | Savings                                        |
 |---------|------------------------------------------------|
-| 0.1    | Satisfies use cases for Vue Vapor Mode         |
-| 0.0    | Satisfies use cases for `vuejs/language-tools` |
+| 0.2    | Satisfies use cases for Vue Vapor Mode         |
+| 0.1    | Satisfies use cases for `vuejs/language-tools` |
