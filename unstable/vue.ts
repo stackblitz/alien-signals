@@ -4,7 +4,6 @@ import {
 	DirtyLevels,
 	Effect,
 	EffectScope,
-	Link,
 	Signal,
 	Subscriber,
 	System,
@@ -99,9 +98,9 @@ export class ReactiveEffect extends Effect {
 
 	stop() {
 		if (this.deps !== undefined) {
-			Link.releaseDeps(this.deps);
-			Link.release(this.deps);
+			Subscriber.clearTrack(this.deps);
 			this.deps = undefined;
+			this.depsTail = undefined;
 		}
 		this.versionOrDirtyLevel = DirtyLevels.None;
 	}
