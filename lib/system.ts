@@ -404,6 +404,7 @@ export namespace Subscriber {
 	 */
 	export function resolveMaybeDirty(sub: Subscriber) {
 		let link = sub.deps;
+		let depth = 0;
 
 		while (true) {
 
@@ -417,22 +418,22 @@ export namespace Subscriber {
 						dep.subs!.prevSubOrUpdate = link;
 						sub = dep;
 						link = dep.deps;
+						depth++;
 
 						continue;
 					} else if (depDirtyLevel === DirtyLevels.Dirty && 'update' in dep) {
 						dep.update!();
 
 						if ((sub.versionOrDirtyLevel as DirtyLevels) === DirtyLevels.Dirty) {
-							const subSubs = (sub as Dependency & Subscriber).subs;
-							if (subSubs !== undefined) {
-								const prevLink = subSubs.prevSubOrUpdate;
-								if (prevLink !== undefined) {
-									(sub as Dependency & Subscriber).update!();
-									subSubs.prevSubOrUpdate = undefined;
-									sub = prevLink.sub;
-									link = prevLink.nextDep;
-									continue;
-								}
+							if (depth > 0) {
+								const subSubs = (sub as Dependency & Subscriber).subs!;
+								const prevLink = subSubs.prevSubOrUpdate!;
+								(sub as Dependency & Subscriber).update!();
+								subSubs.prevSubOrUpdate = undefined;
+								sub = prevLink.sub;
+								link = prevLink.nextDep;
+								depth--;
+								continue;
 							}
 
 							break;
@@ -448,30 +449,26 @@ export namespace Subscriber {
 
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				sub.versionOrDirtyLevel = DirtyLevels.None;
-				const subSubs = (sub as Dependency & Subscriber).subs;
-				if (subSubs !== undefined) {
-					const prevLink = subSubs.prevSubOrUpdate;
-					if (prevLink !== undefined) {
-						subSubs.prevSubOrUpdate = undefined;
-						sub = prevLink.sub;
-						link = prevLink.nextDep;
-						continue;
-					}
+				if (depth > 0) {
+					const subSubs = (sub as Dependency & Subscriber).subs!;
+					const prevLink = subSubs.prevSubOrUpdate!;
+					subSubs.prevSubOrUpdate = undefined;
+					sub = prevLink.sub;
+					link = prevLink.nextDep;
+					depth--;
+					continue;
 				}
-			} else {
-				const subSubs = (sub as Dependency & Subscriber).subs;
-				if (subSubs !== undefined) {
-					const prevLink = subSubs.prevSubOrUpdate;
-					if (prevLink !== undefined) {
-						if (dirtyLevel === DirtyLevels.Dirty) {
-							(sub as Dependency & Subscriber).update!();
-						}
-						subSubs.prevSubOrUpdate = undefined;
-						sub = prevLink.sub;
-						link = prevLink.nextDep;
-						continue;
-					}
+			} else if (depth > 0) {
+				const subSubs = (sub as Dependency & Subscriber).subs!;
+				const prevLink = subSubs.prevSubOrUpdate!;
+				if (dirtyLevel === DirtyLevels.Dirty) {
+					(sub as Dependency & Subscriber).update!();
 				}
+				subSubs.prevSubOrUpdate = undefined;
+				sub = prevLink.sub;
+				link = prevLink.nextDep;
+				depth--;
+				continue;
 			}
 
 			break;
