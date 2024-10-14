@@ -194,8 +194,7 @@ export namespace Dependency {
 		let dirtyLevel = DirtyLevels.Dirty;
 		let depth = 0;
 
-		top: while (true) {
-
+		top: do {
 			while (link !== undefined) {
 				const sub = link.sub;
 				const subDirtyLevel = sub.versionOrDirtyLevel;
@@ -275,7 +274,7 @@ export namespace Dependency {
 			}
 
 			break;
-		}
+		} while (true);
 	}
 
 	/**
@@ -322,7 +321,7 @@ export namespace Dependency {
 		let link = subsHead;
 		let remainingQuantity = 0;
 
-		while (true) {
+		do {
 			const sub = link.sub;
 			const subDirtyLevel = sub.versionOrDirtyLevel;
 
@@ -369,7 +368,7 @@ export namespace Dependency {
 			}
 
 			link = nextSub;
-		}
+		} while (true);
 	}
 }
 
@@ -418,8 +417,7 @@ export namespace Subscriber {
 		let link = sub.deps;
 		let depth = 0;
 
-		while (true) {
-
+		do {
 			if (link !== undefined) {
 				const dep = link.dep as Dependency | Dependency & Subscriber;
 
@@ -484,7 +482,7 @@ export namespace Subscriber {
 			}
 
 			break;
-		}
+		} while (true);
 	}
 
 	export function startTrackDependencies(sub: Subscriber) {
@@ -515,9 +513,8 @@ export namespace Subscriber {
 		sub.versionOrDirtyLevel = DirtyLevels.None;
 	}
 
-	export function clearTrack(link: Link | undefined) {
-		while (link !== undefined) {
-
+	export function clearTrack(link: Link) {
+		do {
 			const nextDep = link.nextDep;
 			const dep = link.dep as Dependency & Subscriber;
 			const nextSub = link.nextSub;
@@ -557,8 +554,8 @@ export namespace Subscriber {
 				continue;
 			}
 
-			link = nextDep;
-		}
+			link = nextDep!;
+		} while (link !== undefined);
 	}
 
 	export function startTrackEffects(sub: Subscriber) {
