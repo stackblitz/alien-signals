@@ -1,5 +1,4 @@
-import { Computed, computed } from '../lib/computed';
-import { Signal } from '../lib/signal';
+import { Computed, computed, Signal } from '../index.js';
 
 export function computedArray<I, O>(
 	arr: Signal<I[]>,

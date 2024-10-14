@@ -1,4 +1,4 @@
-import { Computed } from '../lib/computed';
+import { Computed } from '../index.js';
 
 export function equalityComputed<T>(getter: () => T) {
 	return new EqualityComputed(getter);

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, Dependency, effect, effectScope, signal, Subscriber, System } from '..';
+import { computed, Dependency, effect, effectScope, signal, Subscriber, System } from '../src';
 
 Dependency.setPropagationMode('strict');
 
