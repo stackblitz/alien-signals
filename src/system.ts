@@ -41,10 +41,10 @@ export const enum DirtyLevels {
 
 export namespace System {
 
-	export let activeDepsSub: Subscriber | undefined = undefined;
-	export let activeEffectsSub: Subscriber | undefined = undefined;
-	export let activeDepsSubsDepth = 0;
-	export let activeEffectsSubsDepth = 0;
+	export let activeSub: Subscriber | undefined = undefined;
+	export let activeEffectScope: Subscriber | undefined = undefined;
+	export let activeSubsDepth = 0;
+	export let activeEffectScopesDepth = 0;
 	export let batchDepth = 0;
 	export let lastSubVersion = DirtyLevels.Released + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -107,10 +107,10 @@ export namespace Dependency {
 	}
 
 	export function linkDependencySubscriber(dep: Dependency) {
-		if (system.activeDepsSubsDepth === 0) {
+		if (system.activeSubsDepth === 0) {
 			return false;
 		}
-		const sub = system.activeDepsSub!;
+		const sub = system.activeSub!;
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
 			return true;
@@ -148,10 +148,10 @@ export namespace Dependency {
 	}
 
 	export function linkEffectSubscriber(dep: Dependency) {
-		if (system.activeEffectsSubsDepth === 0) {
+		if (system.activeEffectScopesDepth === 0) {
 			return false;
 		}
-		const sub = system.activeEffectsSub!;
+		const sub = system.activeEffectScope!;
 		const subVersion = sub.versionOrDirtyLevel;
 		if (dep.subVersion === subVersion) {
 			return true;
@@ -488,9 +488,9 @@ export namespace Subscriber {
 	}
 
 	export function startTrackDependencies(sub: Subscriber) {
-		const prevSub = system.activeDepsSub;
-		system.activeDepsSub = sub;
-		system.activeDepsSubsDepth++;
+		const prevSub = system.activeSub;
+		system.activeSub = sub;
+		system.activeSubsDepth++;
 
 		sub.depsTail = undefined;
 		sub.versionOrDirtyLevel = system.lastSubVersion++;
@@ -499,8 +499,8 @@ export namespace Subscriber {
 	}
 
 	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined) {
-		system.activeDepsSubsDepth--;
-		system.activeDepsSub = prevSub;
+		system.activeSubsDepth--;
+		system.activeSub = prevSub;
 
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
@@ -562,9 +562,9 @@ export namespace Subscriber {
 	}
 
 	export function startTrackEffects(sub: Subscriber) {
-		const prevSub = system.activeEffectsSub;
-		system.activeEffectsSub = sub;
-		system.activeEffectsSubsDepth++;
+		const prevSub = system.activeEffectScope;
+		system.activeEffectScope = sub;
+		system.activeEffectScopesDepth++;
 
 		sub.depsTail = undefined;
 		sub.versionOrDirtyLevel = system.lastSubVersion++;
@@ -573,8 +573,8 @@ export namespace Subscriber {
 	}
 
 	export function endTrackEffects(sub: Subscriber, prevSub: Subscriber | undefined) {
-		system.activeEffectsSubsDepth--;
-		system.activeEffectsSub = prevSub;
+		system.activeEffectScopesDepth--;
+		system.activeEffectScope = prevSub;
 
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
