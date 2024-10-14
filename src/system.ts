@@ -106,7 +106,7 @@ export namespace Dependency {
 		propagate = mode === 'strict' ? strictPropagate : fastPropagate;
 	}
 
-	export function linkDepsSub(dep: Dependency) {
+	export function linkDependencySubscriber(dep: Dependency) {
 		if (system.activeDepsSubsDepth === 0) {
 			return false;
 		}
@@ -147,7 +147,7 @@ export namespace Dependency {
 		return true;
 	}
 
-	export function linkEffectsSub(dep: Dependency) {
+	export function linkEffectSubscriber(dep: Dependency) {
 		if (system.activeEffectsSubsDepth === 0) {
 			return false;
 		}
@@ -487,7 +487,7 @@ export namespace Subscriber {
 		}
 	}
 
-	export function startTrackDeps(sub: Subscriber) {
+	export function startTrackDependencies(sub: Subscriber) {
 		const prevSub = system.activeDepsSub;
 		system.activeDepsSub = sub;
 		system.activeDepsSubsDepth++;
@@ -498,7 +498,7 @@ export namespace Subscriber {
 		return prevSub;
 	}
 
-	export function endTrackDeps(sub: Subscriber, prevSub: Subscriber | undefined) {
+	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined) {
 		system.activeDepsSubsDepth--;
 		system.activeDepsSub = prevSub;
 

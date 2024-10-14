@@ -17,7 +17,7 @@ export class Signal<T = any> implements Dependency {
 	) { }
 
 	get() {
-		Dependency.linkDepsSub(this);
+		Dependency.linkDependencySubscriber(this);
 		return this.currentValue!;
 	}
 
