@@ -1,7 +1,7 @@
 import { Computed, computed, Signal } from '../index.js';
 
 export function computedArray<I, O>(
-	arr: Signal<I[]>,
+	arr: Signal<I[]> | Computed<I[]>,
 	getGetter: (item: Computed<I>, index: number) => () => O
 ) {
 	const length = computed(() => arr.get().length);
