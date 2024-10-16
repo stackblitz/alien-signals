@@ -12,7 +12,9 @@ import {
 export { EffectScope };
 
 export function effect(fn: () => void) {
-	return new ReactiveEffect(fn);
+	const e = new ReactiveEffect(fn);
+	e.run();
+	return e;
 }
 
 let currentEffectScope: VueEffectScope | undefined = undefined;
