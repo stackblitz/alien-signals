@@ -21,6 +21,7 @@
 		"url": "git+https://github.com/johnsoncodehk/signals.git"
 	},
 	"scripts": {
+		"prepublishOnly": "npm run build",
 		"build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs",
 		"test": "vitest run"
 	},
