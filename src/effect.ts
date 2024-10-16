@@ -54,4 +54,13 @@ export class Effect implements IEffect, Dependency, Subscriber {
 			Subscriber.endTrackDependencies(this, prevSub);
 		}
 	}
+
+	stop() {
+		if (this.deps !== undefined) {
+			Subscriber.clearTrack(this.deps);
+			this.deps = undefined;
+			this.depsTail = undefined;
+		}
+		this.versionOrDirtyLevel = DirtyLevels.Dirty;
+	}
 }
