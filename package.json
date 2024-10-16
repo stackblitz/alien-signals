@@ -1,6 +1,6 @@
 {
 	"name": "alien-signals",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
 	"type": "commonjs",
