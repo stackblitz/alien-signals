@@ -20,7 +20,7 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	versionOrDirtyLevel = DirtyLevels.Dirty;
 
 	constructor(
-		private fn: () => void
+		protected fn: () => void
 	) {
 		if (!Dependency.linkDependencySubscriber(this)) {
 			Dependency.linkEffectSubscriber(this);
@@ -46,7 +46,12 @@ export class Effect implements IEffect, Dependency, Subscriber {
 
 	run() {
 		const prevSub = Subscriber.startTrackDependencies(this);
-		this.fn();
-		Subscriber.endTrackDependencies(this, prevSub);
+		try {
+			this.fn();
+		} catch (e) {
+			throw e;
+		} finally {
+			Subscriber.endTrackDependencies(this, prevSub);
+		}
 	}
 }

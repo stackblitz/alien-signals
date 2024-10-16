@@ -21,9 +21,13 @@ export class EffectScope implements IEffect, Subscriber {
 
 	run<T>(fn: () => T) {
 		const prevActiveSub = Subscriber.startTrackEffects(this);
-		const res = fn();
-		Subscriber.endTrackEffects(this, prevActiveSub);
-		return res;
+		try {
+			return fn();
+		} catch (e) {
+			throw e;
+		} finally {
+			Subscriber.endTrackEffects(this, prevActiveSub);
+		}
 	}
 
 	stop() {
