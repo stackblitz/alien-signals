@@ -537,10 +537,10 @@ export namespace Subscriber {
 			}
 
 			if (nextSub === undefined) {
-				link.dep.subsTail = prevSub;
+				dep.subsTail = prevSub;
 			}
 			if (prevSub === undefined) {
-				link.dep.subs = nextSub;
+				dep.subs = nextSub;
 			}
 
 			// @ts-ignore
