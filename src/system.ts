@@ -320,8 +320,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function runInnerEffects(sub: IEffectScope) {
-		let link = sub.deps;
+	export function runInnerEffects(link: Link | undefined) {
 		while (link !== undefined) {
 			const dep = link.dep;
 			if ('notify' in dep) {

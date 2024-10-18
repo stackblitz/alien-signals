@@ -39,7 +39,7 @@ export class Effect implements IEffect {
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
 			this.versionOrDirtyLevel = DirtyLevels.None;
-			Subscriber.runInnerEffects(this);
+			Subscriber.runInnerEffects(this.deps);
 		} else {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				Subscriber.resolveMaybeDirty(this);
@@ -47,7 +47,7 @@ export class Effect implements IEffect {
 			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
 				this.run();
 			} else {
-				Subscriber.runInnerEffects(this);
+				Subscriber.runInnerEffects(this.deps);
 			}
 		}
 	}

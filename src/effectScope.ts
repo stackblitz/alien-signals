@@ -15,7 +15,7 @@ export class EffectScope implements IEffectScope {
 	notify() {
 		if (this.versionOrDirtyLevel !== DirtyLevels.None) {
 			this.versionOrDirtyLevel = DirtyLevels.None;
-			Subscriber.runInnerEffects(this);
+			Subscriber.runInnerEffects(this.deps);
 		}
 	}
 
