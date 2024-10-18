@@ -6,7 +6,7 @@ export function effect(fn: () => void) {
 	return e;
 }
 
-export class Effect implements IEffect, Dependency, Subscriber {
+export class Effect implements IEffect {
 	nextNotify = undefined;
 
 	// Dependency

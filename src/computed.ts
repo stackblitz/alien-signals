@@ -1,10 +1,10 @@
-import { Dependency, DirtyLevels, Subscriber, System } from './system.js';
+import { Dependency, DirtyLevels, IComputed, Subscriber, System } from './system.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T) {
 	return new Computed<T>(getter);
 }
 
-export class Computed<T = any> implements Dependency, Subscriber {
+export class Computed<T = any> implements IComputed {
 	cachedValue: T | undefined = undefined;
 
 	// Dependency
