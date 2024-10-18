@@ -17,15 +17,22 @@ export class Signal<T = any> implements Dependency {
 	) { }
 
 	get() {
-		Dependency.linkDependencySubscriber(this);
+		const subVersion = System.activeSubVersion;
+		if (subVersion >= 0 && this.subVersion !== subVersion) {
+			this.subVersion = subVersion;
+			Dependency.linkSubscriber(this, System.activeSub!);
+		}
 		return this.currentValue!;
 	}
 
 	set(value: T) {
 		if (this.currentValue !== (this.currentValue = value)) {
-			System.startBatch();
-			Dependency.propagate(this);
-			System.endBatch();
+			const subs = this.subs;
+			if (subs !== undefined) {
+				System.startBatch();
+				Dependency.propagate(subs);
+				System.endBatch();
+			}
 		}
 	}
 }

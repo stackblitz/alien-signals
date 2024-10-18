@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, Subscriber } from './system.js';
+import { Dependency, DirtyLevels, Subscriber, System } from './system.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T) {
 	return new Computed<T>(getter);
@@ -22,7 +22,11 @@ export class Computed<T = any> implements Dependency, Subscriber {
 	) { }
 
 	get(): T {
-		Dependency.linkDependencySubscriber(this);
+		const subVersion = System.activeSubVersion;
+		if (subVersion >= 0 && this.subVersion !== subVersion) {
+			this.subVersion = subVersion;
+			Dependency.linkSubscriber(this, System.activeSub!);
+		}
 		const dirtyLevel = this.versionOrDirtyLevel;
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
@@ -43,7 +47,10 @@ export class Computed<T = any> implements Dependency, Subscriber {
 			Subscriber.endTrackDependencies(this, prevSub);
 			if (oldValue !== newValue) {
 				this.cachedValue = newValue;
-				Dependency.propagate(this);
+				const subs = this.subs;
+				if (subs !== undefined) {
+					Dependency.propagate(subs);
+				}
 			}
 			return newValue;
 		} catch (e) {

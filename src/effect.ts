@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, IEffect, Subscriber } from './system.js';
+import { Dependency, DirtyLevels, IEffect, Subscriber, System } from './system.js';
 
 export function effect(fn: () => void) {
 	const e = new Effect(fn);
@@ -22,8 +22,16 @@ export class Effect implements IEffect, Dependency, Subscriber {
 	constructor(
 		protected fn: () => void
 	) {
-		if (!Dependency.linkDependencySubscriber(this)) {
-			Dependency.linkEffectSubscriber(this);
+		const subVersion = System.activeSubVersion;
+		if (subVersion >= 0 && this.subVersion !== subVersion) {
+			this.subVersion = subVersion;
+			Dependency.linkSubscriber(this, System.activeSub!);
+			return;
+		}
+		const scopeVersion = System.activeEffectScopeVersion;
+		if (scopeVersion >= 0 && this.subVersion !== scopeVersion) {
+			this.subVersion = scopeVersion;
+			Dependency.linkSubscriber(this, System.activeEffectScope!);
 		}
 	}
 

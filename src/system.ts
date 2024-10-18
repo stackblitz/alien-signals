@@ -43,8 +43,8 @@ export namespace System {
 
 	export let activeSub: Subscriber | undefined = undefined;
 	export let activeEffectScope: Subscriber | undefined = undefined;
-	export let activeSubsDepth = 0;
-	export let activeEffectScopesDepth = 0;
+	export let activeSubVersion = -1;
+	export let activeEffectScopeVersion = -1;
 	export let batchDepth = 0;
 	export let lastSubVersion = DirtyLevels.Released + 1;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -106,17 +106,7 @@ export namespace Dependency {
 		propagate = mode === 'strict' ? strictPropagate : fastPropagate;
 	}
 
-	export function linkDependencySubscriber(dep: Dependency) {
-		if (system.activeSubsDepth === 0) {
-			return false;
-		}
-		const sub = system.activeSub!;
-		const subVersion = sub.versionOrDirtyLevel;
-		if (dep.subVersion === subVersion) {
-			return true;
-		}
-		dep.subVersion = subVersion;
-
+	export function linkSubscriber(dep: Dependency, sub: Subscriber) {
 		const depsTail = sub.depsTail;
 		const old = depsTail !== undefined
 			? depsTail.nextDep
@@ -128,9 +118,11 @@ export namespace Dependency {
 				newLink.nextDep = old;
 			}
 			if (depsTail === undefined) {
-				sub.depsTail = sub.deps = newLink;
+				sub.deps = newLink;
+				sub.depsTail = newLink;
 			} else {
-				sub.depsTail = depsTail.nextDep = newLink;
+				depsTail.nextDep = newLink;
+				sub.depsTail = newLink;
 			}
 			if (dep.subs === undefined) {
 				dep.subs = newLink;
@@ -144,59 +136,18 @@ export namespace Dependency {
 		} else {
 			sub.depsTail = old;
 		}
-		return true;
 	}
 
-	export function linkEffectSubscriber(dep: Dependency) {
-		if (system.activeEffectScopesDepth === 0) {
-			return false;
-		}
-		const sub = system.activeEffectScope!;
-		const subVersion = sub.versionOrDirtyLevel;
-		if (dep.subVersion === subVersion) {
-			return true;
-		}
-		dep.subVersion = subVersion;
-
-		const depsTail = sub.depsTail;
-		const old = depsTail !== undefined
-			? depsTail.nextDep
-			: sub.deps;
-
-		if (old === undefined || old.dep !== dep) {
-			const newLink = Link.get(dep, sub);
-			if (old !== undefined) {
-				newLink.nextDep = old;
-			}
-			if (depsTail === undefined) {
-				sub.depsTail = sub.deps = newLink;
-			} else {
-				sub.depsTail = depsTail.nextDep = newLink;
-			}
-			if (dep.subs === undefined) {
-				dep.subs = newLink;
-				dep.subsTail = newLink;
-			} else {
-				const oldTail = dep.subsTail!;
-				newLink.prevSubOrUpdate = oldTail;
-				oldTail.nextSub = newLink;
-				dep.subsTail = newLink;
-			}
-		} else {
-			sub.depsTail = old;
-		}
-		return true;
-	}
-
-	export function strictPropagate(dep: Dependency) {
+	export function strictPropagate(subs: Link) {
 		let depIsEffect = false;
-		let link = dep.subs;
+		let link: Link | undefined = subs;
+		let dep = subs.dep;
 		let dirtyLevel = DirtyLevels.Dirty;
 		let depth = 0;
 
 		top: do {
 			while (link !== undefined) {
-				const sub = link.sub;
+				const sub: Link['sub'] = link.sub;
 				const subDirtyLevel = sub.versionOrDirtyLevel;
 
 				if (subDirtyLevel < dirtyLevel) {
@@ -310,12 +261,8 @@ export namespace Dependency {
 			}
 		}
 	 */
-	export function fastPropagate(dep: Dependency) {
-		let subsHead = dep.subs!;
-		if (subsHead === undefined) {
-			return;
-		}
-
+	export function fastPropagate(subs: Link) {
+		let subsHead = subs;
 		let dirtyLevel = DirtyLevels.Dirty;
 		let lastSubs = subsHead;
 		let link = subsHead;
@@ -495,19 +442,25 @@ export namespace Subscriber {
 	}
 
 	export function startTrackDependencies(sub: Subscriber) {
-		const prevSub = system.activeSub;
-		system.activeSub = sub;
-		system.activeSubsDepth++;
+		const newVersion = system.lastSubVersion++;
 
 		sub.depsTail = undefined;
-		sub.versionOrDirtyLevel = system.lastSubVersion++;
+		sub.versionOrDirtyLevel = newVersion;
 
+		const prevSub = system.activeSub;
+		system.activeSub = sub;
+		system.activeSubVersion = newVersion;
 		return prevSub;
 	}
 
 	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined) {
-		system.activeSubsDepth--;
-		system.activeSub = prevSub;
+		if (prevSub !== undefined) {
+			system.activeSub = prevSub!;
+			system.activeSubVersion = prevSub!.versionOrDirtyLevel;
+		} else {
+			system.activeSub = undefined;
+			system.activeSubVersion = -1;
+		}
 
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
@@ -568,19 +521,25 @@ export namespace Subscriber {
 	}
 
 	export function startTrackEffects(sub: Subscriber) {
-		const prevSub = system.activeEffectScope;
-		system.activeEffectScope = sub;
-		system.activeEffectScopesDepth++;
+		const newVersion = system.lastSubVersion++;
 
 		sub.depsTail = undefined;
-		sub.versionOrDirtyLevel = system.lastSubVersion++;
+		sub.versionOrDirtyLevel = newVersion;
 
+		const prevSub = system.activeEffectScope;
+		system.activeEffectScope = sub;
+		system.activeEffectScopeVersion = newVersion;
 		return prevSub;
 	}
 
 	export function endTrackEffects(sub: Subscriber, prevSub: Subscriber | undefined) {
-		system.activeEffectScopesDepth--;
-		system.activeEffectScope = prevSub;
+		if (prevSub !== undefined) {
+			system.activeEffectScope = prevSub!;
+			system.activeEffectScopeVersion = prevSub!.versionOrDirtyLevel;
+		} else {
+			system.activeEffectScope = undefined;
+			system.activeEffectScopeVersion = -1;
+		}
 
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {

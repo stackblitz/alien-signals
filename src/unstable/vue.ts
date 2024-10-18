@@ -41,20 +41,22 @@ export function effectScope() {
 }
 
 export function triggerRef(ref: ShallowRef) {
-	System.startBatch();
-	Dependency.propagate(ref);
-	System.endBatch();
+	if (ref.subs !== undefined) {
+		System.startBatch();
+		Dependency.propagate(ref.subs);
+		System.endBatch();
+	}
 }
 
-const pausedSubsDepths: number[] = [];
+const pausedSubsVersions: number[] = [];
 
 export function pauseTracking() {
-	pausedSubsDepths.push(System.activeSubsDepth);
-	System.activeSubsDepth = 0;
+	pausedSubsVersions.push(System.activeSubVersion);
+	System.activeSubVersion = -1;
 }
 
 export function resetTracking() {
-	System.activeSubsDepth = pausedSubsDepths.pop()!;
+	System.activeSubVersion = pausedSubsVersions.pop()!;
 }
 
 export function shallowRef<T>(): ShallowRef<T | undefined>;
