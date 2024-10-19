@@ -105,12 +105,6 @@ export namespace Dependency {
 
 	const system = System;
 
-	export let propagate = fastPropagate;
-
-	export function setPropagationMode(mode: 'strict' | 'fast') {
-		propagate = mode === 'strict' ? strictPropagate : fastPropagate;
-	}
-
 	export function linkSubscriber(dep: Link['dep'], sub: Link['sub']) {
 		const depsTail = sub.depsTail;
 		const old = depsTail !== undefined
@@ -145,7 +139,7 @@ export namespace Dependency {
 		}
 	}
 
-	export function strictPropagate(subs: Link) {
+	export function propagate(subs: Link) {
 		let link: Link | undefined = subs;
 		let dep = subs.dep;
 		let dirtyLevel = DirtyLevels.Dirty;
@@ -222,96 +216,6 @@ export namespace Dependency {
 			}
 
 			break;
-		} while (true);
-	}
-
-	/**
-	 * @example Original
-		export function fastPropagate(dep: Dependency, dirtyLevel = DirtyLevels.Dirty) {
-			let link = dep.subs;
-
-			while (link !== undefined) {
-				const sub = link.sub;
-				const subDirtyLevel = sub.versionOrDirtyLevel;
-
-				if (subDirtyLevel < dirtyLevel) {
-					sub.versionOrDirtyLevel = dirtyLevel;
-				}
-
-				if (subDirtyLevel === DirtyLevels.None) {
-					if ('notify' in sub) {
-						const queuedEffectsTail = system.queuedEffectsTail;
-
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.nextNotify = sub;
-							system.queuedEffectsTail = sub;
-						} else {
-							system.queuedEffectsTail = sub;
-							system.queuedEffects = sub;
-						}
-					} else if ('subs' in sub) {
-						fastPropagate(sub, DirtyLevels.MaybeDirty);
-					}
-				}
-
-				link = link.nextSub;
-			}
-		}
-	 */
-	export function fastPropagate(subs: Link) {
-		let subsHead = subs;
-		let dirtyLevel = DirtyLevels.Dirty;
-		let lastSubs = subsHead;
-		let link = subsHead;
-		let remainingQuantity = 0;
-
-		do {
-			const sub = link.sub;
-			const subDirtyLevel = sub.versionOrDirtyLevel;
-
-			if (subDirtyLevel < dirtyLevel) {
-				sub.versionOrDirtyLevel = dirtyLevel;
-			}
-
-			if (subDirtyLevel === DirtyLevels.None) {
-
-				if ('notify' in sub) {
-					const queuedEffectsTail = system.queuedEffectsTail;
-
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail.nextNotify = sub;
-						system.queuedEffectsTail = sub;
-					} else {
-						system.queuedEffectsTail = sub;
-						system.queuedEffects = sub;
-					}
-				} else if ('subs' in sub) {
-					const subSubs = sub.subs;
-
-					if (subSubs !== undefined) {
-						lastSubs.queuedPropagateOrNextReleased = subSubs;
-						lastSubs = subSubs;
-						remainingQuantity++;
-					}
-				}
-			}
-
-			const nextSub = link.nextSub;
-			if (nextSub === undefined) {
-				if (remainingQuantity > 0) {
-					const nextPropagate = subsHead.queuedPropagateOrNextReleased!;
-					subsHead.queuedPropagateOrNextReleased = undefined;
-					subsHead = nextPropagate;
-					link = subsHead;
-
-					dirtyLevel = DirtyLevels.MaybeDirty;
-					remainingQuantity--;
-					continue;
-				}
-				break;
-			}
-
-			link = nextSub;
 		} while (true);
 	}
 }
