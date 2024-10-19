@@ -1,6 +1,6 @@
-import { Computed } from '../index.js';
+import { Computed, ISignal } from '../index.js';
 
-export function equalityComputed<T>(getter: () => T) {
+export function equalityComputed<T>(getter: () => T): ISignal<T> {
 	return new EqualityComputed(getter);
 }
 

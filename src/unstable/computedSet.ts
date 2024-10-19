@@ -1,6 +1,6 @@
-import { Computed, computed, Signal } from '../index.js';
+import { computed, ISignal } from '../index.js';
 
-export function computedSet<T>(source: Signal<Set<T>> | Computed<Set<T>>) {
+export function computedSet<T>(source: ISignal<Set<T>>) {
 	return computed<Set<T>>(
 		(oldValue) => {
 			const newValue = source.get();

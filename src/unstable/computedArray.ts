@@ -1,8 +1,8 @@
-import { Computed, computed, Signal } from '../index.js';
+import { computed, ISignal } from '../index.js';
 
 export function computedArray<I, O>(
-	arr: Signal<I[]> | Computed<I[]>,
-	getGetter: (item: Computed<I>, index: number) => () => O
+	arr: ISignal<I[]>,
+	getGetter: (item: ISignal<I>, index: number) => () => O
 ) {
 	const length = computed(() => arr.get().length);
 	const keys = computed(
@@ -14,7 +14,7 @@ export function computedArray<I, O>(
 			return keys;
 		}
 	);
-	const items = computed<Computed<O>[]>(
+	const items = computed<ISignal<O>[]>(
 		(array) => {
 			array ??= [];
 			while (array.length < length.get()) {

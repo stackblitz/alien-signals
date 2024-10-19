@@ -1,4 +1,9 @@
+import { ISignal } from './computed.js';
 import { System, Dependency } from './system.js';
+
+export interface IWritableSignal<T> extends ISignal<T> {
+	set(value: T): void;
+}
 
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;

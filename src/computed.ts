@@ -1,6 +1,10 @@
 import { Dependency, DirtyLevels, IComputed, Subscriber, System } from './system.js';
 
-export function computed<T>(getter: (cachedValue?: T) => T) {
+export interface ISignal<T> {
+	get(): T;
+}
+
+export function computed<T>(getter: (cachedValue?: T) => T): ISignal<T> {
 	return new Computed<T>(getter);
 }
 
