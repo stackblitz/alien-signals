@@ -2,18 +2,23 @@ import { expect, test } from 'vitest';
 import { computed, effect, effectScope, signal, System } from '../src';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
+	let bRunTimes = 0;
+
 	const a = signal(1);
 	const b = computed(() => {
+		bRunTimes++;
 		return a.get() * 2;
 	});
 	const effect1 = effect(() => {
 		b.get();
 	});
 
-
-	expect(!!b.subs).toBe(true);
+	expect(bRunTimes).toBe(1);
+	a.set(2);
+	expect(bRunTimes).toBe(2);
 	effect1.stop();
-	expect(!!b.subs).toBe(false);
+	a.set(3);
+	expect(bRunTimes).toBe(2);
 });
 
 test('should not run untracked inner effect', () => {
@@ -21,16 +26,13 @@ test('should not run untracked inner effect', () => {
 	const b = computed(() => a.get() > 0);
 
 	effect(() => {
-		// console.log("outer");
 		if (b.get()) {
 			effect(() => {
-				// console.log("inner", msg.get());
 				if (a.get() == 0) {
 					throw new Error("bad");
 				}
 			});
 		} else {
-			// console.log("inner shouldn't run");
 		}
 	});
 
@@ -48,17 +50,14 @@ test('should run outer effect first', () => {
 	const b = signal(1);
 
 	effect(() => {
-		// console.log("outer");
 		if (a.get()) {
 			effect(() => {
-				// console.log("inner");
 				b.get();
 				if (a.get() == 0) {
 					throw new Error("bad");
 				}
 			});
 		} else {
-			// console.log("inner shouldn't run");
 		}
 	});
 
@@ -75,9 +74,7 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 	let innerTriggerTimes = 0;
 
 	effect(() => {
-		// console.log("outer");
 		effect(() => {
-			// console.log("inner");
 			b.get();
 			innerTriggerTimes++;
 			if (innerTriggerTimes > 1) {
