@@ -48,15 +48,18 @@ export function triggerRef(ref: ShallowRef) {
 	}
 }
 
-const pausedSubsVersions: number[] = [];
+const pausedSubs: typeof System.activeSub[] = [];
 
 export function pauseTracking() {
-	pausedSubsVersions.push(System.activeSubVersion);
+	pausedSubs.push(System.activeSub);
+	System.activeSub = undefined;
 	System.activeSubVersion = -1;
 }
 
 export function resetTracking() {
-	System.activeSubVersion = pausedSubsVersions.pop()!;
+	const prevSub = pausedSubs.pop()!;
+	System.activeSub = prevSub;
+	System.activeSubVersion = prevSub.versionOrDirtyLevel;
 }
 
 export function shallowRef<T = any>(): ShallowRef<T | undefined>;
