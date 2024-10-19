@@ -47,7 +47,7 @@ export const enum DirtyLevels {
 
 export namespace System {
 
-	export let activeSub: Link['sub'] | undefined = undefined;
+	export let activeSub: IComputed | IEffect | undefined = undefined;
 	export let activeEffectScope: IEffectScope | undefined = undefined;
 	export let activeSubVersion = -1;
 	export let activeEffectScopeVersion = -1;
@@ -137,8 +137,8 @@ export namespace Dependency {
 		let dirtyLevel = DirtyLevels.Dirty;
 		let remainingQuantity = 0;
 
-		top: do {
-			while (link !== undefined) {
+		do {
+			if (link !== undefined) {
 				const sub: Link['sub'] = link.sub;
 				const subDirtyLevel = sub.versionOrDirtyLevel;
 
@@ -160,7 +160,7 @@ export namespace Dependency {
 						}
 						remainingQuantity++;
 
-						continue top;
+						continue;
 					} else if (subIsEffect) {
 						const queuedEffectsTail = system.queuedEffectsTail;
 						if (queuedEffectsTail !== undefined) {
@@ -173,13 +173,15 @@ export namespace Dependency {
 				}
 
 				link = link.nextSub;
+				continue;
 			}
 
 			if (remainingQuantity > 0) {
-				const depDeps = (dep as IComputed | IEffect).depsTail!;
-				const prevLink = depDeps.nextDep!;
+				const depsTail = (dep as IComputed | IEffect).depsTail!;
+				const prevLink = depsTail.nextDep!;
+				const prevSub = prevLink.sub;
 
-				depDeps.nextDep = undefined;
+				depsTail.nextDep = undefined;
 				dep = prevLink.dep;
 				link = prevLink.nextSub;
 				remainingQuantity--;
@@ -191,8 +193,6 @@ export namespace Dependency {
 				} else {
 					dirtyLevel = DirtyLevels.MaybeDirty;
 				}
-
-				const prevSub = prevLink.sub;
 
 				if ('notify' in prevSub) {
 					const queuedEffectsTail = system.queuedEffectsTail;
@@ -317,11 +317,11 @@ export namespace Subscriber {
 					continue;
 				}
 			} else if (remaining > 0) {
-				const subSubs = sub.subs!;
-				const prevLink = subSubs.prevSub!;
 				if (dirtyLevel === DirtyLevels.Dirty) {
 					(sub as IComputed).update();
 				}
+				const subSubs = sub.subs!;
+				const prevLink = subSubs.prevSub!;
 				subSubs.prevSub = undefined;
 				sub = prevLink.sub as IComputed | IEffect;
 				link = prevLink.nextDep;
@@ -333,23 +333,24 @@ export namespace Subscriber {
 		} while (true);
 	}
 
-	export function startTrackDependencies(sub: Link['sub']) {
+	export function startTrackDependencies(sub: IComputed | IEffect) {
 		const newVersion = system.lastSubVersion + 1;
+		const prevSub = system.activeSub;
+
+		system.activeSub = sub;
+		system.activeSubVersion = newVersion;
+		system.lastSubVersion = newVersion;
 
 		sub.depsTail = undefined;
 		sub.versionOrDirtyLevel = newVersion;
 
-		const prevSub = system.activeSub;
-		system.activeSub = sub;
-		system.activeSubVersion = newVersion;
-		system.lastSubVersion = newVersion;
 		return prevSub;
 	}
 
-	export function endTrackDependencies(sub: Link['sub'], prevSub: Link['sub'] | undefined) {
+	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
 		if (prevSub !== undefined) {
-			system.activeSub = prevSub!;
-			system.activeSubVersion = prevSub!.versionOrDirtyLevel;
+			system.activeSub = prevSub;
+			system.activeSubVersion = prevSub.versionOrDirtyLevel;
 		} else {
 			system.activeSub = undefined;
 			system.activeSubVersion = -1;
@@ -415,21 +416,22 @@ export namespace Subscriber {
 
 	export function startTrackEffects(sub: IEffectScope) {
 		const newVersion = system.lastSubVersion + 1;
+		const prevSub = system.activeEffectScope;
+
+		system.activeEffectScope = sub;
+		system.activeEffectScopeVersion = newVersion;
+		system.lastSubVersion = newVersion;
 
 		sub.depsTail = undefined;
 		sub.versionOrDirtyLevel = newVersion;
 
-		const prevSub = system.activeEffectScope;
-		system.activeEffectScope = sub;
-		system.activeEffectScopeVersion = newVersion;
-		system.lastSubVersion = newVersion;
 		return prevSub;
 	}
 
 	export function endTrackEffects(sub: IEffectScope, prevSub: IEffectScope | undefined) {
 		if (prevSub !== undefined) {
-			system.activeEffectScope = prevSub!;
-			system.activeEffectScopeVersion = prevSub!.versionOrDirtyLevel;
+			system.activeEffectScope = prevSub;
+			system.activeEffectScopeVersion = prevSub.versionOrDirtyLevel;
 		} else {
 			system.activeEffectScope = undefined;
 			system.activeEffectScopeVersion = -1;

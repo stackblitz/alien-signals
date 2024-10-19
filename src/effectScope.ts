@@ -23,8 +23,6 @@ export class EffectScope implements IEffectScope {
 		const prevSub = Subscriber.startTrackEffects(this);
 		try {
 			return fn();
-		} catch (e) {
-			throw e;
 		} finally {
 			Subscriber.endTrackEffects(this, prevSub);
 		}

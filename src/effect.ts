@@ -56,8 +56,6 @@ export class Effect implements IEffect {
 		const prevSub = Subscriber.startTrackDependencies(this);
 		try {
 			this.fn();
-		} catch (e) {
-			throw e;
 		} finally {
 			Subscriber.endTrackDependencies(this, prevSub);
 		}
