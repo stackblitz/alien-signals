@@ -59,14 +59,35 @@ export function resetTracking() {
 	System.activeSubVersion = pausedSubsVersions.pop()!;
 }
 
-export function shallowRef<T>(): ShallowRef<T | undefined>;
-export function shallowRef<T>(oldValue: T): ShallowRef<T>;
-export function shallowRef<T>(value?: T) {
+export function shallowRef<T = any>(): ShallowRef<T | undefined>;
+export function shallowRef<T = any>(oldValue: T): ShallowRef<T>;
+export function shallowRef<T = any>(value?: T) {
 	return new ShallowRef(value);
 }
 
-export function computed<T>(fn: () => T) {
-	return new VueComputed(fn);
+export function computed<T>(options: {
+	get(): T;
+	set(value: T): void;
+}): { value: T; };
+export function computed<T>(fn: () => T): { readonly value: T; };
+export function computed<T>(fn: (() => T) | {
+	get(): T;
+	set(value: T): void;
+}) {
+	if (typeof fn === 'function') {
+		return new VueComputed(fn);
+	} else {
+		const { get, set } = fn;
+		const c = new VueComputed(get);
+		return {
+			get value() {
+				return c.get();
+			},
+			set value(value: T) {
+				set(value);
+			},
+		};
+	}
 }
 
 export function getCurrentScope() {

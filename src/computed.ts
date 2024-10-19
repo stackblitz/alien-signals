@@ -1,6 +1,6 @@
 import { Dependency, DirtyLevels, IComputed, Subscriber, System } from './system.js';
 
-export interface ISignal<T> {
+export interface ISignal<T = any> {
 	get(): T;
 }
 
