@@ -30,10 +30,11 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | IComputed | IEffect;
 	sub: IComputed | IEffect | IEffectScope;
-	prevSubOrUpdate: Link | undefined;
+	// Also used as prev update
+	prevSub: Link | undefined;
 	nextSub: Link | undefined;
+	// Also used as prev propagate and next released
 	nextDep: Link | undefined;
-	queuedPropagateOrNextReleased: Link | undefined;
 }
 
 export const enum DirtyLevels {
@@ -77,28 +78,7 @@ export namespace System {
 }
 
 export namespace Link {
-
 	export let pool: Link | undefined = undefined;
-
-	export function get(dep: Link['dep'], sub: Link['sub']): Link {
-		if (pool !== undefined) {
-			const link = pool;
-			pool = link.queuedPropagateOrNextReleased;
-			link.queuedPropagateOrNextReleased = undefined;
-			link.dep = dep;
-			link.sub = sub;
-			return link;
-		} else {
-			return {
-				dep,
-				sub,
-				prevSubOrUpdate: undefined,
-				nextSub: undefined,
-				nextDep: undefined,
-				queuedPropagateOrNextReleased: undefined,
-			};
-		}
-	}
 }
 
 export namespace Dependency {
@@ -112,10 +92,22 @@ export namespace Dependency {
 			: sub.deps;
 
 		if (old === undefined || old.dep !== dep) {
-			const newLink = Link.get(dep, sub);
+			let newLink: Link;
 
-			if (old !== undefined) {
+			if (Link.pool !== undefined) {
+				newLink = Link.pool;
+				Link.pool = newLink.nextDep;
 				newLink.nextDep = old;
+				newLink.dep = dep;
+				newLink.sub = sub;
+			} else {
+				newLink = {
+					dep,
+					sub,
+					nextDep: old,
+					prevSub: undefined,
+					nextSub: undefined,
+				};
 			}
 
 			if (depsTail === undefined) {
@@ -128,7 +120,7 @@ export namespace Dependency {
 				dep.subs = newLink;
 			} else {
 				const oldTail = dep.subsTail!;
-				newLink.prevSubOrUpdate = oldTail;
+				newLink.prevSub = oldTail;
 				oldTail.nextSub = newLink;
 			}
 
@@ -158,7 +150,7 @@ export namespace Dependency {
 					const subIsEffect = 'notify' in sub;
 
 					if ('subs' in sub && sub.subs !== undefined) {
-						sub.deps!.queuedPropagateOrNextReleased = link;
+						sub.depsTail!.nextDep = link;
 						dep = sub;
 						link = sub.subs;
 						if (subIsEffect) {
@@ -184,10 +176,10 @@ export namespace Dependency {
 			}
 
 			if (remainingQuantity > 0) {
-				const depDeps = (dep as IComputed | IEffect).deps!;
-				const prevLink = depDeps.queuedPropagateOrNextReleased!;
+				const depDeps = (dep as IComputed | IEffect).depsTail!;
+				const prevLink = depDeps.nextDep!;
 
-				depDeps.queuedPropagateOrNextReleased = undefined;
+				depDeps.nextDep = undefined;
 				dep = prevLink.dep;
 				link = prevLink.nextSub;
 				remainingQuantity--;
@@ -281,7 +273,7 @@ export namespace Subscriber {
 					const depDirtyLevel = dep.versionOrDirtyLevel;
 
 					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
-						dep.subs!.prevSubOrUpdate = link;
+						dep.subs!.prevSub = link;
 						sub = dep;
 						link = dep.deps;
 						remaining++;
@@ -293,9 +285,9 @@ export namespace Subscriber {
 						if (sub.versionOrDirtyLevel === DirtyLevels.Dirty) {
 							if (remaining > 0) {
 								const subSubs = sub.subs!;
-								const prevLink = subSubs.prevSubOrUpdate!;
+								const prevLink = subSubs.prevSub!;
 								(sub as IComputed).update();
-								subSubs.prevSubOrUpdate = undefined;
+								subSubs.prevSub = undefined;
 								sub = prevLink.sub as IComputed | IEffect;
 								link = prevLink.nextDep;
 								remaining--;
@@ -317,8 +309,8 @@ export namespace Subscriber {
 				sub.versionOrDirtyLevel = DirtyLevels.None;
 				if (remaining > 0) {
 					const subSubs = sub.subs!;
-					const prevLink = subSubs.prevSubOrUpdate!;
-					subSubs.prevSubOrUpdate = undefined;
+					const prevLink = subSubs.prevSub!;
+					subSubs.prevSub = undefined;
 					sub = prevLink.sub as IComputed | IEffect;
 					link = prevLink.nextDep;
 					remaining--;
@@ -326,11 +318,11 @@ export namespace Subscriber {
 				}
 			} else if (remaining > 0) {
 				const subSubs = sub.subs!;
-				const prevLink = subSubs.prevSubOrUpdate!;
+				const prevLink = subSubs.prevSub!;
 				if (dirtyLevel === DirtyLevels.Dirty) {
 					(sub as IComputed).update();
 				}
-				subSubs.prevSubOrUpdate = undefined;
+				subSubs.prevSub = undefined;
 				sub = prevLink.sub as IComputed | IEffect;
 				link = prevLink.nextDep;
 				remaining--;
@@ -381,10 +373,10 @@ export namespace Subscriber {
 			const nextDep = link.nextDep;
 			const dep = link.dep;
 			const nextSub = link.nextSub;
-			const prevSub = link.prevSubOrUpdate;
+			const prevSub = link.prevSub;
 
 			if (nextSub !== undefined) {
-				nextSub.prevSubOrUpdate = prevSub;
+				nextSub.prevSub = prevSub;
 			}
 			if (prevSub !== undefined) {
 				prevSub.nextSub = nextSub;
@@ -401,11 +393,9 @@ export namespace Subscriber {
 			link.dep = undefined;
 			// @ts-ignore
 			link.sub = undefined;
-			link.prevSubOrUpdate = undefined;
+			link.prevSub = undefined;
 			link.nextSub = undefined;
-			link.nextDep = undefined;
-
-			link.queuedPropagateOrNextReleased = Link.pool;
+			link.nextDep = Link.pool;
 			Link.pool = link;
 
 			if (dep.subs === undefined && 'deps' in dep) {
