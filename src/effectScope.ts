@@ -10,7 +10,7 @@ export class EffectScope implements IEffectScope {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	version = 0;
+	trackId = 0;
 	dirtyLevel = DirtyLevels.None;
 	canPropagate = false;
 

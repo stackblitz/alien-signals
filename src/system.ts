@@ -12,11 +12,11 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	subVersion: number;
+	linkedTrackId: number;
 }
 
 export interface Subscriber {
-	version: number;
+	trackId: number;
 	canPropagate: boolean;
 	dirtyLevel: DirtyLevels;
 	deps: Link | undefined;
@@ -26,7 +26,7 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | IComputed | IEffect;
 	sub: IComputed | IEffect | IEffectScope;
-	subVersion: number;
+	trackId: number;
 	// Also used as prev update
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
@@ -49,7 +49,7 @@ export namespace System {
 	export let activeSubVersion = -1;
 	export let activeEffectScopeVersion = -1;
 	export let batchDepth = 0;
-	export let lastSubVersion = DirtyLevels.Released + 1;
+	export let lastTrackId = DirtyLevels.Released + 1;
 	export let queuedEffects: IEffectScope | undefined = undefined;
 	export let queuedEffectsTail: IEffectScope | undefined = undefined;
 
@@ -99,12 +99,12 @@ export namespace Dependency {
 				newLink.nextDep = old;
 				newLink.dep = dep;
 				newLink.sub = sub;
-				newLink.subVersion = sub.version;
+				newLink.trackId = sub.trackId;
 			} else {
 				newLink = {
 					dep,
 					sub,
-					subVersion: sub.version,
+					trackId: sub.trackId,
 					nextDep: old,
 					prevSub: undefined,
 					nextSub: undefined,
@@ -128,7 +128,7 @@ export namespace Dependency {
 			sub.depsTail = newLink;
 			dep.subsTail = newLink;
 		} else {
-			old.subVersion = sub.version;
+			old.trackId = sub.trackId;
 			sub.depsTail = old;
 		}
 	}
@@ -143,8 +143,8 @@ export namespace Dependency {
 			if (link !== undefined) {
 				const sub: Link['sub'] = link.sub;
 
-				if (sub.version >= 0) {
-					if (sub.version === link.subVersion) {
+				if (sub.trackId >= 0) {
+					if (sub.trackId === link.trackId) {
 						const subDirtyLevel = sub.dirtyLevel;
 						if (subDirtyLevel < dirtyLevel) {
 							sub.dirtyLevel = dirtyLevel;
@@ -153,7 +153,7 @@ export namespace Dependency {
 							}
 						}
 					}
-				} else if (sub.version === -link.subVersion) {
+				} else if (sub.trackId === -link.trackId) {
 
 					const subDirtyLevel = sub.dirtyLevel;
 					const notDirty = subDirtyLevel === DirtyLevels.None;
@@ -355,15 +355,15 @@ export namespace Subscriber {
 	}
 
 	export function startTrackDependencies(sub: IComputed | IEffect) {
-		const newVersion = system.lastSubVersion + 1;
+		const newVersion = system.lastTrackId + 1;
 		const prevSub = system.activeSub;
 
 		system.activeSub = sub;
 		system.activeSubVersion = newVersion;
-		system.lastSubVersion = newVersion;
+		system.lastTrackId = newVersion;
 
 		sub.depsTail = undefined;
-		sub.version = newVersion;
+		sub.trackId = newVersion;
 		sub.dirtyLevel = DirtyLevels.None;
 
 		return prevSub;
@@ -372,7 +372,7 @@ export namespace Subscriber {
 	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
 		if (prevSub !== undefined) {
 			system.activeSub = prevSub;
-			system.activeSubVersion = prevSub.version;
+			system.activeSubVersion = prevSub.trackId;
 		} else {
 			system.activeSub = undefined;
 			system.activeSubVersion = -1;
@@ -388,7 +388,7 @@ export namespace Subscriber {
 			clearTrack(sub.deps);
 			sub.deps = undefined;
 		}
-		sub.version = -sub.version;
+		sub.trackId = -sub.trackId;
 	}
 
 	export function clearTrack(link: Link) {
@@ -437,15 +437,15 @@ export namespace Subscriber {
 	}
 
 	export function startTrackEffects(sub: IEffectScope) {
-		const newVersion = system.lastSubVersion + 1;
+		const newVersion = system.lastTrackId + 1;
 		const prevSub = system.activeEffectScope;
 
 		system.activeEffectScope = sub;
 		system.activeEffectScopeVersion = newVersion;
-		system.lastSubVersion = newVersion;
+		system.lastTrackId = newVersion;
 
 		sub.depsTail = undefined;
-		sub.version = newVersion;
+		sub.trackId = newVersion;
 		sub.dirtyLevel = DirtyLevels.None;
 
 		return prevSub;
@@ -454,7 +454,7 @@ export namespace Subscriber {
 	export function endTrackEffects(sub: IEffectScope, prevSub: IEffectScope | undefined) {
 		if (prevSub !== undefined) {
 			system.activeEffectScope = prevSub;
-			system.activeEffectScopeVersion = prevSub.version;
+			system.activeEffectScopeVersion = prevSub.trackId;
 		} else {
 			system.activeEffectScope = undefined;
 			system.activeEffectScopeVersion = -1;
@@ -470,6 +470,6 @@ export namespace Subscriber {
 			clearTrack(sub.deps);
 			sub.deps = undefined;
 		}
-		sub.version = -sub.version;
+		sub.trackId = -sub.trackId;
 	}
 }

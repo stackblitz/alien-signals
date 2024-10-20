@@ -59,7 +59,7 @@ export function pauseTracking() {
 export function resetTracking() {
 	const prevSub = pausedSubs.pop()!;
 	System.activeSub = prevSub;
-	System.activeSubVersion = prevSub.version;
+	System.activeSubVersion = prevSub.trackId;
 }
 
 export function shallowRef<T = any>(): ShallowRef<T | undefined>;

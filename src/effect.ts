@@ -12,12 +12,12 @@ export class Effect implements IEffect {
 	// Dependency
 	subs = undefined;
 	subsTail = undefined;
-	subVersion = -1;
+	linkedTrackId = -1;
 
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	version = 0;
+	trackId = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	canPropagate = false;
 
@@ -25,14 +25,14 @@ export class Effect implements IEffect {
 		protected fn: () => void
 	) {
 		const subVersion = System.activeSubVersion;
-		if (subVersion >= 0 && this.subVersion !== subVersion) {
-			this.subVersion = subVersion;
+		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
+			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
 			return;
 		}
 		const scopeVersion = System.activeEffectScopeVersion;
-		if (scopeVersion >= 0 && this.subVersion !== scopeVersion) {
-			this.subVersion = scopeVersion;
+		if (scopeVersion >= 0 && this.linkedTrackId !== scopeVersion) {
+			this.linkedTrackId = scopeVersion;
 			Dependency.linkSubscriber(this, System.activeEffectScope!);
 		}
 	}

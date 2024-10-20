@@ -14,12 +14,12 @@ export class Computed<T = any> implements IComputed {
 	// Dependency
 	subs = undefined;
 	subsTail = undefined;
-	subVersion = -1;
+	linkedTrackId = -1;
 
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	version = 0;
+	trackId = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	canPropagate = false;
 
@@ -34,12 +34,12 @@ export class Computed<T = any> implements IComputed {
 			if (this.dirtyLevel === DirtyLevels.Dirty) {
 				this.update();
 			}
-		} else if (dirtyLevel >= DirtyLevels.Dirty) {
+		} else if (dirtyLevel === DirtyLevels.Dirty) {
 			this.update();
 		}
 		const subVersion = System.activeSubVersion;
-		if (subVersion >= 0 && this.subVersion !== subVersion) {
-			this.subVersion = subVersion;
+		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
+			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}
 		return this.cachedValue!;
