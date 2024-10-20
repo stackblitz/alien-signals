@@ -43,7 +43,6 @@ export const enum DirtyLevels {
 }
 
 export namespace System {
-
 	export let activeSub: IComputed | IEffect | undefined = undefined;
 	export let activeEffectScope: IEffectScope | undefined = undefined;
 	export let activeTrackId = 0;
@@ -52,26 +51,26 @@ export namespace System {
 	export let lastTrackId = 0;
 	export let queuedEffects: IEffectScope | undefined = undefined;
 	export let queuedEffectsTail: IEffectScope | undefined = undefined;
+}
 
-	export function startBatch() {
-		batchDepth++;
-	}
+export function startBatch() {
+	System.batchDepth++;
+}
 
-	export function endBatch() {
-		batchDepth--;
-		if (batchDepth === 0) {
-			while (queuedEffects !== undefined) {
-				const effect = queuedEffects;
-				const queuedNext = queuedEffects.nextNotify;
-				if (queuedNext !== undefined) {
-					queuedEffects.nextNotify = undefined;
-					queuedEffects = queuedNext;
-				} else {
-					queuedEffects = undefined;
-					queuedEffectsTail = undefined;
-				}
-				effect.notify();
+export function endBatch() {
+	System.batchDepth--;
+	if (System.batchDepth === 0) {
+		while (System.queuedEffects !== undefined) {
+			const effect = System.queuedEffects;
+			const queuedNext = System.queuedEffects.nextNotify;
+			if (queuedNext !== undefined) {
+				System.queuedEffects.nextNotify = undefined;
+				System.queuedEffects = queuedNext;
+			} else {
+				System.queuedEffects = undefined;
+				System.queuedEffectsTail = undefined;
 			}
+			effect.notify();
 		}
 	}
 }

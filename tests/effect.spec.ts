@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, signal, System } from '../src';
+import { computed, effect, effectScope, endBatch, signal, startBatch } from '../src';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
@@ -61,10 +61,10 @@ test('should run outer effect first', () => {
 		}
 	});
 
-	System.startBatch();
+	startBatch();
 	b.set(0);
 	a.set(0);
-	System.endBatch();
+	endBatch();
 });
 
 test('should not trigger inner effect when resolve maybe dirty', () => {
@@ -109,10 +109,10 @@ test('should trigger inner effects in sequence', () => {
 
 	order.length = 0;
 
-	System.startBatch();
+	startBatch();
 	b.set(1);
 	a.set(1);
-	System.endBatch();
+	endBatch();
 
 	expect(order).toEqual(['first inner', 'last inner']);
 });
@@ -139,10 +139,10 @@ test('should trigger inner effects in sequence in effect scope', () => {
 
 	order.length = 0;
 
-	System.startBatch();
+	startBatch();
 	b.set(1);
 	a.set(1);
-	System.endBatch();
+	endBatch();
 
 	expect(order).toEqual(['first inner', 'last inner']);
 });

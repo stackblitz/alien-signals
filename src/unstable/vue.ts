@@ -4,7 +4,9 @@ import {
 	DirtyLevels,
 	Effect,
 	EffectScope,
+	endBatch,
 	Signal,
+	startBatch,
 	Subscriber,
 	System,
 } from '../index.js';
@@ -42,9 +44,9 @@ export function effectScope() {
 
 export function triggerRef(ref: ShallowRef) {
 	if (ref.subs !== undefined) {
-		System.startBatch();
+		startBatch();
 		Dependency.propagate(ref.subs);
-		System.endBatch();
+		endBatch();
 	}
 }
 

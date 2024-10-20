@@ -1,5 +1,5 @@
 import { ISignal } from './computed.js';
-import { System, Dependency } from './system.js';
+import { Dependency, endBatch, startBatch, System } from './system.js';
 
 export interface IWritableSignal<T = any> extends ISignal<T> {
 	set(value: T): void;
@@ -34,9 +34,9 @@ export class Signal<T = any> implements Dependency {
 		if (this.currentValue !== (this.currentValue = value)) {
 			const subs = this.subs;
 			if (subs !== undefined) {
-				System.startBatch();
+				startBatch();
 				Dependency.propagate(subs);
-				System.endBatch();
+				endBatch();
 			}
 		}
 	}
