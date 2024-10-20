@@ -19,7 +19,7 @@ export class Effect implements IEffect {
 	depsTail = undefined;
 	version = 0;
 	dirtyLevel = DirtyLevels.Dirty;
-	shouldPropagate = false;
+	canPropagate = false;
 
 	constructor(
 		protected fn: () => void

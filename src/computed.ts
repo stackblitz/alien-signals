@@ -21,7 +21,7 @@ export class Computed<T = any> implements IComputed {
 	depsTail = undefined;
 	version = 0;
 	dirtyLevel = DirtyLevels.Dirty;
-	shouldPropagate = false;
+	canPropagate = false;
 
 	constructor(
 		public getter: (cachedValue?: T) => T

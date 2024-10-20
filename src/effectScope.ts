@@ -12,7 +12,7 @@ export class EffectScope implements IEffectScope {
 	depsTail = undefined;
 	version = 0;
 	dirtyLevel = DirtyLevels.None;
-	shouldPropagate = false;
+	canPropagate = false;
 
 	notify() {
 		if (this.dirtyLevel !== DirtyLevels.None) {

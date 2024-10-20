@@ -17,7 +17,7 @@ export interface Dependency {
 
 export interface Subscriber {
 	version: number;
-	shouldPropagate: boolean;
+	canPropagate: boolean;
 	dirtyLevel: DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
@@ -161,12 +161,12 @@ export namespace Dependency {
 				if (subDirtyLevel < dirtyLevel) {
 					sub.dirtyLevel = dirtyLevel;
 					if (subDirtyLevel === DirtyLevels.None) {
-						sub.shouldPropagate = true;
+						sub.canPropagate = true;
 					}
 				}
 
-				if (!tracking && sub.shouldPropagate) {
-					sub.shouldPropagate = false;
+				if (!tracking && sub.canPropagate) {
+					sub.canPropagate = false;
 
 					const subIsEffect = 'notify' in sub;
 
