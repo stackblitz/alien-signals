@@ -34,11 +34,11 @@ export class Computed<T = any> implements IComputed {
 			if (this.dirtyLevel === DirtyLevels.Dirty) {
 				this.update();
 			}
-		} else if (dirtyLevel === DirtyLevels.Dirty) {
+		} else if (dirtyLevel === DirtyLevels.Dirty || dirtyLevel === DirtyLevels.Released) {
 			this.update();
 		}
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId > 0 && this.linkedTrackId !== activeTrackId) {
+		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
 			this.linkedTrackId = activeTrackId;
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}

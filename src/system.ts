@@ -46,8 +46,8 @@ export namespace System {
 
 	export let activeSub: IComputed | IEffect | undefined = undefined;
 	export let activeEffectScope: IEffectScope | undefined = undefined;
-	export let activeTrackId = -1;
-	export let activeEffectScopeTrackId = -1;
+	export let activeTrackId = 0;
+	export let activeEffectScopeTrackId = 0;
 	export let batchDepth = 0;
 	export let lastTrackId = 0;
 	export let queuedEffects: IEffectScope | undefined = undefined;
@@ -197,7 +197,7 @@ export namespace Dependency {
 				continue;
 			}
 
-			if (remainingQuantity > 0) {
+			if (remainingQuantity !== 0) {
 				const depsTail = (dep as IComputed | IEffect).depsTail!;
 				const prevLink = depsTail.nextDep!;
 				const prevSub = prevLink.sub;
@@ -304,7 +304,7 @@ export namespace Subscriber {
 						dep.update();
 
 						if (sub.dirtyLevel === DirtyLevels.Dirty) {
-							if (remaining > 0) {
+							if (remaining !== 0) {
 								const subSubs = sub.subs!;
 								const prevLink = subSubs.prevSub!;
 								(sub as IComputed).update();
@@ -328,7 +328,7 @@ export namespace Subscriber {
 
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				sub.dirtyLevel = DirtyLevels.None;
-				if (remaining > 0) {
+				if (remaining !== 0) {
 					const subSubs = sub.subs!;
 					const prevLink = subSubs.prevSub!;
 					subSubs.prevSub = undefined;
@@ -337,7 +337,7 @@ export namespace Subscriber {
 					remaining--;
 					continue;
 				}
-			} else if (remaining > 0) {
+			} else if (remaining !== 0) {
 				if (dirtyLevel === DirtyLevels.Dirty) {
 					(sub as IComputed).update();
 				}
@@ -375,7 +375,7 @@ export namespace Subscriber {
 			system.activeTrackId = prevSub.trackId;
 		} else {
 			system.activeSub = undefined;
-			system.activeTrackId = -1;
+			system.activeTrackId = 0;
 		}
 
 		const depsTail = sub.depsTail;
@@ -457,7 +457,7 @@ export namespace Subscriber {
 			system.activeEffectScopeTrackId = prevSub.trackId;
 		} else {
 			system.activeEffectScope = undefined;
-			system.activeEffectScopeTrackId = -1;
+			system.activeEffectScopeTrackId = 0;
 		}
 
 		const depsTail = sub.depsTail;
