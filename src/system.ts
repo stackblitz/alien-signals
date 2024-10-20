@@ -47,7 +47,7 @@ export namespace System {
 	export let activeSub: IComputed | IEffect | undefined = undefined;
 	export let activeEffectScope: IEffectScope | undefined = undefined;
 	export let activeTrackId = -1;
-	export let activeEffectScopeVersion = -1;
+	export let activeEffectScopeTrackId = -1;
 	export let batchDepth = 0;
 	export let lastTrackId = 0;
 	export let queuedEffects: IEffectScope | undefined = undefined;
@@ -441,7 +441,7 @@ export namespace Subscriber {
 		const prevSub = system.activeEffectScope;
 
 		system.activeEffectScope = sub;
-		system.activeEffectScopeVersion = newVersion;
+		system.activeEffectScopeTrackId = newVersion;
 		system.lastTrackId = newVersion;
 
 		sub.depsTail = undefined;
@@ -454,10 +454,10 @@ export namespace Subscriber {
 	export function endTrackEffects(sub: IEffectScope, prevSub: IEffectScope | undefined) {
 		if (prevSub !== undefined) {
 			system.activeEffectScope = prevSub;
-			system.activeEffectScopeVersion = prevSub.trackId;
+			system.activeEffectScopeTrackId = prevSub.trackId;
 		} else {
 			system.activeEffectScope = undefined;
-			system.activeEffectScopeVersion = -1;
+			system.activeEffectScopeTrackId = -1;
 		}
 
 		const depsTail = sub.depsTail;

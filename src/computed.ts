@@ -37,9 +37,9 @@ export class Computed<T = any> implements IComputed {
 		} else if (dirtyLevel === DirtyLevels.Dirty) {
 			this.update();
 		}
-		const subVersion = System.activeTrackId;
-		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
-			this.linkedTrackId = subVersion;
+		const activeTrackId = System.activeTrackId;
+		if (activeTrackId > 0 && this.linkedTrackId !== activeTrackId) {
+			this.linkedTrackId = activeTrackId;
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}
 		return this.cachedValue!;

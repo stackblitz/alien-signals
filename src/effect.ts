@@ -25,14 +25,14 @@ export class Effect implements IEffect {
 		protected fn: () => void
 	) {
 		const subVersion = System.activeTrackId;
-		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
+		if (subVersion > 0 && this.linkedTrackId !== subVersion) {
 			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
 			return;
 		}
-		const scopeVersion = System.activeEffectScopeVersion;
-		if (scopeVersion >= 0 && this.linkedTrackId !== scopeVersion) {
-			this.linkedTrackId = scopeVersion;
+		const activeTrackId = System.activeEffectScopeTrackId;
+		if (activeTrackId > 0 && this.linkedTrackId !== activeTrackId) {
+			this.linkedTrackId = activeTrackId;
 			Dependency.linkSubscriber(this, System.activeEffectScope!);
 		}
 	}
