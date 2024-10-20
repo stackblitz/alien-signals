@@ -22,7 +22,7 @@ export class Effect implements IEffect {
 	canPropagate = false;
 
 	constructor(
-		protected fn: () => void
+		public fn: () => void
 	) {
 		const subVersion = System.activeTrackId;
 		if (subVersion !== 0 && this.linkedTrackId !== subVersion) {
