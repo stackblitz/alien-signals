@@ -46,7 +46,7 @@ export namespace System {
 
 	export let activeSub: IComputed | IEffect | undefined = undefined;
 	export let activeEffectScope: IEffectScope | undefined = undefined;
-	export let activeSubVersion = -1;
+	export let activeTrackId = -1;
 	export let activeEffectScopeVersion = -1;
 	export let batchDepth = 0;
 	export let lastTrackId = DirtyLevels.Released + 1;
@@ -359,7 +359,7 @@ export namespace Subscriber {
 		const prevSub = system.activeSub;
 
 		system.activeSub = sub;
-		system.activeSubVersion = newVersion;
+		system.activeTrackId = newVersion;
 		system.lastTrackId = newVersion;
 
 		sub.depsTail = undefined;
@@ -372,10 +372,10 @@ export namespace Subscriber {
 	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
 		if (prevSub !== undefined) {
 			system.activeSub = prevSub;
-			system.activeSubVersion = prevSub.trackId;
+			system.activeTrackId = prevSub.trackId;
 		} else {
 			system.activeSub = undefined;
-			system.activeSubVersion = -1;
+			system.activeTrackId = -1;
 		}
 
 		const depsTail = sub.depsTail;

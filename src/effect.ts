@@ -24,7 +24,7 @@ export class Effect implements IEffect {
 	constructor(
 		protected fn: () => void
 	) {
-		const subVersion = System.activeSubVersion;
+		const subVersion = System.activeTrackId;
 		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
 			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);

@@ -53,13 +53,13 @@ const pausedSubs: typeof System.activeSub[] = [];
 export function pauseTracking() {
 	pausedSubs.push(System.activeSub);
 	System.activeSub = undefined;
-	System.activeSubVersion = -1;
+	System.activeTrackId = -1;
 }
 
 export function resetTracking() {
 	const prevSub = pausedSubs.pop()!;
 	System.activeSub = prevSub;
-	System.activeSubVersion = prevSub.trackId;
+	System.activeTrackId = prevSub.trackId;
 }
 
 export function shallowRef<T = any>(): ShallowRef<T | undefined>;

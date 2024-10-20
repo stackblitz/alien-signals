@@ -22,7 +22,7 @@ export class Signal<T = any> implements Dependency {
 	) { }
 
 	get() {
-		const subVersion = System.activeSubVersion;
+		const subVersion = System.activeTrackId;
 		if (subVersion >= 0 && this.linkedTrackId !== subVersion) {
 			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
