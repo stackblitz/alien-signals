@@ -68,7 +68,9 @@ count.set(3); // No console output
 
 ## Roadmap
 
-| Version | Savings                                        |
-|---------|------------------------------------------------|
-| 0.2    | Satisfies use cases for Vue Vapor Mode         |
-| 0.1    | Satisfies use cases for `vuejs/language-tools` |
+| Version | Savings                                                                                       |
+|---------|-----------------------------------------------------------------------------------------------|
+| 0.3     | Correctly schedule child effect scopes                                                        |
+| 0.2     | Correctly schedule computed side effects                                                      |
+| 0.1     | Correctly schedule inner effect callbacks                                                     |
+| 0.0     | Add APIs: `signal()`, `computed()`, `effect()`, `effectScope()`, `startBatch()`, `endBatch()` |
