@@ -49,7 +49,7 @@ export namespace System {
 	export let activeTrackId = -1;
 	export let activeEffectScopeVersion = -1;
 	export let batchDepth = 0;
-	export let lastTrackId = DirtyLevels.Released + 1;
+	export let lastTrackId = 0;
 	export let queuedEffects: IEffectScope | undefined = undefined;
 	export let queuedEffectsTail: IEffectScope | undefined = undefined;
 
@@ -143,7 +143,7 @@ export namespace Dependency {
 			if (link !== undefined) {
 				const sub: Link['sub'] = link.sub;
 
-				if (sub.trackId >= 0) {
+				if (sub.trackId > 0) {
 					if (sub.trackId === link.trackId) {
 						const subDirtyLevel = sub.dirtyLevel;
 						if (subDirtyLevel < dirtyLevel) {
