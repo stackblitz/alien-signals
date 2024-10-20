@@ -19,26 +19,28 @@ export class Computed<T = any> implements IComputed {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.Dirty;
+	version = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	shouldPropagate = false;
 
 	constructor(
 		public getter: (cachedValue?: T) => T
 	) { }
 
 	get(): T {
+		const dirtyLevel = this.dirtyLevel;
+		if (dirtyLevel === DirtyLevels.MaybeDirty) {
+			Subscriber.resolveMaybeDirty(this);
+			if (this.dirtyLevel === DirtyLevels.Dirty) {
+				this.update();
+			}
+		} else if (dirtyLevel >= DirtyLevels.Dirty) {
+			this.update();
+		}
 		const subVersion = System.activeSubVersion;
 		if (subVersion >= 0 && this.subVersion !== subVersion) {
 			this.subVersion = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
-		}
-		const dirtyLevel = this.versionOrDirtyLevel;
-		if (dirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.resolveMaybeDirty(this);
-			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
-				return this.update();
-			}
-		} else if (dirtyLevel >= DirtyLevels.Dirty) {
-			return this.update();
 		}
 		return this.cachedValue!;
 	}
@@ -59,6 +61,5 @@ export class Computed<T = any> implements IComputed {
 				Dependency.propagate(subs);
 			}
 		}
-		return newValue;
 	}
 }

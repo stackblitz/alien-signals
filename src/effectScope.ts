@@ -10,11 +10,13 @@ export class EffectScope implements IEffectScope {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.None;
+	version = 0;
+	dirtyLevel = DirtyLevels.None;
+	shouldPropagate = false;
 
 	notify() {
-		if (this.versionOrDirtyLevel !== DirtyLevels.None) {
-			this.versionOrDirtyLevel = DirtyLevels.None;
+		if (this.dirtyLevel !== DirtyLevels.None) {
+			this.dirtyLevel = DirtyLevels.None;
 			Subscriber.runInnerEffects(this.deps);
 		}
 	}
@@ -34,6 +36,6 @@ export class EffectScope implements IEffectScope {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.versionOrDirtyLevel = DirtyLevels.None;
+		this.dirtyLevel = DirtyLevels.None;
 	}
 }

@@ -17,7 +17,9 @@ export class Effect implements IEffect {
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.Dirty;
+	version = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	shouldPropagate = false;
 
 	constructor(
 		protected fn: () => void
@@ -36,15 +38,15 @@ export class Effect implements IEffect {
 	}
 
 	notify() {
-		const dirtyLevel = this.versionOrDirtyLevel;
+		const dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
-			this.versionOrDirtyLevel = DirtyLevels.None;
+			this.dirtyLevel = DirtyLevels.None;
 			Subscriber.runInnerEffects(this.deps);
 		} else {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				Subscriber.resolveMaybeDirty(this);
 			}
-			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+			if (this.dirtyLevel === DirtyLevels.Dirty) {
 				this.run();
 			} else {
 				Subscriber.runInnerEffects(this.deps);
@@ -67,6 +69,6 @@ export class Effect implements IEffect {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.versionOrDirtyLevel = DirtyLevels.Dirty;
+		this.dirtyLevel = DirtyLevels.Dirty;
 	}
 }
