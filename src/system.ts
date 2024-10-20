@@ -142,54 +142,54 @@ export namespace Dependency {
 		do {
 			if (link !== undefined) {
 				const sub: Link['sub'] = link.sub;
-				const tracking = sub.version >= 0;
 
-				if (tracking) {
-					if (sub.version !== link.subVersion) {
-						link = link.nextSub;
-						continue;
-					}
-				} else {
-					if (sub.version !== -link.subVersion) {
-						link = link.nextSub;
-						continue;
-					}
-				}
-
-				const subDirtyLevel = sub.dirtyLevel;
-
-				if (subDirtyLevel < dirtyLevel) {
-					sub.dirtyLevel = dirtyLevel;
-					if (subDirtyLevel === DirtyLevels.None) {
-						sub.canPropagate = true;
-					}
-				}
-
-				if (!tracking && sub.canPropagate) {
-					sub.canPropagate = false;
-
-					const subIsEffect = 'notify' in sub;
-
-					if ('subs' in sub && sub.subs !== undefined) {
-						sub.depsTail!.nextDep = link;
-						dep = sub;
-						link = sub.subs;
-						if (subIsEffect) {
-							dirtyLevel = DirtyLevels.SideEffectsOnly;
-						} else {
-							dirtyLevel = DirtyLevels.MaybeDirty;
+				if (sub.version >= 0) {
+					if (sub.version === link.subVersion) {
+						const subDirtyLevel = sub.dirtyLevel;
+						if (subDirtyLevel < dirtyLevel) {
+							sub.dirtyLevel = dirtyLevel;
+							if (subDirtyLevel === DirtyLevels.None) {
+								sub.canPropagate = true;
+							}
 						}
-						remainingQuantity++;
+					}
+				} else if (sub.version === -link.subVersion) {
 
-						continue;
-					} else if (subIsEffect) {
-						const queuedEffectsTail = system.queuedEffectsTail;
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.nextNotify = sub;
-						} else {
-							system.queuedEffects = sub;
+					const subDirtyLevel = sub.dirtyLevel;
+					const notDirty = subDirtyLevel === DirtyLevels.None;
+
+					if (subDirtyLevel < dirtyLevel) {
+						sub.dirtyLevel = dirtyLevel;
+					}
+
+					if (notDirty || sub.canPropagate) {
+						if (!notDirty) {
+							sub.canPropagate = false;
 						}
-						system.queuedEffectsTail = sub;
+
+						const subIsEffect = 'notify' in sub;
+
+						if ('subs' in sub && sub.subs !== undefined) {
+							sub.depsTail!.nextDep = link;
+							dep = sub;
+							link = sub.subs;
+							if (subIsEffect) {
+								dirtyLevel = DirtyLevels.SideEffectsOnly;
+							} else {
+								dirtyLevel = DirtyLevels.MaybeDirty;
+							}
+							remainingQuantity++;
+
+							continue;
+						} else if (subIsEffect) {
+							const queuedEffectsTail = system.queuedEffectsTail;
+							if (queuedEffectsTail !== undefined) {
+								queuedEffectsTail.nextNotify = sub;
+							} else {
+								system.queuedEffects = sub;
+							}
+							system.queuedEffectsTail = sub;
+						}
 					}
 				}
 
