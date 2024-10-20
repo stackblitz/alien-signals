@@ -12,39 +12,41 @@ export class Effect implements IEffect {
 	// Dependency
 	subs = undefined;
 	subsTail = undefined;
-	subVersion = -1;
+	linkedTrackId = -1;
 
 	// Subscriber
 	deps = undefined;
 	depsTail = undefined;
-	versionOrDirtyLevel = DirtyLevels.Dirty;
+	trackId = 0;
+	dirtyLevel = DirtyLevels.Dirty;
+	canPropagate = false;
 
 	constructor(
 		protected fn: () => void
 	) {
-		const subVersion = System.activeSubVersion;
-		if (subVersion >= 0 && this.subVersion !== subVersion) {
-			this.subVersion = subVersion;
+		const subVersion = System.activeTrackId;
+		if (subVersion !== 0 && this.linkedTrackId !== subVersion) {
+			this.linkedTrackId = subVersion;
 			Dependency.linkSubscriber(this, System.activeSub!);
 			return;
 		}
-		const scopeVersion = System.activeEffectScopeVersion;
-		if (scopeVersion >= 0 && this.subVersion !== scopeVersion) {
-			this.subVersion = scopeVersion;
+		const activeTrackId = System.activeEffectScopeTrackId;
+		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
+			this.linkedTrackId = activeTrackId;
 			Dependency.linkSubscriber(this, System.activeEffectScope!);
 		}
 	}
 
 	notify() {
-		const dirtyLevel = this.versionOrDirtyLevel;
+		const dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
-			this.versionOrDirtyLevel = DirtyLevels.None;
+			this.dirtyLevel = DirtyLevels.None;
 			Subscriber.runInnerEffects(this.deps);
 		} else {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				Subscriber.resolveMaybeDirty(this);
 			}
-			if (this.versionOrDirtyLevel === DirtyLevels.Dirty) {
+			if (this.dirtyLevel === DirtyLevels.Dirty) {
 				this.run();
 			} else {
 				Subscriber.runInnerEffects(this.deps);
@@ -67,6 +69,6 @@ export class Effect implements IEffect {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.versionOrDirtyLevel = DirtyLevels.Dirty;
+		this.dirtyLevel = DirtyLevels.Dirty;
 	}
 }

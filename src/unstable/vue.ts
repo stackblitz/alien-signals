@@ -53,13 +53,13 @@ const pausedSubs: typeof System.activeSub[] = [];
 export function pauseTracking() {
 	pausedSubs.push(System.activeSub);
 	System.activeSub = undefined;
-	System.activeSubVersion = -1;
+	System.activeTrackId = -1;
 }
 
 export function resetTracking() {
 	const prevSub = pausedSubs.pop()!;
 	System.activeSub = prevSub;
-	System.activeSubVersion = prevSub.versionOrDirtyLevel;
+	System.activeTrackId = prevSub.trackId;
 }
 
 export function shallowRef<T = any>(): ShallowRef<T | undefined>;
@@ -114,10 +114,10 @@ class VueComputed<T = any> extends Computed<T> {
 
 export class ReactiveEffect extends Effect {
 	get dirty() {
-		if (this.versionOrDirtyLevel === DirtyLevels.MaybeDirty) {
+		if (this.dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
 		}
-		return this.versionOrDirtyLevel === DirtyLevels.Dirty;
+		return this.dirtyLevel === DirtyLevels.Dirty;
 	}
 
 	set scheduler(fn: () => void) {
@@ -130,7 +130,7 @@ export class ReactiveEffect extends Effect {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.versionOrDirtyLevel = DirtyLevels.None;
+		this.dirtyLevel = DirtyLevels.None;
 	}
 }
 

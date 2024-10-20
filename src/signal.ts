@@ -15,16 +15,16 @@ export class Signal<T = any> implements Dependency {
 	// Dependency
 	subs = undefined;
 	subsTail = undefined;
-	subVersion = -1;
+	linkedTrackId = -1;
 
 	constructor(
 		public currentValue: T
 	) { }
 
 	get() {
-		const subVersion = System.activeSubVersion;
-		if (subVersion >= 0 && this.subVersion !== subVersion) {
-			this.subVersion = subVersion;
+		const activeTrackId = System.activeTrackId;
+		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
+			this.linkedTrackId = activeTrackId;
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}
 		return this.currentValue!;
