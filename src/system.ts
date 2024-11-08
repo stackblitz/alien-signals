@@ -12,7 +12,6 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	linkedTrackId: number;
 }
 
 export interface Subscriber {

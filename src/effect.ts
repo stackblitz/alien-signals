@@ -12,7 +12,6 @@ export class Effect<T = any> implements IEffect {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	linkedTrackId = -1;
 
 	// Subscriber
 	deps: Link | undefined = undefined;
@@ -24,15 +23,13 @@ export class Effect<T = any> implements IEffect {
 	constructor(
 		public fn: () => T
 	) {
-		const subVersion = System.activeTrackId;
-		if (subVersion !== 0 && this.linkedTrackId !== subVersion) {
-			this.linkedTrackId = subVersion;
+		const activeTrackId = System.activeTrackId;
+		if (activeTrackId !== 0) {
 			Dependency.linkSubscriber(this, System.activeSub!);
 			return;
 		}
-		const activeTrackId = System.activeEffectScopeTrackId;
-		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
-			this.linkedTrackId = activeTrackId;
+		const activeEffectScopeTrackId = System.activeEffectScopeTrackId;
+		if (activeEffectScopeTrackId !== 0) {
 			Dependency.linkSubscriber(this, System.activeEffectScope!);
 		}
 	}
