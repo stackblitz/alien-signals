@@ -55,7 +55,7 @@ const pausedSubs: typeof System.activeSub[] = [];
 export function pauseTracking() {
 	pausedSubs.push(System.activeSub);
 	System.activeSub = undefined;
-	System.activeTrackId = -1;
+	System.activeTrackId = 0;
 }
 
 export function resetTracking() {

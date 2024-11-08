@@ -6,7 +6,7 @@ export function effect(fn: () => void) {
 	return e;
 }
 
-export class Effect implements IEffect {
+export class Effect<T = any> implements IEffect {
 	nextNotify = undefined;
 
 	// Dependency
@@ -22,7 +22,7 @@ export class Effect implements IEffect {
 	canPropagate = false;
 
 	constructor(
-		public fn: () => void
+		public fn: () => T
 	) {
 		const subVersion = System.activeTrackId;
 		if (subVersion !== 0 && this.linkedTrackId !== subVersion) {
@@ -57,7 +57,7 @@ export class Effect implements IEffect {
 	run() {
 		const prevSub = Subscriber.startTrackDependencies(this);
 		try {
-			this.fn();
+			return this.fn();
 		} finally {
 			Subscriber.endTrackDependencies(this, prevSub);
 		}
