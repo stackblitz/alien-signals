@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, IComputed, Subscriber, System } from './system.js';
+import { Dependency, DirtyLevels, IComputed, Link, Subscriber, System } from './system.js';
 
 export interface ISignal<T = any> {
 	get(): T;
@@ -12,13 +12,13 @@ export class Computed<T = any> implements IComputed {
 	cachedValue: T | undefined = undefined;
 
 	// Dependency
-	subs = undefined;
-	subsTail = undefined;
+	subs: Link | undefined = undefined;
+	subsTail: Link | undefined = undefined;
 	linkedTrackId = -1;
 
 	// Subscriber
-	deps = undefined;
-	depsTail = undefined;
+	deps: Link | undefined = undefined;
+	depsTail: Link | undefined = undefined;
 	trackId = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	canPropagate = false;

@@ -1,5 +1,5 @@
 import { ISignal } from './computed.js';
-import { Dependency, endBatch, startBatch, System } from './system.js';
+import { Dependency, endBatch, Link, startBatch, System } from './system.js';
 
 export interface IWritableSignal<T = any> extends ISignal<T> {
 	set(value: T): void;
@@ -13,8 +13,8 @@ export function signal<T>(oldValue?: T): Signal<T | undefined> {
 
 export class Signal<T = any> implements Dependency {
 	// Dependency
-	subs = undefined;
-	subsTail = undefined;
+	subs: Link | undefined = undefined;
+	subsTail: Link | undefined = undefined;
 	linkedTrackId = -1;
 
 	constructor(

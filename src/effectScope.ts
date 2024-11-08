@@ -1,15 +1,15 @@
-import { DirtyLevels, IEffectScope, Subscriber } from './system.js';
+import { DirtyLevels, IEffectScope, Link, Subscriber } from './system.js';
 
 export function effectScope() {
 	return new EffectScope();
 }
 
 export class EffectScope implements IEffectScope {
-	nextNotify = undefined;
+	nextNotify: IEffectScope | undefined = undefined;
 
 	// Subscriber
-	deps = undefined;
-	depsTail = undefined;
+	deps: Link | undefined = undefined;
+	depsTail: Link | undefined = undefined;
 	trackId = 0;
 	dirtyLevel = DirtyLevels.None;
 	canPropagate = false;

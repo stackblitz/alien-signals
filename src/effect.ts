@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, IEffect, Subscriber, System } from './system.js';
+import { Dependency, DirtyLevels, IEffect, Link, Subscriber, System } from './system.js';
 
 export function effect(fn: () => void) {
 	const e = new Effect(fn);
@@ -7,16 +7,16 @@ export function effect(fn: () => void) {
 }
 
 export class Effect<T = any> implements IEffect {
-	nextNotify = undefined;
+	nextNotify: IEffect | undefined = undefined;
 
 	// Dependency
-	subs = undefined;
-	subsTail = undefined;
+	subs: Link | undefined = undefined;
+	subsTail: Link | undefined = undefined;
 	linkedTrackId = -1;
 
 	// Subscriber
-	deps = undefined;
-	depsTail = undefined;
+	deps: Link | undefined = undefined;
+	depsTail: Link | undefined = undefined;
 	trackId = 0;
 	dirtyLevel = DirtyLevels.Dirty;
 	canPropagate = false;
