@@ -14,7 +14,6 @@ export class Computed<T = any> implements IComputed {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	linkedTrackId = -1;
 
 	// Subscriber
 	deps: Link | undefined = undefined;
@@ -38,8 +37,7 @@ export class Computed<T = any> implements IComputed {
 			this.update();
 		}
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
-			this.linkedTrackId = activeTrackId;
+		if (activeTrackId !== 0 && this.subsTail?.trackId !== activeTrackId) {
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}
 		return this.cachedValue!;

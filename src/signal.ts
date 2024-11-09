@@ -15,7 +15,6 @@ export class Signal<T = any> implements Dependency {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	linkedTrackId = -1;
 
 	constructor(
 		public currentValue: T
@@ -23,8 +22,7 @@ export class Signal<T = any> implements Dependency {
 
 	get() {
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId !== 0 && this.linkedTrackId !== activeTrackId) {
-			this.linkedTrackId = activeTrackId;
+		if (activeTrackId !== 0 && this.subsTail?.trackId !== activeTrackId) {
 			Dependency.linkSubscriber(this, System.activeSub!);
 		}
 		return this.currentValue!;
