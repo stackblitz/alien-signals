@@ -148,6 +148,20 @@ export namespace Dependency {
 							sub.dirtyLevel = dirtyLevel;
 							if (subDirtyLevel === DirtyLevels.None) {
 								sub.canPropagate = true;
+
+								if ('subs' in sub && sub.subs !== undefined) {
+									sub.depsTail!.nextDep = link;
+									dep = sub;
+									link = sub.subs;
+									if ('notify' in sub) {
+										dirtyLevel = DirtyLevels.SideEffectsOnly;
+									} else {
+										dirtyLevel = DirtyLevels.MaybeDirty;
+									}
+									remainingQuantity++;
+
+									continue;
+								}
 							}
 						}
 					}
@@ -165,13 +179,11 @@ export namespace Dependency {
 							sub.canPropagate = false;
 						}
 
-						const subIsEffect = 'notify' in sub;
-
 						if ('subs' in sub && sub.subs !== undefined) {
 							sub.depsTail!.nextDep = link;
 							dep = sub;
 							link = sub.subs;
-							if (subIsEffect) {
+							if ('notify' in sub) {
 								dirtyLevel = DirtyLevels.SideEffectsOnly;
 							} else {
 								dirtyLevel = DirtyLevels.MaybeDirty;
@@ -179,7 +191,7 @@ export namespace Dependency {
 							remainingQuantity++;
 
 							continue;
-						} else if (subIsEffect) {
+						} else if ('notify' in sub) {
 							const queuedEffectsTail = system.queuedEffectsTail;
 							if (queuedEffectsTail !== undefined) {
 								queuedEffectsTail.nextNotify = sub;
