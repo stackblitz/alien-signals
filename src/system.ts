@@ -40,7 +40,7 @@ export const enum DirtyLevels {
 }
 
 export namespace System {
-	export let activeSub: IComputed | IEffect | undefined = undefined;
+	export let activeSub: Subscriber | undefined = undefined;
 	export let activeTrackId = 0;
 	export let batchDepth = 0;
 	export let lastTrackId = 0;
@@ -73,7 +73,7 @@ export function endBatch() {
 export namespace Link {
 	let pool: Link | undefined = undefined;
 
-	export function get(dep: Link['dep'], sub: Link['sub'], nextDep: Link | undefined) {
+	export function get(dep: Dependency, sub: Subscriber, nextDep: Link | undefined) {
 		if (pool !== undefined) {
 			const newLink = pool;
 			pool = newLink.nextDep;
@@ -128,7 +128,7 @@ export namespace Dependency {
 
 	const system = System;
 
-	export function linkSubscriber(dep: Link['dep'], sub: Link['sub']) {
+	export function linkSubscriber(dep: Dependency, sub: Subscriber) {
 		const depsTail = sub.depsTail;
 		const old = depsTail !== undefined
 			? depsTail.nextDep
@@ -395,18 +395,18 @@ export namespace Subscriber {
 	/**
 	 * @deprecated Use `startTrack` instead.
 	 */
-	export function startTrackDependencies(sub: IComputed | IEffect) {
+	export function startTrackDependencies(sub: Subscriber) {
 		return startTrack(sub);
 	}
 
 	/**
 	 * @deprecated Use `endTrack` instead.
 	 */
-	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
+	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined) {
 		return endTrack(sub, prevSub);
 	}
 
-	export function startTrack(sub: IComputed | IEffect) {
+	export function startTrack(sub: Subscriber) {
 		const newTrackId = system.lastTrackId + 1;
 		const prevSub = system.activeSub;
 
@@ -421,7 +421,7 @@ export namespace Subscriber {
 		return prevSub;
 	}
 
-	export function endTrack(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
+	export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined) {
 		if (prevSub !== undefined) {
 			system.activeSub = prevSub;
 			system.activeTrackId = prevSub.trackId;
