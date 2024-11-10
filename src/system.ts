@@ -1,9 +1,7 @@
-export interface IEffectScope extends Subscriber {
-	nextNotify: IEffectScope | undefined;
+export interface IEffect extends Dependency, Subscriber {
+	nextNotify: IEffect | undefined;
 	notify(): void;
 }
-
-export interface IEffect extends Dependency, IEffectScope { }
 
 export interface IComputed extends Dependency, Subscriber {
 	update(): void;
@@ -24,7 +22,7 @@ export interface Subscriber {
 
 export interface Link {
 	dep: Dependency | IComputed | IEffect;
-	sub: IComputed | IEffect | IEffectScope;
+	sub: IComputed | IEffect;
 	trackId: number;
 	// Also used as prev update
 	prevSub: Link | undefined;
@@ -43,13 +41,13 @@ export const enum DirtyLevels {
 
 export namespace System {
 	export let activeSub: IComputed | IEffect | undefined = undefined;
-	export let activeEffectScope: IEffectScope | undefined = undefined;
+	export let activeEffectScope: IEffect | undefined = undefined;
 	export let activeTrackId = 0;
 	export let activeEffectScopeTrackId = 0;
 	export let batchDepth = 0;
 	export let lastTrackId = 0;
-	export let queuedEffects: IEffectScope | undefined = undefined;
-	export let queuedEffectsTail: IEffectScope | undefined = undefined;
+	export let queuedEffects: IEffect | undefined = undefined;
+	export let queuedEffectsTail: IEffect | undefined = undefined;
 }
 
 export function startBatch() {
@@ -75,7 +73,57 @@ export function endBatch() {
 }
 
 export namespace Link {
-	export let pool: Link | undefined = undefined;
+	let pool: Link | undefined = undefined;
+
+	export function get(dep: Link['dep'], sub: Link['sub'], nextDep: Link | undefined) {
+		if (pool !== undefined) {
+			const newLink = pool;
+			pool = newLink.nextDep;
+			newLink.nextDep = nextDep;
+			newLink.dep = dep;
+			newLink.sub = sub;
+			newLink.trackId = sub.trackId;
+			return newLink;
+		} else {
+			return {
+				dep,
+				sub,
+				trackId: sub.trackId,
+				nextDep: nextDep,
+				prevSub: undefined,
+				nextSub: undefined,
+			};
+		}
+	}
+
+	export function release(link: Link) {
+		const dep = link.dep;
+		const nextSub = link.nextSub;
+		const prevSub = link.prevSub;
+
+		if (nextSub !== undefined) {
+			nextSub.prevSub = prevSub;
+		}
+		if (prevSub !== undefined) {
+			prevSub.nextSub = nextSub;
+		}
+
+		if (nextSub === undefined) {
+			dep.subsTail = prevSub;
+		}
+		if (prevSub === undefined) {
+			dep.subs = nextSub;
+		}
+
+		// @ts-ignore
+		link.dep = undefined;
+		// @ts-ignore
+		link.sub = undefined;
+		link.prevSub = undefined;
+		link.nextSub = undefined;
+		link.nextDep = pool;
+		pool = link;
+	}
 }
 
 export namespace Dependency {
@@ -89,25 +137,7 @@ export namespace Dependency {
 			: sub.deps;
 
 		if (old === undefined || old.dep !== dep) {
-			let newLink: Link;
-
-			if (Link.pool !== undefined) {
-				newLink = Link.pool;
-				Link.pool = newLink.nextDep;
-				newLink.nextDep = old;
-				newLink.dep = dep;
-				newLink.sub = sub;
-				newLink.trackId = sub.trackId;
-			} else {
-				newLink = {
-					dep,
-					sub,
-					trackId: sub.trackId,
-					nextDep: old,
-					prevSub: undefined,
-					nextSub: undefined,
-				};
-			}
+			const newLink = Link.get(dep, sub, old);
 
 			if (depsTail === undefined) {
 				sub.deps = newLink;
@@ -401,52 +431,7 @@ export namespace Subscriber {
 		sub.trackId = -sub.trackId;
 	}
 
-	export function clearTrack(link: Link) {
-		do {
-			const nextDep = link.nextDep;
-			const dep = link.dep;
-			const nextSub = link.nextSub;
-			const prevSub = link.prevSub;
-
-			if (nextSub !== undefined) {
-				nextSub.prevSub = prevSub;
-			}
-			if (prevSub !== undefined) {
-				prevSub.nextSub = nextSub;
-			}
-
-			if (nextSub === undefined) {
-				dep.subsTail = prevSub;
-			}
-			if (prevSub === undefined) {
-				dep.subs = nextSub;
-			}
-
-			// @ts-ignore
-			link.dep = undefined;
-			// @ts-ignore
-			link.sub = undefined;
-			link.prevSub = undefined;
-			link.nextSub = undefined;
-			link.nextDep = Link.pool;
-			Link.pool = link;
-
-			if (dep.subs === undefined && 'deps' in dep) {
-				dep.dirtyLevel = DirtyLevels.Released;
-				if (dep.deps !== undefined) {
-					link = dep.deps;
-					dep.depsTail!.nextDep = nextDep;
-					dep.deps = undefined;
-					dep.depsTail = undefined;
-					continue;
-				}
-			}
-
-			link = nextDep!;
-		} while (link !== undefined);
-	}
-
-	export function startTrackEffects(sub: IEffectScope) {
+	export function startTrackEffects(sub: IEffect) {
 		const newVersion = system.lastTrackId + 1;
 		const prevSub = system.activeEffectScope;
 
@@ -461,7 +446,7 @@ export namespace Subscriber {
 		return prevSub;
 	}
 
-	export function endTrackEffects(sub: IEffectScope, prevSub: IEffectScope | undefined) {
+	export function endTrackEffects(sub: IEffect, prevSub: IEffect | undefined) {
 		if (prevSub !== undefined) {
 			system.activeEffectScope = prevSub;
 			system.activeEffectScopeTrackId = prevSub.trackId;
@@ -481,5 +466,24 @@ export namespace Subscriber {
 			sub.deps = undefined;
 		}
 		sub.trackId = -sub.trackId;
+	}
+
+	export function clearTrack(link: Link) {
+		do {
+			const dep = link.dep;
+			const nextDep = link.nextDep;
+			Link.release(link);
+			if (dep.subs === undefined && 'deps' in dep) {
+				dep.dirtyLevel = DirtyLevels.Released;
+				if (dep.deps !== undefined) {
+					link = dep.deps;
+					dep.depsTail!.nextDep = nextDep;
+					dep.deps = undefined;
+					dep.depsTail = undefined;
+					continue;
+				}
+			}
+			link = nextDep!;
+		} while (link !== undefined);
 	}
 }
