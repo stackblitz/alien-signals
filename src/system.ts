@@ -128,7 +128,14 @@ export namespace Dependency {
 
 	const system = System;
 
+	/**
+	 * @deprecated Use `startTrack` instead.
+	 */
 	export function linkSubscriber(dep: Dependency, sub: Subscriber) {
+		return link(dep, sub);
+	}
+
+	export function link(dep: Dependency, sub: Subscriber) {
 		const depsTail = sub.depsTail;
 		const old = depsTail !== undefined
 			? depsTail.nextDep

@@ -26,13 +26,13 @@ export class Effect<T = any> implements IEffect {
 	) {
 		const activeTrackId = System.activeTrackId;
 		if (activeTrackId !== 0) {
-			Dependency.linkSubscriber(this, System.activeSub!);
+			Dependency.link(this, System.activeSub!);
 			return;
 		}
 		if (activeEffectScope !== undefined) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeEffectScope.trackId) {
-				Dependency.linkSubscriber(this, activeEffectScope);
+				Dependency.link(this, activeEffectScope);
 			}
 		}
 	}
