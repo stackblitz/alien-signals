@@ -47,13 +47,13 @@ export class Computed<T = any> implements IComputed {
 	}
 
 	update() {
-		const prevSub = Subscriber.startTrackDependencies(this);
+		const prevSub = Subscriber.startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
 		try {
 			newValue = this.getter(oldValue);
 		} finally {
-			Subscriber.endTrackDependencies(this, prevSub);
+			Subscriber.endTrack(this, prevSub);
 		}
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;

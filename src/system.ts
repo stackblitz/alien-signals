@@ -392,7 +392,21 @@ export namespace Subscriber {
 		} while (true);
 	}
 
+	/**
+	 * @deprecated Use `startTrack` instead.
+	 */
 	export function startTrackDependencies(sub: IComputed | IEffect) {
+		return startTrack(sub);
+	}
+
+	/**
+	 * @deprecated Use `endTrack` instead.
+	 */
+	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
+		return endTrack(sub, prevSub);
+	}
+
+	export function startTrack(sub: IComputed | IEffect) {
 		const newTrackId = system.lastTrackId + 1;
 		const prevSub = system.activeSub;
 
@@ -407,7 +421,7 @@ export namespace Subscriber {
 		return prevSub;
 	}
 
-	export function endTrackDependencies(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
+	export function endTrack(sub: IComputed | IEffect, prevSub: IComputed | IEffect | undefined) {
 		if (prevSub !== undefined) {
 			system.activeSub = prevSub;
 			system.activeTrackId = prevSub.trackId;

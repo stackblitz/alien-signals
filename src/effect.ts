@@ -55,11 +55,11 @@ export class Effect<T = any> implements IEffect {
 	}
 
 	run() {
-		const prevSub = Subscriber.startTrackDependencies(this);
+		const prevSub = Subscriber.startTrack(this);
 		try {
 			return this.fn();
 		} finally {
-			Subscriber.endTrackDependencies(this, prevSub);
+			Subscriber.endTrack(this, prevSub);
 		}
 	}
 
