@@ -1,3 +1,4 @@
+import { activeEffectScope } from './effectScope.js';
 import { Dependency, DirtyLevels, IEffect, Link, Subscriber, System } from './system.js';
 
 export function effect(fn: () => void) {
@@ -28,9 +29,11 @@ export class Effect<T = any> implements IEffect {
 			Dependency.linkSubscriber(this, System.activeSub!);
 			return;
 		}
-		const activeEffectScopeTrackId = System.activeEffectScopeTrackId;
-		if (activeEffectScopeTrackId !== 0) {
-			Dependency.linkSubscriber(this, System.activeEffectScope!);
+		if (activeEffectScope !== undefined) {
+			const subsTail = this.subsTail;
+			if (subsTail === undefined || subsTail.trackId !== activeEffectScope.trackId) {
+				Dependency.linkSubscriber(this, activeEffectScope);
+			}
 		}
 	}
 

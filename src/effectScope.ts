@@ -1,20 +1,16 @@
-import { DirtyLevels, IEffect, Link, Subscriber } from './system.js';
+import { DirtyLevels, Link, Subscriber, System } from './system.js';
+
+export let activeEffectScope: EffectScope | undefined = undefined;
 
 export function effectScope() {
 	return new EffectScope();
 }
 
-export class EffectScope implements IEffect {
-	nextNotify: IEffect | undefined = undefined;
-
-	// Dependency
-	subs: Link | undefined = undefined;
-	subsTail: Link | undefined = undefined;
-
+export class EffectScope implements Subscriber {
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	trackId = 0;
+	trackId = -(++System.lastTrackId);
 	dirtyLevel = DirtyLevels.None;
 	canPropagate = false;
 
@@ -26,11 +22,14 @@ export class EffectScope implements IEffect {
 	}
 
 	run<T>(fn: () => T) {
-		const prevSub = Subscriber.startTrackEffects(this);
+		const prevSub = activeEffectScope;
+		activeEffectScope = this;
+		this.trackId = Math.abs(this.trackId);
 		try {
 			return fn();
 		} finally {
-			Subscriber.endTrackEffects(this, prevSub);
+			activeEffectScope = prevSub;
+			this.trackId = -Math.abs(this.trackId);
 		}
 	}
 

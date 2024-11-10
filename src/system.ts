@@ -22,7 +22,7 @@ export interface Subscriber {
 
 export interface Link {
 	dep: Dependency | IComputed | IEffect;
-	sub: IComputed | IEffect;
+	sub: Subscriber | IComputed | IEffect;
 	trackId: number;
 	// Also used as prev update
 	prevSub: Link | undefined;
@@ -41,9 +41,7 @@ export const enum DirtyLevels {
 
 export namespace System {
 	export let activeSub: IComputed | IEffect | undefined = undefined;
-	export let activeEffectScope: IEffect | undefined = undefined;
 	export let activeTrackId = 0;
-	export let activeEffectScopeTrackId = 0;
 	export let batchDepth = 0;
 	export let lastTrackId = 0;
 	export let queuedEffects: IEffect | undefined = undefined;
@@ -395,15 +393,15 @@ export namespace Subscriber {
 	}
 
 	export function startTrackDependencies(sub: IComputed | IEffect) {
-		const newVersion = system.lastTrackId + 1;
+		const newTrackId = system.lastTrackId + 1;
 		const prevSub = system.activeSub;
 
 		system.activeSub = sub;
-		system.activeTrackId = newVersion;
-		system.lastTrackId = newVersion;
+		system.activeTrackId = newTrackId;
+		system.lastTrackId = newTrackId;
 
 		sub.depsTail = undefined;
-		sub.trackId = newVersion;
+		sub.trackId = newTrackId;
 		sub.dirtyLevel = DirtyLevels.None;
 
 		return prevSub;
@@ -416,43 +414,6 @@ export namespace Subscriber {
 		} else {
 			system.activeSub = undefined;
 			system.activeTrackId = 0;
-		}
-
-		const depsTail = sub.depsTail;
-		if (depsTail !== undefined) {
-			if (depsTail.nextDep !== undefined) {
-				clearTrack(depsTail.nextDep);
-				depsTail.nextDep = undefined;
-			}
-		} else if (sub.deps !== undefined) {
-			clearTrack(sub.deps);
-			sub.deps = undefined;
-		}
-		sub.trackId = -sub.trackId;
-	}
-
-	export function startTrackEffects(sub: IEffect) {
-		const newVersion = system.lastTrackId + 1;
-		const prevSub = system.activeEffectScope;
-
-		system.activeEffectScope = sub;
-		system.activeEffectScopeTrackId = newVersion;
-		system.lastTrackId = newVersion;
-
-		sub.depsTail = undefined;
-		sub.trackId = newVersion;
-		sub.dirtyLevel = DirtyLevels.None;
-
-		return prevSub;
-	}
-
-	export function endTrackEffects(sub: IEffect, prevSub: IEffect | undefined) {
-		if (prevSub !== undefined) {
-			system.activeEffectScope = prevSub;
-			system.activeEffectScopeTrackId = prevSub.trackId;
-		} else {
-			system.activeEffectScope = undefined;
-			system.activeEffectScopeTrackId = 0;
 		}
 
 		const depsTail = sub.depsTail;
