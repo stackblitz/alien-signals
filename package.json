@@ -10,6 +10,14 @@
 			"types": "./cjs/index.d.ts",
 			"import": "./esm/index.mjs",
 			"require": "./cjs/index.js"
+		},
+		"./cjs": {
+			"types": "./cjs/index.d.ts",
+			"require": "./cjs/index.js"
+		},
+		"./esm": {
+			"types": "./cjs/index.d.ts",
+			"import": "./esm/index.mjs"
 		}
 	},
 	"files": [
