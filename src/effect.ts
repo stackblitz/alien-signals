@@ -38,17 +38,16 @@ export class Effect<T = any> implements IEffect {
 	}
 
 	notify() {
-		const dirtyLevel = this.dirtyLevel;
-		if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
-			this.dirtyLevel = DirtyLevels.None;
-			Subscriber.runInnerEffects(this.deps);
-		} else {
+		let dirtyLevel = this.dirtyLevel;
+		if (dirtyLevel > DirtyLevels.None) {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				Subscriber.resolveMaybeDirty(this);
+				dirtyLevel = this.dirtyLevel;
 			}
-			if (this.dirtyLevel === DirtyLevels.Dirty) {
+			if (dirtyLevel === DirtyLevels.Dirty) {
 				this.run();
 			} else {
+				this.dirtyLevel = DirtyLevels.None;
 				Subscriber.runInnerEffects(this.deps);
 			}
 		}

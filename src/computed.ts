@@ -27,13 +27,12 @@ export class Computed<T = any> implements IComputed {
 	) { }
 
 	get(): T {
-		const dirtyLevel = this.dirtyLevel;
+		let dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel === DirtyLevels.MaybeDirty) {
 			Subscriber.resolveMaybeDirty(this);
-			if (this.dirtyLevel === DirtyLevels.Dirty) {
-				this.update();
-			}
-		} else if (dirtyLevel === DirtyLevels.Dirty || dirtyLevel === DirtyLevels.Released) {
+			dirtyLevel = this.dirtyLevel;
+		}
+		if (dirtyLevel >= DirtyLevels.Dirty) {
 			this.update();
 		}
 		const activeTrackId = System.activeTrackId;
