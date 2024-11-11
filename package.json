@@ -4,6 +4,7 @@
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
 	"type": "commonjs",
+	"types": "./cjs/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./cjs/index.d.ts",
