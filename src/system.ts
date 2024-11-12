@@ -113,9 +113,9 @@ export namespace Link {
 			dep.subs = nextSub;
 		}
 
-		// @ts-ignore
+		// @ts-expect-error
 		link.dep = undefined;
-		// @ts-ignore
+		// @ts-expect-error
 		link.sub = undefined;
 		link.prevSub = undefined;
 		link.nextSub = undefined;
