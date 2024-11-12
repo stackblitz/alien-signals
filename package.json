@@ -36,8 +36,8 @@
 	},
 	"devDependencies": {
 		"esbuild": "latest",
-		"pkg-pr-new": "latest",
-		"typescript": "latest",
-		"vitest": "latest"
+		"vite": "latest",
+		"vitest": "latest",
+		"typescript": "latest"
 	}
 }
