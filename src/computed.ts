@@ -19,7 +19,7 @@ export class Computed<T = any> implements IComputed {
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
 	trackId = 0;
-	dirtyLevel = DirtyLevels.Dirty;
+	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
 	canPropagate = false;
 
 	constructor(
@@ -45,7 +45,7 @@ export class Computed<T = any> implements IComputed {
 		return this.cachedValue!;
 	}
 
-	update() {
+	update(): void {
 		const prevSub = Subscriber.startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;

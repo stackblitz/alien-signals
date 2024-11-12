@@ -8,6 +8,7 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
+		"isolatedDeclarations": true,
 		"rootDir": "src",
 		"outDir": "cjs",
 	},

@@ -20,7 +20,7 @@ export class Signal<T = any> implements Dependency {
 		public currentValue: T
 	) { }
 
-	get() {
+	get(): NonNullable<T> {
 		const activeTrackId = System.activeTrackId;
 		if (activeTrackId !== 0) {
 			const subsTail = this.subsTail;
@@ -31,7 +31,7 @@ export class Signal<T = any> implements Dependency {
 		return this.currentValue!;
 	}
 
-	set(value: T) {
+	set(value: T): void {
 		if (this.currentValue !== (this.currentValue = value)) {
 			const subs = this.subs;
 			if (subs !== undefined) {

@@ -1,7 +1,7 @@
 import { activeEffectScope } from './effectScope.js';
 import { Dependency, DirtyLevels, IEffect, Link, Subscriber, System } from './system.js';
 
-export function effect(fn: () => void) {
+export function effect(fn: () => void): Effect<void> {
 	const e = new Effect(fn);
 	e.run();
 	return e;
@@ -18,7 +18,7 @@ export class Effect<T = any> implements IEffect {
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
 	trackId = 0;
-	dirtyLevel = DirtyLevels.Dirty;
+	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
 	canPropagate = false;
 
 	constructor(
@@ -37,7 +37,7 @@ export class Effect<T = any> implements IEffect {
 		}
 	}
 
-	notify() {
+	notify(): void {
 		let dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel > DirtyLevels.None) {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
@@ -53,7 +53,7 @@ export class Effect<T = any> implements IEffect {
 		}
 	}
 
-	run() {
+	run(): T {
 		const prevSub = Subscriber.startTrack(this);
 		try {
 			return this.fn();
@@ -62,7 +62,7 @@ export class Effect<T = any> implements IEffect {
 		}
 	}
 
-	stop() {
+	stop(): void {
 		if (this.deps !== undefined) {
 			Subscriber.clearTrack(this.deps);
 			this.deps = undefined;

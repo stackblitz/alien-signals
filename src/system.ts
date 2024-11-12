@@ -48,11 +48,11 @@ export namespace System {
 	export let queuedEffectsTail: IEffect | undefined = undefined;
 }
 
-export function startBatch() {
+export function startBatch(): void {
 	System.batchDepth++;
 }
 
-export function endBatch() {
+export function endBatch(): void {
 	System.batchDepth--;
 	if (System.batchDepth === 0) {
 		while (System.queuedEffects !== undefined) {
@@ -73,7 +73,7 @@ export function endBatch() {
 export namespace Link {
 	let pool: Link | undefined = undefined;
 
-	export function get(dep: Dependency, sub: Subscriber, nextDep: Link | undefined) {
+	export function get(dep: Dependency, sub: Subscriber, nextDep: Link | undefined): Link {
 		if (pool !== undefined) {
 			const newLink = pool;
 			pool = newLink.nextDep;
@@ -94,7 +94,7 @@ export namespace Link {
 		}
 	}
 
-	export function release(link: Link) {
+	export function release(link: Link): void {
 		const dep = link.dep;
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSub;
@@ -131,11 +131,11 @@ export namespace Dependency {
 	/**
 	 * @deprecated Use `startTrack` instead.
 	 */
-	export function linkSubscriber(dep: Dependency, sub: Subscriber) {
+	export function linkSubscriber(dep: Dependency, sub: Subscriber): void {
 		return link(dep, sub);
 	}
 
-	export function link(dep: Dependency, sub: Subscriber) {
+	export function link(dep: Dependency, sub: Subscriber): void {
 		const depsTail = sub.depsTail;
 		const old = depsTail !== undefined
 			? depsTail.nextDep
@@ -166,7 +166,7 @@ export namespace Dependency {
 		}
 	}
 
-	export function propagate(subs: Link) {
+	export function propagate(subs: Link): void {
 		let link: Link | undefined = subs;
 		let dep = subs.dep;
 		let dirtyLevel = DirtyLevels.Dirty;
@@ -282,7 +282,7 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function runInnerEffects(link: Link | undefined) {
+	export function runInnerEffects(link: Link | undefined): void {
 		while (link !== undefined) {
 			const dep = link.dep;
 			if ('notify' in dep) {
@@ -292,7 +292,7 @@ export namespace Subscriber {
 		}
 	}
 
-	export function resolveMaybeDirty(sub: IComputed | IEffect, depth = 0) {
+	export function resolveMaybeDirty(sub: IComputed | IEffect, depth = 0): void {
 		let link = sub.deps;
 
 		while (link !== undefined) {
@@ -327,7 +327,7 @@ export namespace Subscriber {
 		}
 	}
 
-	export function resolveMaybeDirtyNonRecursive(sub: IComputed | IEffect) {
+	export function resolveMaybeDirtyNonRecursive(sub: IComputed | IEffect): void {
 		let link = sub.deps;
 		let remaining = 0;
 
@@ -402,18 +402,18 @@ export namespace Subscriber {
 	/**
 	 * @deprecated Use `startTrack` instead.
 	 */
-	export function startTrackDependencies(sub: Subscriber) {
+	export function startTrackDependencies(sub: Subscriber): Subscriber | undefined {
 		return startTrack(sub);
 	}
 
 	/**
 	 * @deprecated Use `endTrack` instead.
 	 */
-	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined) {
+	export function endTrackDependencies(sub: Subscriber, prevSub: Subscriber | undefined): void {
 		return endTrack(sub, prevSub);
 	}
 
-	export function startTrack(sub: Subscriber) {
+	export function startTrack(sub: Subscriber): Subscriber | undefined {
 		const newTrackId = system.lastTrackId + 1;
 		const prevSub = system.activeSub;
 
@@ -428,7 +428,7 @@ export namespace Subscriber {
 		return prevSub;
 	}
 
-	export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined) {
+	export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined): void {
 		if (prevSub !== undefined) {
 			system.activeSub = prevSub;
 			system.activeTrackId = prevSub.trackId;
@@ -450,7 +450,7 @@ export namespace Subscriber {
 		sub.trackId = -sub.trackId;
 	}
 
-	export function clearTrack(link: Link) {
+	export function clearTrack(link: Link): void {
 		do {
 			const dep = link.dep;
 			const nextDep = link.nextDep;
