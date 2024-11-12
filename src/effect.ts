@@ -48,7 +48,14 @@ export class Effect<T = any> implements IEffect {
 				this.run();
 			} else {
 				this.dirtyLevel = DirtyLevels.None;
-				Subscriber.runInnerEffects(this.deps);
+				let link = this.deps;
+				while (link !== undefined) {
+					const dep = link.dep;
+					if ('notify' in dep) {
+						dep.notify();
+					}
+					link = link.nextDep;
+				}
 			}
 		}
 	}

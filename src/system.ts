@@ -36,7 +36,6 @@ export const enum DirtyLevels {
 	SideEffectsOnly,
 	MaybeDirty,
 	Dirty,
-	Released,
 }
 
 export namespace System {
@@ -282,16 +281,6 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function runInnerEffects(link: Link | undefined): void {
-		while (link !== undefined) {
-			const dep = link.dep;
-			if ('notify' in dep) {
-				dep.notify();
-			}
-			link = link.nextDep;
-		}
-	}
-
 	export function resolveMaybeDirty(sub: IComputed | IEffect, depth = 0): void {
 		let link = sub.deps;
 
@@ -452,7 +441,11 @@ export namespace Subscriber {
 			const nextDep = link.nextDep;
 			Link.release(link);
 			if (dep.subs === undefined && 'deps' in dep) {
-				dep.dirtyLevel = DirtyLevels.Released;
+				if ('notify' in dep) {
+					dep.dirtyLevel = DirtyLevels.None;
+				} else {
+					dep.dirtyLevel = DirtyLevels.Dirty;
+				}
 				if (dep.deps !== undefined) {
 					link = dep.deps;
 					dep.depsTail!.nextDep = nextDep;

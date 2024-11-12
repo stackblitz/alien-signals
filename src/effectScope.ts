@@ -17,7 +17,14 @@ export class EffectScope implements Subscriber {
 	notify(): void {
 		if (this.dirtyLevel !== DirtyLevels.None) {
 			this.dirtyLevel = DirtyLevels.None;
-			Subscriber.runInnerEffects(this.deps);
+			let link = this.deps;
+			while (link !== undefined) {
+				const dep = link.dep;
+				if ('notify' in dep) {
+					dep.notify();
+				}
+				link = link.nextDep;
+			}
 		}
 	}
 
