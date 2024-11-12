@@ -298,7 +298,7 @@ export namespace Subscriber {
 		while (link !== undefined) {
 			const dep = link.dep;
 			if ('update' in dep) {
-				const dirtyLevel = dep.dirtyLevel;
+				let dirtyLevel = dep.dirtyLevel;
 
 				if (dirtyLevel === DirtyLevels.MaybeDirty) {
 					if (depth >= 4) {
@@ -306,13 +306,9 @@ export namespace Subscriber {
 					} else {
 						resolveMaybeDirty(dep, depth + 1);
 					}
-					if (dep.dirtyLevel === DirtyLevels.Dirty) {
-						dep.update();
-						if (sub.dirtyLevel === DirtyLevels.Dirty) {
-							break;
-						}
-					}
-				} else if (dirtyLevel === DirtyLevels.Dirty) {
+					dirtyLevel = dep.dirtyLevel;
+				}
+				if (dirtyLevel === DirtyLevels.Dirty) {
 					dep.update();
 					if (sub.dirtyLevel === DirtyLevels.Dirty) {
 						break;
