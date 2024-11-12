@@ -174,9 +174,10 @@ export namespace Dependency {
 		do {
 			if (link !== undefined) {
 				const sub: Link['sub'] = link.sub;
+				const subTrackId = sub.trackId;
 
-				if (sub.trackId > 0) {
-					if (sub.trackId === link.trackId) {
+				if (subTrackId > 0) {
+					if (subTrackId === link.trackId) {
 						const subDirtyLevel = sub.dirtyLevel;
 						if (subDirtyLevel < dirtyLevel) {
 							sub.dirtyLevel = dirtyLevel;
@@ -199,7 +200,7 @@ export namespace Dependency {
 							}
 						}
 					}
-				} else if (sub.trackId === -link.trackId) {
+				} else if (subTrackId === -link.trackId) {
 
 					const subDirtyLevel = sub.dirtyLevel;
 					const notDirty = subDirtyLevel === DirtyLevels.None;
