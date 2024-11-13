@@ -70,7 +70,7 @@ count.set(3); // No console output
 
 | Version | Savings                                                                                       |
 |---------|-----------------------------------------------------------------------------------------------|
-| 0.3     | Correctly schedule child effect scopes                                                        |
+| 0.3     | ~~Correctly schedule child effect scopes~~                                                        |
 | 0.2     | Correctly schedule computed side effects                                                      |
 | 0.1     | Correctly schedule inner effect callbacks                                                     |
 | 0.0     | Add APIs: `signal()`, `computed()`, `effect()`, `effectScope()`, `startBatch()`, `endBatch()` |
