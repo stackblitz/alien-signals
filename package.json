@@ -13,11 +13,13 @@
 		},
 		"./cjs": {
 			"types": "./cjs/index.d.ts",
+			"import": "./cjs/index.js",
 			"require": "./cjs/index.js"
 		},
 		"./esm": {
 			"types": "./cjs/index.d.ts",
-			"import": "./esm/index.mjs"
+			"import": "./esm/index.mjs",
+			"require": "./esm/index.mjs"
 		}
 	},
 	"files": [
