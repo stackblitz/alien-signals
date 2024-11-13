@@ -7,7 +7,7 @@ export function effect(fn: () => void): Effect<void> {
 	return e;
 }
 
-export class Effect<T = any> implements IEffect {
+export class Effect<T = any> implements IEffect, Dependency {
 	nextNotify: IEffect | undefined = undefined;
 
 	// Dependency

@@ -1,4 +1,4 @@
-export interface IEffect extends Dependency, Subscriber {
+export interface IEffect extends Subscriber {
 	nextNotify: IEffect | undefined;
 	notify(): void;
 }
@@ -21,7 +21,7 @@ export interface Subscriber {
 }
 
 export interface Link {
-	dep: Dependency | IComputed | IEffect;
+	dep: Dependency | IComputed | (Dependency & IEffect);
 	sub: Subscriber | IComputed | IEffect;
 	trackId: number;
 	// Also used as prev update
@@ -128,7 +128,7 @@ export namespace Dependency {
 	const system = System;
 
 	/**
-	 * @deprecated Use `startTrack` instead.
+	 * @deprecated Use `link` instead.
 	 */
 	export function linkSubscriber(dep: Dependency, sub: Subscriber): void {
 		return link(dep, sub);
@@ -336,7 +336,7 @@ export namespace Subscriber {
 
 						if (sub.dirtyLevel === DirtyLevels.Dirty) {
 							if (remaining !== 0) {
-								const subSubs = sub.subs!;
+								const subSubs = (sub as IComputed).subs!;
 								const prevLink = subSubs.prevSub!;
 								(sub as IComputed).update();
 								subSubs.prevSub = undefined;
@@ -360,7 +360,7 @@ export namespace Subscriber {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				sub.dirtyLevel = DirtyLevels.None;
 				if (remaining !== 0) {
-					const subSubs = sub.subs!;
+					const subSubs = (sub as IComputed).subs!;
 					const prevLink = subSubs.prevSub!;
 					subSubs.prevSub = undefined;
 					sub = prevLink.sub as IComputed | IEffect;
@@ -372,7 +372,7 @@ export namespace Subscriber {
 				if (dirtyLevel === DirtyLevels.Dirty) {
 					(sub as IComputed).update();
 				}
-				const subSubs = sub.subs!;
+				const subSubs = (sub as IComputed).subs!;
 				const prevLink = subSubs.prevSub!;
 				subSubs.prevSub = undefined;
 				sub = prevLink.sub as IComputed | IEffect;
