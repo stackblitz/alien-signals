@@ -80,16 +80,15 @@ export function getLink(dep: Dependency, sub: Subscriber, nextDep: Link | undefi
 		newLink.sub = sub;
 		newLink.trackId = sub.trackId;
 		return newLink;
-	} else {
-		return {
-			dep,
-			sub,
-			trackId: sub.trackId,
-			nextDep: nextDep,
-			prevSub: undefined,
-			nextSub: undefined,
-		};
 	}
+	return {
+		dep,
+		sub,
+		trackId: sub.trackId,
+		nextDep: nextDep,
+		prevSub: undefined,
+		nextSub: undefined,
+	};
 }
 
 export function releaseLink(link: Link): void {
