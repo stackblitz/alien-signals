@@ -4,7 +4,7 @@ export interface IEffect extends Subscriber {
 }
 
 export interface IComputed extends Dependency, Subscriber {
-	update(): void;
+	update(): boolean;
 }
 
 export interface Dependency {
@@ -169,7 +169,7 @@ export namespace Dependency {
 		let link: Link | undefined = subs;
 		let dep = subs.dep;
 		let dirtyLevel = DirtyLevels.Dirty;
-		let remainingQuantity = 0;
+		let stack = 0;
 
 		do {
 			if (link !== undefined) {
@@ -193,7 +193,7 @@ export namespace Dependency {
 									} else {
 										dirtyLevel = DirtyLevels.MaybeDirty;
 									}
-									remainingQuantity++;
+									stack++;
 
 									continue;
 								}
@@ -223,7 +223,7 @@ export namespace Dependency {
 							} else {
 								dirtyLevel = DirtyLevels.MaybeDirty;
 							}
-							remainingQuantity++;
+							stack++;
 
 							continue;
 						} else if ('notify' in sub) {
@@ -242,7 +242,7 @@ export namespace Dependency {
 				continue;
 			}
 
-			if (remainingQuantity !== 0) {
+			if (stack > 0) {
 				const depsTail = (dep as IComputed | IEffect).depsTail!;
 				const prevLink = depsTail.nextDep!;
 				const prevSub = prevLink.sub;
@@ -250,9 +250,9 @@ export namespace Dependency {
 				depsTail.nextDep = undefined;
 				dep = prevLink.dep;
 				link = prevLink.nextSub;
-				remainingQuantity--;
+				stack--;
 
-				if (remainingQuantity === 0) {
+				if (stack === 0) {
 					dirtyLevel = DirtyLevels.Dirty;
 				} else if ('notify' in dep) {
 					dirtyLevel = DirtyLevels.SideEffectsOnly;
@@ -282,43 +282,41 @@ export namespace Subscriber {
 
 	const system = System;
 
-	export function resolveMaybeDirty(sub: IComputed | IEffect, depth = 0): void {
-		let link = sub.deps;
-
-		while (link !== undefined) {
+	export function checkDirty(link: Link, depth = 0): boolean {
+		do {
 			const dep = link.dep;
 			if ('update' in dep) {
-				let dirtyLevel = dep.dirtyLevel;
-
-				if (dirtyLevel === DirtyLevels.MaybeDirty) {
-					if (depth >= 4) {
-						resolveMaybeDirtyNonRecursive(dep);
+				const dirtyLevel = dep.dirtyLevel;
+				if (dirtyLevel !== DirtyLevels.None) {
+					if (
+						dirtyLevel === DirtyLevels.Dirty
+						|| (
+							depth < 4
+								? checkDirty(dep.deps!, depth + 1)
+								: checkDirtyNonRecursive(dep)
+						)
+					) {
+						if (dep.update()) {
+							Dependency.propagate(dep.subs!);
+							return true;
+						}
 					} else {
-						resolveMaybeDirty(dep, depth + 1);
-					}
-					dirtyLevel = dep.dirtyLevel;
-				}
-				if (dirtyLevel === DirtyLevels.Dirty) {
-					dep.update();
-					if (sub.dirtyLevel === DirtyLevels.Dirty) {
-						break;
+						dep.dirtyLevel = DirtyLevels.None;
 					}
 				}
 			}
-			link = link.nextDep;
-		}
-
-		if (sub.dirtyLevel === DirtyLevels.MaybeDirty) {
-			sub.dirtyLevel = DirtyLevels.None;
-		}
+			link = link.nextDep!;
+		} while (link !== undefined);
+		return false;
 	}
 
-	export function resolveMaybeDirtyNonRecursive(sub: IComputed | IEffect): void {
-		let link = sub.deps;
-		let remaining = 0;
+	function checkDirtyNonRecursive(sub: Link['sub']): boolean {
+		let subDirtyLevel = DirtyLevels.MaybeDirty;
+		let link = sub.deps!;
+		let stack = 0;
 
 		do {
-			if (link !== undefined) {
+			if (subDirtyLevel === DirtyLevels.MaybeDirty) {
 				const dep = link.dep;
 
 				if ('update' in dep) {
@@ -327,61 +325,51 @@ export namespace Subscriber {
 					if (depDirtyLevel === DirtyLevels.MaybeDirty) {
 						dep.subs!.prevSub = link;
 						sub = dep;
-						link = dep.deps;
-						remaining++;
-
+						link = dep.deps!;
+						stack++;
 						continue;
-					} else if (depDirtyLevel === DirtyLevels.Dirty) {
-						dep.update();
-
-						if (sub.dirtyLevel === DirtyLevels.Dirty) {
-							if (remaining !== 0) {
-								const subSubs = (sub as IComputed).subs!;
-								const prevLink = subSubs.prevSub!;
-								(sub as IComputed).update();
-								subSubs.prevSub = undefined;
-								sub = prevLink.sub as IComputed | IEffect;
-								link = prevLink.nextDep;
-								remaining--;
-								continue;
-							}
-
-							break;
+					}
+					if (depDirtyLevel === DirtyLevels.Dirty) {
+						if (dep.update()) {
+							Dependency.propagate(dep.subs!);
+							subDirtyLevel = DirtyLevels.Dirty;
+							continue;
 						}
 					}
 				}
 
-				link = link.nextDep;
+				link = link.nextDep!;
+				if (link === undefined) {
+					subDirtyLevel = DirtyLevels.None;
+				}
 				continue;
 			}
 
-			const dirtyLevel = sub.dirtyLevel;
-
-			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				sub.dirtyLevel = DirtyLevels.None;
-				if (remaining !== 0) {
-					const subSubs = (sub as IComputed).subs!;
-					const prevLink = subSubs.prevSub!;
-					subSubs.prevSub = undefined;
-					sub = prevLink.sub as IComputed | IEffect;
-					link = prevLink.nextDep;
-					remaining--;
-					continue;
-				}
-			} else if (remaining !== 0) {
-				if (dirtyLevel === DirtyLevels.Dirty) {
-					(sub as IComputed).update();
-				}
+			if (stack > 0) {
+				stack--;
 				const subSubs = (sub as IComputed).subs!;
 				const prevLink = subSubs.prevSub!;
 				subSubs.prevSub = undefined;
-				sub = prevLink.sub as IComputed | IEffect;
-				link = prevLink.nextDep;
-				remaining--;
+				if (subDirtyLevel === DirtyLevels.Dirty) {
+					if ((sub as IComputed).update()) {
+						Dependency.propagate(subSubs);
+						sub = prevLink.sub;
+						continue;
+					}
+				} else {
+					sub.dirtyLevel = DirtyLevels.None;
+				}
+				link = prevLink.nextDep!;
+				sub = prevLink.sub;
+				if (link !== undefined) {
+					subDirtyLevel = DirtyLevels.MaybeDirty;
+				} else {
+					subDirtyLevel = DirtyLevels.None;
+				}
 				continue;
 			}
 
-			break;
+			return subDirtyLevel === DirtyLevels.Dirty;
 		} while (true);
 	}
 

@@ -27,13 +27,18 @@ export class Computed<T = any> implements IComputed {
 	) { }
 
 	get(): T {
-		let dirtyLevel = this.dirtyLevel;
-		if (dirtyLevel === DirtyLevels.MaybeDirty) {
-			Subscriber.resolveMaybeDirty(this);
-			dirtyLevel = this.dirtyLevel;
-		}
-		if (dirtyLevel >= DirtyLevels.Dirty) {
-			this.update();
+		const dirtyLevel = this.dirtyLevel;
+		if (dirtyLevel > DirtyLevels.None) {
+			if (dirtyLevel === DirtyLevels.Dirty || Subscriber.checkDirty(this.deps!)) {
+				if (this.update()) {
+					const subs = this.subs;
+					if (subs !== undefined) {
+						Dependency.propagate(subs);
+					}
+				}
+			} else {
+				this.dirtyLevel = DirtyLevels.None;
+			}
 		}
 		const activeTrackId = System.activeTrackId;
 		if (activeTrackId !== 0) {
@@ -45,7 +50,7 @@ export class Computed<T = any> implements IComputed {
 		return this.cachedValue!;
 	}
 
-	update(): void {
+	update(): boolean {
 		const prevSub = Subscriber.startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
@@ -56,10 +61,8 @@ export class Computed<T = any> implements IComputed {
 		}
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;
-			const subs = this.subs;
-			if (subs !== undefined) {
-				Dependency.propagate(subs);
-			}
+			return true;
 		}
+		return false;
 	}
 }
