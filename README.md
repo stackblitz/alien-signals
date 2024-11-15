@@ -1,3 +1,11 @@
+<p align="center">
+	<img src="assets/logo.png" width="250"><br>
+<p>
+
+<p align="center">
+	<a href="https://npmjs.com/package/alien-signals"><img src="https://badgen.net/npm/v/alien-signals" alt="npm package"></a>
+</p>
+
 # alien-signals
 
 Project Status: **Preview**
