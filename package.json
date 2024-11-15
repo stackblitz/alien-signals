@@ -1,6 +1,6 @@
 {
 	"name": "alien-signals",
-	"version": "0.2.2",
+	"version": "0.3.0-alpha.0",
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
 	"types": "./types/index.d.ts",
