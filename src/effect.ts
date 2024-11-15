@@ -1,5 +1,5 @@
 import { activeEffectScope } from './effectScope.js';
-import { Dependency, DirtyLevels, IEffect, Link, Subscriber, System } from './system.js';
+import { checkDirty, clearTrack, Dependency, DirtyLevels, endTrack, IEffect, link, Link, startTrack, System } from './system.js';
 
 export function effect(fn: () => void): Effect<void> {
 	const e = new Effect(fn);
@@ -26,13 +26,13 @@ export class Effect<T = any> implements IEffect, Dependency {
 	) {
 		const activeTrackId = System.activeTrackId;
 		if (activeTrackId !== 0) {
-			Dependency.link(this, System.activeSub!);
+			link(this, System.activeSub!);
 			return;
 		}
 		if (activeEffectScope !== undefined) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeEffectScope.trackId) {
-				Dependency.link(this, activeEffectScope);
+				link(this, activeEffectScope);
 			}
 		}
 	}
@@ -41,7 +41,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 		let dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel > DirtyLevels.None) {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				dirtyLevel = Subscriber.checkDirty(this.deps!)
+				dirtyLevel = checkDirty(this.deps!)
 					? DirtyLevels.Dirty
 					: DirtyLevels.SideEffectsOnly;
 			}
@@ -64,17 +64,17 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	run(): T {
-		const prevSub = Subscriber.startTrack(this);
+		const prevSub = startTrack(this);
 		try {
 			return this.fn();
 		} finally {
-			Subscriber.endTrack(this, prevSub);
+			endTrack(this, prevSub);
 		}
 	}
 
 	stop(): void {
 		if (this.deps !== undefined) {
-			Subscriber.clearTrack(this.deps);
+			clearTrack(this.deps);
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}

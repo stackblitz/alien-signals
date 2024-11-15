@@ -1,4 +1,4 @@
-import { DirtyLevels, Link, Subscriber, System } from './system.js';
+import { clearTrack, DirtyLevels, Link, Subscriber, System } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
 
@@ -42,7 +42,7 @@ export class EffectScope implements Subscriber {
 
 	stop(): void {
 		if (this.deps !== undefined) {
-			Subscriber.clearTrack(this.deps);
+			clearTrack(this.deps);
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}

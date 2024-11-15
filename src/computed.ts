@@ -1,4 +1,4 @@
-import { Dependency, DirtyLevels, IComputed, Link, Subscriber, System } from './system.js';
+import { checkDirty, DirtyLevels, endTrack, IComputed, link, Link, propagate, startTrack, System } from './system.js';
 
 export interface ISignal<T = any> {
 	get(): T;
@@ -29,11 +29,11 @@ export class Computed<T = any> implements IComputed {
 	get(): T {
 		const dirtyLevel = this.dirtyLevel;
 		if (dirtyLevel > DirtyLevels.None) {
-			if (dirtyLevel === DirtyLevels.Dirty || Subscriber.checkDirty(this.deps!)) {
+			if (dirtyLevel === DirtyLevels.Dirty || checkDirty(this.deps!)) {
 				if (this.update()) {
 					const subs = this.subs;
 					if (subs !== undefined) {
-						Dependency.propagate(subs);
+						propagate(subs);
 					}
 				}
 			} else {
@@ -44,20 +44,20 @@ export class Computed<T = any> implements IComputed {
 		if (activeTrackId !== 0) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				Dependency.link(this, System.activeSub!);
+				link(this, System.activeSub!);
 			}
 		}
 		return this.cachedValue!;
 	}
 
 	update(): boolean {
-		const prevSub = Subscriber.startTrack(this);
+		const prevSub = startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
 		try {
 			newValue = this.getter(oldValue);
 		} finally {
-			Subscriber.endTrack(this, prevSub);
+			endTrack(this, prevSub);
 		}
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;

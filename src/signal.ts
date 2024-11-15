@@ -1,5 +1,5 @@
 import { ISignal } from './computed.js';
-import { Dependency, endBatch, Link, startBatch, System } from './system.js';
+import { Dependency, endBatch, link, Link, propagate, startBatch, System } from './system.js';
 
 export interface IWritableSignal<T = any> extends ISignal<T> {
 	set(value: T): void;
@@ -25,7 +25,7 @@ export class Signal<T = any> implements Dependency {
 		if (activeTrackId !== 0) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				Dependency.link(this, System.activeSub!);
+				link(this, System.activeSub!);
 			}
 		}
 		return this.currentValue!;
@@ -36,7 +36,7 @@ export class Signal<T = any> implements Dependency {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				startBatch();
-				Dependency.propagate(subs);
+				propagate(subs);
 				endBatch();
 			}
 		}
