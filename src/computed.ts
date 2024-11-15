@@ -41,7 +41,7 @@ export class Computed<T = any> implements IComputed {
 			}
 		}
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId !== 0) {
+		if (activeTrackId > 0) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
 				link(this, System.activeSub!);

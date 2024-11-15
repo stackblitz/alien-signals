@@ -25,7 +25,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 		public fn: () => T
 	) {
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId !== 0) {
+		if (activeTrackId > 0) {
 			link(this, System.activeSub!);
 			return;
 		}
