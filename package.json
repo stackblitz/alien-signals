@@ -3,18 +3,17 @@
 	"version": "0.2.2",
 	"license": "MIT",
 	"packageManager": "pnpm@9.12.0",
-	"type": "commonjs",
 	"types": "./types/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./types/index.d.ts",
 			"import": "./esm/index.mjs",
-			"require": "./cjs/index.js"
+			"require": "./cjs/index.cjs"
 		},
 		"./cjs": {
 			"types": "./types/index.d.ts",
-			"import": "./cjs/index.js",
-			"require": "./cjs/index.js"
+			"import": "./cjs/index.cjs",
+			"require": "./cjs/index.cjs"
 		},
 		"./esm": {
 			"types": "./types/index.d.ts",
@@ -35,7 +34,7 @@
 		"prepublishOnly": "npm run build",
 		"build": "tsc && npm run build:esm && npm run build:cjs",
 		"build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs",
-		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.js",
+		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.cjs",
 		"test": "vitest run"
 	},
 	"devDependencies": {
