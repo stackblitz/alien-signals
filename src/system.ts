@@ -93,22 +93,19 @@ export function getLink(dep: Dependency, sub: Subscriber, nextDep: Link | undefi
 }
 
 export function releaseLink(link: Link): void {
-	const dep = link.dep;
 	const nextSub = link.nextSub;
 	const prevSub = link.prevSub;
 
 	if (nextSub !== undefined) {
 		nextSub.prevSub = prevSub;
-	}
-	if (prevSub !== undefined) {
-		prevSub.nextSub = nextSub;
+	} else {
+		link.dep.subsTail = prevSub;
 	}
 
-	if (nextSub === undefined) {
-		dep.subsTail = prevSub;
-	}
-	if (prevSub === undefined) {
-		dep.subs = nextSub;
+	if (prevSub !== undefined) {
+		prevSub.nextSub = nextSub;
+	} else {
+		link.dep.subs = nextSub;
 	}
 
 	// @ts-expect-error
