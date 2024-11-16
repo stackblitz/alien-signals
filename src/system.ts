@@ -48,24 +48,27 @@ export const System = {
 };
 
 export function startBatch(): void {
-	System.batchDepth++;
+	++System.batchDepth;
 }
 
 export function endBatch(): void {
-	System.batchDepth--;
-	if (System.batchDepth === 0) {
-		while (System.queuedEffects !== undefined) {
-			const effect = System.queuedEffects;
-			const queuedNext = System.queuedEffects.nextNotify;
-			if (queuedNext !== undefined) {
-				System.queuedEffects.nextNotify = undefined;
-				System.queuedEffects = queuedNext;
-			} else {
-				System.queuedEffects = undefined;
-				System.queuedEffectsTail = undefined;
-			}
-			effect.notify();
+	if (--System.batchDepth === 0) {
+		drainQueuedEffects();
+	}
+}
+
+export function drainQueuedEffects(): void {
+	while (System.queuedEffects !== undefined) {
+		const effect = System.queuedEffects;
+		const queuedNext = System.queuedEffects.nextNotify;
+		if (queuedNext !== undefined) {
+			System.queuedEffects.nextNotify = undefined;
+			System.queuedEffects = queuedNext;
+		} else {
+			System.queuedEffects = undefined;
+			System.queuedEffectsTail = undefined;
 		}
+		effect.notify();
 	}
 }
 
