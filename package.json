@@ -33,8 +33,8 @@
 	"scripts": {
 		"prepublishOnly": "npm run build",
 		"build": "tsc && npm run build:esm && npm run build:cjs",
-		"build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs --minify",
-		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.cjs --minify",
+		"build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs",
+		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.cjs",
 		"test": "vitest run"
 	},
 	"devDependencies": {
