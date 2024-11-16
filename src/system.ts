@@ -203,10 +203,8 @@ export function propagate(subs: Link): void {
 		if (stack > 0) {
 			stack--;
 			const prevLink = subs.prevSub!;
-			const prevDep = prevLink.dep;
-
 			subs.prevSub = undefined;
-			subs = prevDep.subs!;
+			subs = prevLink.dep.subs!;
 			link = prevLink.nextSub;
 
 			if (stack === 0) {
