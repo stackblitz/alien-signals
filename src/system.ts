@@ -227,7 +227,6 @@ export function propagate(subs: Link): void {
 		if (stack > 0) {
 			stack--;
 			const prevLink = subs.prevSub!;
-			const prevSub = prevLink.sub;
 			const prevDep = prevLink.dep;
 
 			subs.prevSub = undefined;
@@ -236,20 +235,8 @@ export function propagate(subs: Link): void {
 
 			if (stack === 0) {
 				dirtyLevel = DirtyLevels.Dirty;
-			} else if ('notify' in prevDep) {
-				dirtyLevel = DirtyLevels.SideEffectsOnly;
 			} else {
 				dirtyLevel = DirtyLevels.MaybeDirty;
-			}
-
-			if ('notify' in prevSub) {
-				const queuedEffectsTail = System.queuedEffectsTail;
-				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail.nextNotify = prevSub;
-				} else {
-					System.queuedEffects = prevSub;
-				}
-				System.queuedEffectsTail = prevSub;
 			}
 
 			continue;
