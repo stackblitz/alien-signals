@@ -45,6 +45,7 @@ export const System = {
 	lastTrackId: 0,
 	queuedEffects: undefined as IEffect | undefined,
 	queuedEffectsTail: undefined as IEffect | undefined,
+	linkPool: undefined as Link | undefined,
 };
 
 export function startBatch(): void {
@@ -74,8 +75,6 @@ export function drainQueuedEffects(): void {
 	}
 }
 
-let linkPool: Link | undefined = undefined;
-
 export function link(dep: Dependency, sub: Subscriber): void {
 	const depsTail = sub.depsTail;
 	const old = depsTail !== undefined
@@ -85,9 +84,9 @@ export function link(dep: Dependency, sub: Subscriber): void {
 	if (old === undefined || old.dep !== dep) {
 		let newLink: Link;
 
-		if (linkPool !== undefined) {
-			newLink = linkPool;
-			linkPool = newLink.nextDep;
+		if (System.linkPool !== undefined) {
+			newLink = System.linkPool;
+			System.linkPool = newLink.nextDep;
 			newLink.nextDep = old;
 			newLink.dep = dep;
 			newLink.sub = sub;
@@ -376,8 +375,8 @@ export function clearTrack(link: Link): void {
 		link.sub = undefined;
 		link.prevSub = undefined;
 		link.nextSub = undefined;
-		link.nextDep = linkPool;
-		linkPool = link;
+		link.nextDep = System.linkPool;
+		System.linkPool = link;
 
 		if (dep.subs === undefined && 'deps' in dep) {
 			if ('notify' in dep) {
