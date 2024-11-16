@@ -22,12 +22,12 @@ export interface Subscriber {
 
 export interface Link {
 	dep: Dependency | IComputed | (Dependency & IEffect);
-	sub: Subscriber | IComputed | IEffect;
+	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
 	trackId: number;
-	// Also used as prev update
+	// Also used as prev propagate, prev update
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Also used as prev propagate and next released
+	// Also used next released
 	nextDep: Link | undefined;
 }
 
@@ -150,7 +150,6 @@ export function link(dep: Dependency, sub: Subscriber): void {
 
 export function propagate(subs: Link): void {
 	let link: Link | undefined = subs;
-	let dep = subs.dep;
 	let dirtyLevel = DirtyLevels.Dirty;
 	let stack = 0;
 
@@ -168,9 +167,9 @@ export function propagate(subs: Link): void {
 							sub.canPropagate = true;
 
 							if ('subs' in sub && sub.subs !== undefined) {
-								sub.depsTail!.nextDep = link;
-								dep = sub;
-								link = sub.subs;
+								subs = sub.subs;
+								subs.prevSub = link;
+								link = subs;
 								if ('notify' in sub) {
 									dirtyLevel = DirtyLevels.SideEffectsOnly;
 								} else {
@@ -198,9 +197,9 @@ export function propagate(subs: Link): void {
 					}
 
 					if ('subs' in sub && sub.subs !== undefined) {
-						sub.depsTail!.nextDep = link;
-						dep = sub;
-						link = sub.subs;
+						subs = sub.subs;
+						subs.prevSub = link;
+						link = subs;
 						if ('notify' in sub) {
 							dirtyLevel = DirtyLevels.SideEffectsOnly;
 						} else {
@@ -226,18 +225,18 @@ export function propagate(subs: Link): void {
 		}
 
 		if (stack > 0) {
-			const depsTail = (dep as IComputed | IEffect).depsTail!;
-			const prevLink = depsTail.nextDep!;
-			const prevSub = prevLink.sub;
-
-			depsTail.nextDep = undefined;
-			dep = prevLink.dep;
-			link = prevLink.nextSub;
 			stack--;
+			const prevLink = subs.prevSub!;
+			const prevSub = prevLink.sub;
+			const prevDep = prevLink.dep;
+
+			subs.prevSub = undefined;
+			subs = prevDep.subs!;
+			link = prevLink.nextSub;
 
 			if (stack === 0) {
 				dirtyLevel = DirtyLevels.Dirty;
-			} else if ('notify' in dep) {
+			} else if ('notify' in prevDep) {
 				dirtyLevel = DirtyLevels.SideEffectsOnly;
 			} else {
 				dirtyLevel = DirtyLevels.MaybeDirty;
