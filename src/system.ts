@@ -69,53 +69,7 @@ export function endBatch(): void {
 	}
 }
 
-let pool: Link | undefined = undefined;
-
-export function getLink(dep: Dependency, sub: Subscriber, nextDep: Link | undefined): Link {
-	if (pool !== undefined) {
-		const newLink = pool;
-		pool = newLink.nextDep;
-		newLink.nextDep = nextDep;
-		newLink.dep = dep;
-		newLink.sub = sub;
-		newLink.trackId = sub.trackId;
-		return newLink;
-	}
-	return {
-		dep,
-		sub,
-		trackId: sub.trackId,
-		nextDep: nextDep,
-		prevSub: undefined,
-		nextSub: undefined,
-	};
-}
-
-export function releaseLink(link: Link): void {
-	const nextSub = link.nextSub;
-	const prevSub = link.prevSub;
-
-	if (nextSub !== undefined) {
-		nextSub.prevSub = prevSub;
-	} else {
-		link.dep.subsTail = prevSub;
-	}
-
-	if (prevSub !== undefined) {
-		prevSub.nextSub = nextSub;
-	} else {
-		link.dep.subs = nextSub;
-	}
-
-	// @ts-expect-error
-	link.dep = undefined;
-	// @ts-expect-error
-	link.sub = undefined;
-	link.prevSub = undefined;
-	link.nextSub = undefined;
-	link.nextDep = pool;
-	pool = link;
-}
+let linkPool: Link | undefined = undefined;
 
 export function link(dep: Dependency, sub: Subscriber): void {
 	const depsTail = sub.depsTail;
@@ -124,7 +78,25 @@ export function link(dep: Dependency, sub: Subscriber): void {
 		: sub.deps;
 
 	if (old === undefined || old.dep !== dep) {
-		const newLink = getLink(dep, sub, old);
+		let newLink: Link;
+
+		if (linkPool !== undefined) {
+			newLink = linkPool;
+			linkPool = newLink.nextDep;
+			newLink.nextDep = old;
+			newLink.dep = dep;
+			newLink.sub = sub;
+			newLink.trackId = sub.trackId;
+		} else {
+			newLink = {
+				dep,
+				sub,
+				trackId: sub.trackId,
+				nextDep: old,
+				prevSub: undefined,
+				nextSub: undefined,
+			};
+		}
 
 		if (depsTail === undefined) {
 			sub.deps = newLink;
@@ -378,7 +350,30 @@ export function clearTrack(link: Link): void {
 	do {
 		const dep = link.dep;
 		const nextDep = link.nextDep;
-		releaseLink(link);
+		const nextSub = link.nextSub;
+		const prevSub = link.prevSub;
+
+		if (nextSub !== undefined) {
+			nextSub.prevSub = prevSub;
+		} else {
+			link.dep.subsTail = prevSub;
+		}
+
+		if (prevSub !== undefined) {
+			prevSub.nextSub = nextSub;
+		} else {
+			link.dep.subs = nextSub;
+		}
+
+		// @ts-expect-error
+		link.dep = undefined;
+		// @ts-expect-error
+		link.sub = undefined;
+		link.prevSub = undefined;
+		link.nextSub = undefined;
+		link.nextDep = linkPool;
+		linkPool = link;
+
 		if (dep.subs === undefined && 'deps' in dep) {
 			if ('notify' in dep) {
 				dep.dirtyLevel = DirtyLevels.None;
