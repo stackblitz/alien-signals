@@ -78,6 +78,6 @@ export class Effect<T = any> implements IEffect, Dependency {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.dirtyLevel = DirtyLevels.Dirty;
+		this.dirtyLevel = DirtyLevels.None;
 	}
 }
