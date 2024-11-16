@@ -125,98 +125,95 @@ export function link(dep: Dependency, sub: Subscriber): void {
 }
 
 export function propagate(subs: Link): void {
-	let link: Link | undefined = subs;
+	let link = subs;
 	let dirtyLevel = DirtyLevels.Dirty;
 	let stack = 0;
 
-	do {
-		if (link !== undefined) {
-			const sub: Link['sub'] = link.sub;
-			const subTrackId = sub.trackId;
+	top: do {
+		const sub: Link['sub'] = link.sub;
+		const subTrackId = sub.trackId;
 
-			if (subTrackId > 0) {
-				if (subTrackId === link.trackId) {
-					const subDirtyLevel = sub.dirtyLevel;
-					if (subDirtyLevel < dirtyLevel) {
-						sub.dirtyLevel = dirtyLevel;
-						if (subDirtyLevel === DirtyLevels.None) {
-							sub.canPropagate = true;
-
-							if ('subs' in sub && sub.subs !== undefined) {
-								subs = sub.subs;
-								subs.prevSub = link;
-								link = subs;
-								if ('notify' in sub) {
-									dirtyLevel = DirtyLevels.SideEffectsOnly;
-								} else {
-									dirtyLevel = DirtyLevels.MaybeDirty;
-								}
-								stack++;
-
-								continue;
-							}
-						}
-					}
-				}
-			} else if (subTrackId === -link.trackId) {
-
+		if (subTrackId > 0) {
+			if (subTrackId === link.trackId) {
 				const subDirtyLevel = sub.dirtyLevel;
-				const notDirty = subDirtyLevel === DirtyLevels.None;
-
 				if (subDirtyLevel < dirtyLevel) {
 					sub.dirtyLevel = dirtyLevel;
-				}
+					if (subDirtyLevel === DirtyLevels.None) {
+						sub.canPropagate = true;
 
-				if (notDirty || sub.canPropagate) {
-					if (!notDirty) {
-						sub.canPropagate = false;
-					}
+						if ('subs' in sub && sub.subs !== undefined) {
+							subs = sub.subs;
+							subs.prevSub = link;
+							link = subs;
+							if ('notify' in sub) {
+								dirtyLevel = DirtyLevels.SideEffectsOnly;
+							} else {
+								dirtyLevel = DirtyLevels.MaybeDirty;
+							}
+							stack++;
 
-					if ('subs' in sub && sub.subs !== undefined) {
-						subs = sub.subs;
-						subs.prevSub = link;
-						link = subs;
-						if ('notify' in sub) {
-							dirtyLevel = DirtyLevels.SideEffectsOnly;
-						} else {
-							dirtyLevel = DirtyLevels.MaybeDirty;
+							continue;
 						}
-						stack++;
-
-						continue;
-					} else if ('notify' in sub) {
-						const queuedEffectsTail = System.queuedEffectsTail;
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.nextNotify = sub;
-						} else {
-							System.queuedEffects = sub;
-						}
-						System.queuedEffectsTail = sub;
 					}
 				}
 			}
+		} else if (subTrackId === -link.trackId) {
 
-			link = link.nextSub;
-			continue;
-		}
+			const subDirtyLevel = sub.dirtyLevel;
+			const notDirty = subDirtyLevel === DirtyLevels.None;
 
-		if (stack > 0) {
-			stack--;
-			const prevLink = subs.prevSub!;
-			subs.prevSub = undefined;
-			subs = prevLink.dep.subs!;
-			link = prevLink.nextSub;
-
-			if (stack === 0) {
-				dirtyLevel = DirtyLevels.Dirty;
-			} else {
-				dirtyLevel = DirtyLevels.MaybeDirty;
+			if (subDirtyLevel < dirtyLevel) {
+				sub.dirtyLevel = dirtyLevel;
 			}
 
-			continue;
+			if (notDirty || sub.canPropagate) {
+				if (!notDirty) {
+					sub.canPropagate = false;
+				}
+
+				if ('subs' in sub && sub.subs !== undefined) {
+					subs = sub.subs;
+					subs.prevSub = link;
+					link = subs;
+					if ('notify' in sub) {
+						dirtyLevel = DirtyLevels.SideEffectsOnly;
+					} else {
+						dirtyLevel = DirtyLevels.MaybeDirty;
+					}
+					stack++;
+
+					continue;
+				} else if ('notify' in sub) {
+					const queuedEffectsTail = System.queuedEffectsTail;
+					if (queuedEffectsTail !== undefined) {
+						queuedEffectsTail.nextNotify = sub;
+					} else {
+						System.queuedEffects = sub;
+					}
+					System.queuedEffectsTail = sub;
+				}
+			}
 		}
 
-		break;
+		link = link.nextSub!;
+		if (link === undefined) {
+			while (stack-- > 0) {
+				const prevLink = subs.prevSub!;
+				subs.prevSub = undefined;
+				subs = prevLink.dep.subs!;
+				link = prevLink.nextSub!;
+
+				if (link !== undefined) {
+					if (stack === 0) {
+						dirtyLevel = DirtyLevels.Dirty;
+					} else {
+						dirtyLevel = DirtyLevels.MaybeDirty;
+					}
+					continue top;
+				}
+			}
+			return;
+		}
 	} while (true);
 }
 
@@ -249,65 +246,77 @@ export function checkDirty(link: Link, depth = 0): boolean {
 }
 
 function checkDirtyNonRecursive(sub: Link['sub']): boolean {
-	let subDirtyLevel = DirtyLevels.MaybeDirty;
 	let link = sub.deps!;
 	let stack = 0;
 
-	do {
-		if (subDirtyLevel === DirtyLevels.MaybeDirty) {
-			const dep = link.dep;
+	top: do {
+		const dep = link.dep;
 
-			if ('update' in dep) {
-				const depDirtyLevel = dep.dirtyLevel;
-
-				if (depDirtyLevel === DirtyLevels.MaybeDirty) {
-					dep.subs!.prevSub = link;
-					sub = dep;
-					link = dep.deps!;
-					stack++;
-					continue;
+		if ('update' in dep) {
+			const dirtyLevel = dep.dirtyLevel;
+			if (dirtyLevel === DirtyLevels.MaybeDirty) {
+				dep.subs!.prevSub = link;
+				sub = dep;
+				link = dep.deps!;
+				stack++;
+				continue;
+			}
+			if (dirtyLevel === DirtyLevels.Dirty) {
+				if (dep.update()) {
+					propagate(dep.subs!);
+					let dirty = true;
+					while (stack-- > 0) {
+						const subSubs = (sub as IComputed).subs!;
+						const prevLink = subSubs.prevSub!;
+						subSubs.prevSub = undefined;
+						if (dirty) {
+							if ((sub as IComputed).update()) {
+								propagate(subSubs);
+								sub = prevLink.sub;
+								dirty = true;
+								continue;
+							}
+						} else {
+							sub.dirtyLevel = DirtyLevels.None;
+						}
+						link = prevLink.nextDep!;
+						sub = prevLink.sub;
+						if (link !== undefined) {
+							continue top;
+						}
+						dirty = false;
+					}
+					return dirty;
 				}
-				if (depDirtyLevel === DirtyLevels.Dirty) {
-					if (dep.update()) {
-						propagate(dep.subs!);
-						subDirtyLevel = DirtyLevels.Dirty;
+			}
+		}
+
+		link = link.nextDep!;
+		if (link === undefined) {
+			let dirty = false;
+			while (stack-- > 0) {
+				const subSubs = (sub as IComputed).subs!;
+				const prevLink = subSubs.prevSub!;
+				subSubs.prevSub = undefined;
+				if (dirty) {
+					if ((sub as IComputed).update()) {
+						propagate(subSubs);
+						sub = prevLink.sub;
+						dirty = true;
 						continue;
 					}
+				} else {
+					sub.dirtyLevel = DirtyLevels.None;
 				}
-			}
-
-			link = link.nextDep!;
-			if (link === undefined) {
-				subDirtyLevel = DirtyLevels.None;
-			}
-			continue;
-		}
-
-		if (stack > 0) {
-			stack--;
-			const subSubs = (sub as IComputed).subs!;
-			const prevLink = subSubs.prevSub!;
-			subSubs.prevSub = undefined;
-			if (subDirtyLevel === DirtyLevels.Dirty) {
-				if ((sub as IComputed).update()) {
-					propagate(subSubs);
-					sub = prevLink.sub;
-					continue;
+				link = prevLink.nextDep!;
+				sub = prevLink.sub;
+				if (link !== undefined) {
+					continue top;
 				}
-			} else {
-				sub.dirtyLevel = DirtyLevels.None;
+				dirty = false;
 			}
-			link = prevLink.nextDep!;
-			sub = prevLink.sub;
-			if (link !== undefined) {
-				subDirtyLevel = DirtyLevels.MaybeDirty;
-			} else {
-				subDirtyLevel = DirtyLevels.None;
-			}
-			continue;
+			return dirty;
 		}
-
-		return subDirtyLevel === DirtyLevels.Dirty;
 	} while (true);
 }
 
