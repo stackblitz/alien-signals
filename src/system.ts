@@ -58,17 +58,19 @@ export function endBatch(): void {
 }
 
 export function drainQueuedEffects(): void {
-	while (System.queuedEffects !== undefined) {
-		const effect = System.queuedEffects;
-		const queuedNext = System.queuedEffects.nextNotify;
+	let effect = System.queuedEffects;
+	while (effect !== undefined) {
+		const queuedNext = effect.nextNotify;
 		if (queuedNext !== undefined) {
-			System.queuedEffects.nextNotify = undefined;
-			System.queuedEffects = queuedNext;
+			effect.nextNotify = undefined;
+			effect.notify();
+			effect = queuedNext;
 		} else {
 			System.queuedEffects = undefined;
 			System.queuedEffectsTail = undefined;
+			effect.notify();
+			effect = System.queuedEffects;
 		}
-		effect.notify();
 	}
 }
 
