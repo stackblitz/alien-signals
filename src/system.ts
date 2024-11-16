@@ -197,7 +197,8 @@ export function propagate(subs: Link): void {
 
 		link = link.nextSub!;
 		if (link === undefined) {
-			while (stack-- > 0) {
+			while (stack > 0) {
+				stack--;
 				const prevLink = subs.prevSub!;
 				subs.prevSub = undefined;
 				subs = prevLink.dep.subs!;
@@ -265,7 +266,8 @@ function checkDirtyNonRecursive(sub: Link['sub']): boolean {
 				if (dep.update()) {
 					propagate(dep.subs!);
 					let dirty = true;
-					while (stack-- > 0) {
+					while (stack > 0) {
+						stack--;
 						const subSubs = (sub as IComputed).subs!;
 						const prevLink = subSubs.prevSub!;
 						subSubs.prevSub = undefined;
@@ -294,7 +296,8 @@ function checkDirtyNonRecursive(sub: Link['sub']): boolean {
 		link = link.nextDep!;
 		if (link === undefined) {
 			let dirty = false;
-			while (stack-- > 0) {
+			while (stack > 0) {
+				stack--;
 				const subSubs = (sub as IComputed).subs!;
 				const prevLink = subSubs.prevSub!;
 				subSubs.prevSub = undefined;
