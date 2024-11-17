@@ -50,14 +50,14 @@ export class Effect<T = any> implements IEffect, Dependency {
 			} else {
 				this.dirtyLevel = DirtyLevels.None;
 				if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
-					let link = this.deps;
-					while (link !== undefined) {
+					let link = this.deps!;
+					do {
 						const dep = link.dep;
 						if ('notify' in dep) {
 							dep.notify();
 						}
-						link = link.nextDep;
-					}
+						link = link.nextDep!;
+					} while (link !== undefined);
 				}
 			}
 		}

@@ -17,14 +17,14 @@ export class EffectScope implements Subscriber {
 	notify(): void {
 		if (this.dirtyLevel !== DirtyLevels.None) {
 			this.dirtyLevel = DirtyLevels.None;
-			let link = this.deps;
-			while (link !== undefined) {
+			let link = this.deps!;
+			do {
 				const dep = link.dep;
 				if ('notify' in dep) {
 					dep.notify();
 				}
-				link = link.nextDep;
-			}
+				link = link.nextDep!;
+			} while (link !== undefined);
 		}
 	}
 
