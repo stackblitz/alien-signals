@@ -218,47 +218,17 @@ export function propagate(subs: Link): void {
 	} while (true);
 }
 
-export function checkDirty(link: Link, depth = 0): boolean {
-	do {
-		const dep = link.dep;
-		if ('update' in dep) {
-			const dirtyLevel = dep.dirtyLevel;
-			if (dirtyLevel !== DirtyLevels.None) {
-				if (
-					dirtyLevel === DirtyLevels.Dirty
-					|| (
-						depth < 4
-							? checkDirty(dep.deps!, depth + 1)
-							: checkDirtyNonRecursive(dep)
-					)
-				) {
-					if (dep.update()) {
-						propagate(dep.subs!);
-						return true;
-					}
-				} else {
-					dep.dirtyLevel = DirtyLevels.None;
-				}
-			}
-		}
-		link = link.nextDep!;
-	} while (link !== undefined);
-	return false;
-}
-
-function checkDirtyNonRecursive(sub: Link['sub']): boolean {
-	let link = sub.deps!;
+export function checkDirty(deps: Link): boolean {
 	let stack = 0;
 
 	top: do {
-		const dep = link.dep;
+		const dep = deps.dep;
 
 		if ('update' in dep) {
 			const dirtyLevel = dep.dirtyLevel;
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				dep.subs!.prevSub = link;
-				sub = dep;
-				link = dep.deps!;
+				dep.subs!.prevSub = deps;
+				deps = dep.deps!;
 				stack++;
 				continue;
 			}
@@ -266,60 +236,69 @@ function checkDirtyNonRecursive(sub: Link['sub']): boolean {
 				if (dep.update()) {
 					propagate(dep.subs!);
 					let dirty = true;
-					while (stack > 0) {
-						stack--;
-						const subSubs = (sub as IComputed).subs!;
-						const prevLink = subSubs.prevSub!;
-						subSubs.prevSub = undefined;
-						if (dirty) {
-							if ((sub as IComputed).update()) {
-								propagate(subSubs);
-								sub = prevLink.sub;
-								dirty = true;
-								continue;
+					if (stack > 0) {
+						let sub = deps.sub as IComputed;
+						do {
+							stack--;
+							const subSubs = sub.subs!;
+							const prevLink = subSubs.prevSub!;
+							subSubs.prevSub = undefined;
+							if (dirty) {
+								if (sub.update()) {
+									propagate(subSubs);
+									deps = prevLink;
+									sub = prevLink.sub as IComputed;
+									dirty = true;
+									continue;
+								}
+							} else {
+								sub.dirtyLevel = DirtyLevels.None;
 							}
-						} else {
-							sub.dirtyLevel = DirtyLevels.None;
-						}
-						link = prevLink.nextDep!;
-						sub = prevLink.sub;
-						if (link !== undefined) {
-							continue top;
-						}
-						dirty = false;
+							deps = prevLink.nextDep!;
+							if (deps !== undefined) {
+								continue top;
+							}
+							dirty = false;
+							sub = prevLink.sub as IComputed;
+						} while (stack > 0);
 					}
 					return dirty;
 				}
 			}
 		}
 
-		link = link.nextDep!;
-		if (link === undefined) {
+		const nextDep = deps.nextDep!;
+		if (nextDep === undefined) {
 			let dirty = false;
-			while (stack > 0) {
-				stack--;
-				const subSubs = (sub as IComputed).subs!;
-				const prevLink = subSubs.prevSub!;
-				subSubs.prevSub = undefined;
-				if (dirty) {
-					if ((sub as IComputed).update()) {
-						propagate(subSubs);
-						sub = prevLink.sub;
-						dirty = true;
-						continue;
+			if (stack > 0) {
+				let sub = deps.sub as IComputed;
+				do {
+					stack--;
+					const subSubs = sub.subs!;
+					const prevLink = subSubs.prevSub!;
+					subSubs.prevSub = undefined;
+					if (dirty) {
+						if (sub.update()) {
+							propagate(subSubs);
+							deps = prevLink;
+							sub = prevLink.sub as IComputed;
+							dirty = true;
+							continue;
+						}
+					} else {
+						sub.dirtyLevel = DirtyLevels.None;
 					}
-				} else {
-					sub.dirtyLevel = DirtyLevels.None;
-				}
-				link = prevLink.nextDep!;
-				sub = prevLink.sub;
-				if (link !== undefined) {
-					continue top;
-				}
-				dirty = false;
+					deps = prevLink.nextDep!;
+					if (deps !== undefined) {
+						continue top;
+					}
+					sub = prevLink.sub as IComputed;
+					dirty = false;
+				} while (stack > 0);
 			}
 			return dirty;
 		}
+		deps = nextDep;
 	} while (true);
 }
 
