@@ -10,15 +10,14 @@
 
 Project Status: **Preview**
 
-The goal of `alien-signals` is to create a Signal library with the lowest overhead.
+The goal of `alien-signals` is to create a push-pull model based aignal library with the lowest overhead.
 
 We have set the following scheduling logic constraints:
 
-1. Based on Push-Pull
-2. No dynamic objects
-3. No use of Array/Set/Map
-4. No recursion calls
-5. Class properties must be fewer than 10 (https://v8.dev/blog/fast-properties)
+1. No dynamic object fields
+2. No use of Array/Set/Map
+3. No recursion calls
+4. Class properties must be fewer than 10 (https://v8.dev/blog/fast-properties)
 
 Experimental results have shown that with these constraints, it is possible to achieve excellent performance for a Signal library without using sophisticated scheduling strategies. The overall performance of `alien-signals` is approximately 400% that of Vue 3.4's reactivity system.
 
@@ -78,7 +77,7 @@ count.set(3); // No console output
 
 | Version | Savings                                                                                       |
 |---------|-----------------------------------------------------------------------------------------------|
-| 0.3     | ~~Correctly schedule child effect scopes~~                                                        |
+| 0.3     | Satisfy all 4 constraints                                                                     |
 | 0.2     | Correctly schedule computed side effects                                                      |
 | 0.1     | Correctly schedule inner effect callbacks                                                     |
 | 0.0     | Add APIs: `signal()`, `computed()`, `effect()`, `effectScope()`, `startBatch()`, `endBatch()` |
