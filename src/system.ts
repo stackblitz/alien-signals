@@ -24,10 +24,10 @@ export interface Link {
 	dep: Dependency | IComputed | (Dependency & IEffect);
 	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
 	trackId: number;
-	// Also used as prev propagate, prev update
+	// Also used to link prev stack in propagate and checkDirty
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Also used next released
+	// Also used to link next released link
 	nextDep: Link | undefined;
 }
 
