@@ -10,7 +10,7 @@
 
 Project Status: **Preview**
 
-The goal of `alien-signals` is to create a push-pull model based aignal library with the lowest overhead.
+The goal of `alien-signals` is to create a push-pull model based signal library with the lowest overhead.
 
 We have set the following scheduling logic constraints:
 
