@@ -26,13 +26,14 @@ export class Effect<T = any> implements IEffect, Dependency {
 	) {
 		const activeTrackId = System.activeTrackId;
 		if (activeTrackId > 0) {
-			link(this, System.activeSub!);
+			link(this, System.activeSub!, activeTrackId);
 			return;
 		}
 		if (activeEffectScope !== undefined) {
 			const subsTail = this.subsTail;
-			if (subsTail === undefined || subsTail.trackId !== activeEffectScope.trackId) {
-				link(this, activeEffectScope);
+			const trackId = activeEffectScope.trackId;
+			if (subsTail === undefined || subsTail.trackId !== trackId) {
+				link(this, activeEffectScope, trackId);
 			}
 		}
 	}
@@ -64,11 +65,16 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	run(): T {
-		const prevSub = startTrack(this);
+		const prevSub = System.activeSub;
+		const prevTrackId = System.activeTrackId;
+		System.activeSub = this;
+		System.activeTrackId = startTrack(this);
 		try {
 			return this.fn();
 		} finally {
-			endTrack(this, prevSub);
+			System.activeSub = prevSub;
+			System.activeTrackId = prevTrackId;
+			endTrack(this);
 		}
 	}
 

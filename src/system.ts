@@ -74,7 +74,7 @@ export function drainQueuedEffects(): void {
 	}
 }
 
-export function link(dep: Dependency, sub: Subscriber): void {
+export function link(dep: Dependency, sub: Subscriber, trackId: number): void {
 	const depsTail = sub.depsTail;
 	const old = depsTail !== undefined
 		? depsTail.nextDep
@@ -89,12 +89,12 @@ export function link(dep: Dependency, sub: Subscriber): void {
 			newLink.nextDep = old;
 			newLink.dep = dep;
 			newLink.sub = sub;
-			newLink.trackId = sub.trackId;
+			newLink.trackId = trackId;
 		} else {
 			newLink = {
 				dep,
 				sub,
-				trackId: sub.trackId,
+				trackId,
 				nextDep: old,
 				prevSub: undefined,
 				nextSub: undefined,
@@ -118,7 +118,7 @@ export function link(dep: Dependency, sub: Subscriber): void {
 		sub.depsTail = newLink;
 		dep.subsTail = newLink;
 	} else {
-		old.trackId = sub.trackId;
+		old.trackId = trackId;
 		sub.depsTail = old;
 	}
 }
@@ -132,31 +132,7 @@ export function propagate(subs: Link): void {
 		const sub = link.sub;
 		const subTrackId = sub.trackId;
 
-		if (subTrackId > 0) {
-			if (subTrackId === link.trackId) {
-				const subDirtyLevel = sub.dirtyLevel;
-				if (subDirtyLevel < dirtyLevel) {
-					sub.dirtyLevel = dirtyLevel;
-					if (subDirtyLevel === DirtyLevels.None) {
-						sub.canPropagate = true;
-
-						if ('subs' in sub && sub.subs !== undefined) {
-							subs = sub.subs;
-							subs.prevSub = link;
-							link = subs;
-							if ('notify' in sub) {
-								dirtyLevel = DirtyLevels.SideEffectsOnly;
-							} else {
-								dirtyLevel = DirtyLevels.MaybeDirty;
-							}
-							stack++;
-
-							continue;
-						}
-					}
-				}
-			}
-		} else if (subTrackId === -link.trackId) {
+		if (subTrackId === -link.trackId) {
 
 			const subDirtyLevel = sub.dirtyLevel;
 			const notDirty = subDirtyLevel === DirtyLevels.None;
@@ -190,6 +166,28 @@ export function propagate(subs: Link): void {
 						System.queuedEffects = sub;
 					}
 					System.queuedEffectsTail = sub;
+				}
+			}
+		} else if (subTrackId === link.trackId) {
+			const subDirtyLevel = sub.dirtyLevel;
+			if (subDirtyLevel < dirtyLevel) {
+				sub.dirtyLevel = dirtyLevel;
+				if (subDirtyLevel === DirtyLevels.None) {
+					sub.canPropagate = true;
+
+					if ('subs' in sub && sub.subs !== undefined) {
+						subs = sub.subs;
+						subs.prevSub = link;
+						link = subs;
+						if ('notify' in sub) {
+							dirtyLevel = DirtyLevels.SideEffectsOnly;
+						} else {
+							dirtyLevel = DirtyLevels.MaybeDirty;
+						}
+						stack++;
+
+						continue;
+					}
 				}
 			}
 		}
@@ -301,30 +299,15 @@ export function checkDirty(deps: Link): boolean {
 	} while (true);
 }
 
-export function startTrack(sub: Subscriber): Subscriber | undefined {
-	const newTrackId = System.lastTrackId + 1;
-	const prevSub = System.activeSub;
-
-	System.activeSub = sub;
-	System.activeTrackId = newTrackId;
-	System.lastTrackId = newTrackId;
-
+export function startTrack(sub: Subscriber): number {
+	const newTrackId = ++System.lastTrackId;
 	sub.depsTail = undefined;
 	sub.trackId = newTrackId;
 	sub.dirtyLevel = DirtyLevels.None;
-
-	return prevSub;
+	return newTrackId;
 }
 
-export function endTrack(sub: Subscriber, prevSub: Subscriber | undefined): void {
-	if (prevSub !== undefined) {
-		System.activeSub = prevSub;
-		System.activeTrackId = prevSub.trackId;
-	} else {
-		System.activeSub = undefined;
-		System.activeTrackId = 0;
-	}
-
+export function endTrack(sub: Subscriber): void {
 	const depsTail = sub.depsTail;
 	if (depsTail !== undefined) {
 		if (depsTail.nextDep !== undefined) {

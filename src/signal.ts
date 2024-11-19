@@ -25,7 +25,7 @@ export class Signal<T = any> implements Dependency {
 		if (activeTrackId > 0) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				link(this, System.activeSub!);
+				link(this, System.activeSub!, activeTrackId);
 			}
 		}
 		return this.currentValue!;

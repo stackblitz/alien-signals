@@ -44,20 +44,25 @@ export class Computed<T = any> implements IComputed {
 		if (activeTrackId > 0) {
 			const subsTail = this.subsTail;
 			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				link(this, System.activeSub!);
+				link(this, System.activeSub!, activeTrackId);
 			}
 		}
 		return this.cachedValue!;
 	}
 
 	update(): boolean {
-		const prevSub = startTrack(this);
+		const prevSub = System.activeSub;
+		const prevTrackId = System.activeTrackId;
+		System.activeSub = this;
+		System.activeTrackId = startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
 		try {
 			newValue = this.getter(oldValue);
 		} finally {
-			endTrack(this, prevSub);
+			System.activeSub = prevSub;
+			System.activeTrackId = prevTrackId;
+			endTrack(this);
 		}
 		if (oldValue !== newValue) {
 			this.cachedValue = newValue;
