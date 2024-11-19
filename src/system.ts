@@ -355,8 +355,9 @@ export function clearTrack(link: Link): void {
 			} else {
 				dep.dirtyLevel = DirtyLevels.Dirty;
 			}
-			if (dep.deps !== undefined) {
-				link = dep.deps;
+			const depDeps = dep.deps;
+			if (depDeps !== undefined) {
+				link = depDeps;
 				dep.depsTail!.nextDep = nextDep;
 				dep.deps = undefined;
 				dep.depsTail = undefined;
