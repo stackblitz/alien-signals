@@ -331,13 +331,13 @@ export function clearTrack(link: Link): void {
 		if (nextSub !== undefined) {
 			nextSub.prevSub = prevSub;
 		} else {
-			link.dep.subsTail = prevSub;
+			dep.subsTail = prevSub;
 		}
 
 		if (prevSub !== undefined) {
 			prevSub.nextSub = nextSub;
 		} else {
-			link.dep.subs = nextSub;
+			dep.subs = nextSub;
 		}
 
 		// @ts-expect-error
