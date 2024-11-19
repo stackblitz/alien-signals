@@ -36,9 +36,7 @@ export class Signal<T = any> implements Dependency {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
-				if (System.batchDepth === 0) {
-					drainQueuedEffects();
-				}
+				drainQueuedEffects();
 			}
 		}
 	}

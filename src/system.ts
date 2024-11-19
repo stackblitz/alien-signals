@@ -53,23 +53,24 @@ export function startBatch(): void {
 }
 
 export function endBatch(): void {
-	if (--System.batchDepth === 0) {
-		drainQueuedEffects();
-	}
+	--System.batchDepth;
+	drainQueuedEffects();
 }
 
 export function drainQueuedEffects(): void {
-	while (System.queuedEffects !== undefined) {
-		const effect = System.queuedEffects;
-		const queuedNext = effect.nextNotify;
-		if (queuedNext !== undefined) {
-			effect.nextNotify = undefined;
-			System.queuedEffects = queuedNext;
-		} else {
-			System.queuedEffects = undefined;
-			System.queuedEffectsTail = undefined;
+	if (System.batchDepth === 0) {
+		while (System.queuedEffects !== undefined) {
+			const effect = System.queuedEffects;
+			const queuedNext = effect.nextNotify;
+			if (queuedNext !== undefined) {
+				effect.nextNotify = undefined;
+				System.queuedEffects = queuedNext;
+			} else {
+				System.queuedEffects = undefined;
+				System.queuedEffectsTail = undefined;
+			}
+			effect.notify();
 		}
-		effect.notify();
 	}
 }
 
