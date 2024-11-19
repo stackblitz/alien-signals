@@ -155,7 +155,7 @@ export function propagate(subs: Link): void {
 					} else {
 						dirtyLevel = DirtyLevels.MaybeDirty;
 					}
-					stack++;
+					++stack;
 
 					continue;
 				} else if ('notify' in sub) {
@@ -184,7 +184,7 @@ export function propagate(subs: Link): void {
 						} else {
 							dirtyLevel = DirtyLevels.MaybeDirty;
 						}
-						stack++;
+						++stack;
 
 						continue;
 					}
@@ -195,7 +195,7 @@ export function propagate(subs: Link): void {
 		link = link.nextSub!;
 		if (link === undefined) {
 			while (stack > 0) {
-				stack--;
+				--stack;
 				const prevLink = subs.prevSub!;
 				subs.prevSub = undefined;
 				subs = prevLink.dep.subs!;
@@ -226,7 +226,7 @@ export function checkDirty(deps: Link): boolean {
 			if (dirtyLevel === DirtyLevels.MaybeDirty) {
 				dep.subs!.prevSub = deps;
 				deps = dep.deps!;
-				stack++;
+				++stack;
 				continue;
 			}
 			if (dirtyLevel === DirtyLevels.Dirty) {
@@ -236,7 +236,7 @@ export function checkDirty(deps: Link): boolean {
 					if (stack > 0) {
 						let sub = deps.sub as IComputed;
 						do {
-							stack--;
+							--stack;
 							const subSubs = sub.subs!;
 							const prevLink = subSubs.prevSub!;
 							subSubs.prevSub = undefined;
@@ -270,7 +270,7 @@ export function checkDirty(deps: Link): boolean {
 			if (stack > 0) {
 				let sub = deps.sub as IComputed;
 				do {
-					stack--;
+					--stack;
 					const subSubs = sub.subs!;
 					const prevLink = subSubs.prevSub!;
 					subSubs.prevSub = undefined;
