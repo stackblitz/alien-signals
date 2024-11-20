@@ -76,51 +76,54 @@ export function drainQueuedEffects(): void {
 
 export function link(dep: Dependency, sub: Subscriber, trackId: number): void {
 	const depsTail = sub.depsTail;
-	const old = depsTail !== undefined
+	const oldDep = depsTail !== undefined
 		? depsTail.nextDep
 		: sub.deps;
-
-	if (old === undefined || old.dep !== dep) {
-		let newLink: Link;
-
-		if (System.linkPool !== undefined) {
-			newLink = System.linkPool;
-			System.linkPool = newLink.nextDep;
-			newLink.nextDep = old;
-			newLink.dep = dep;
-			newLink.sub = sub;
-			newLink.trackId = trackId;
-		} else {
-			newLink = {
-				dep,
-				sub,
-				trackId,
-				nextDep: old,
-				prevSub: undefined,
-				nextSub: undefined,
-			};
-		}
-
-		if (depsTail === undefined) {
-			sub.deps = newLink;
-		} else {
-			depsTail.nextDep = newLink;
-		}
-
-		if (dep.subs === undefined) {
-			dep.subs = newLink;
-		} else {
-			const oldTail = dep.subsTail!;
-			newLink.prevSub = oldTail;
-			oldTail.nextSub = newLink;
-		}
-
-		sub.depsTail = newLink;
-		dep.subsTail = newLink;
+	if (oldDep !== undefined && oldDep.dep === dep) {
+		oldDep.trackId = trackId;
+		sub.depsTail = oldDep;
 	} else {
-		old.trackId = trackId;
-		sub.depsTail = old;
+		linkNewDep(dep, sub, trackId, oldDep, depsTail);
 	}
+}
+
+function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link | undefined, depsTail: Link | undefined): void {
+	let newLink: Link;
+
+	if (System.linkPool !== undefined) {
+		newLink = System.linkPool;
+		System.linkPool = newLink.nextDep;
+		newLink.nextDep = old;
+		newLink.dep = dep;
+		newLink.sub = sub;
+		newLink.trackId = trackId;
+	} else {
+		newLink = {
+			dep,
+			sub,
+			trackId,
+			nextDep: old,
+			prevSub: undefined,
+			nextSub: undefined,
+		};
+	}
+
+	if (depsTail === undefined) {
+		sub.deps = newLink;
+	} else {
+		depsTail.nextDep = newLink;
+	}
+
+	if (dep.subs === undefined) {
+		dep.subs = newLink;
+	} else {
+		const oldTail = dep.subsTail!;
+		newLink.prevSub = oldTail;
+		oldTail.nextSub = newLink;
+	}
+
+	sub.depsTail = newLink;
+	dep.subsTail = newLink;
 }
 
 export function propagate(subs: Link): void {

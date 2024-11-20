@@ -1,4 +1,4 @@
-import { checkDirty, DirtyLevels, endTrack, IComputed, link, Link, propagate, startTrack, System } from './system.js';
+import { checkDirty, DirtyLevels, endTrack, IComputed, Link, link, propagate, startTrack, System } from './system.js';
 
 export interface ISignal<T = any> {
 	get(): T;
