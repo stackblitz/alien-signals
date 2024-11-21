@@ -14,10 +14,12 @@ export interface Dependency {
 
 export interface Subscriber {
 	trackId: number;
-	canPropagate: boolean;
 	dirtyLevel: DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
+	// This is an exception property used to handle the side effects of computed.
+	// It will not be used in normal use cases, so we do not require it to be initialized.
+	canPropagate?: boolean;
 }
 
 export interface Link {

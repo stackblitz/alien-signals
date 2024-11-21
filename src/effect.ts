@@ -19,7 +19,6 @@ export class Effect<T = any> implements IEffect, Dependency {
 	depsTail: Link | undefined = undefined;
 	trackId = 0;
 	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
-	canPropagate = false;
 
 	constructor(
 		public fn: () => T
