@@ -137,7 +137,7 @@ export function propagate(subs: Link): void {
 		const sub = link.sub;
 		const subTrackId = sub.trackId;
 
-		if (subTrackId === -link.trackId) {
+		if (subTrackId < 0) {
 
 			const subDirtyLevel = sub.dirtyLevel;
 			const notDirty = subDirtyLevel === DirtyLevels.None;
