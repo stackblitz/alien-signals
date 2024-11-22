@@ -128,6 +128,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, dep
 export function propagate(subs: Link): void {
 	let targetFlag = SubscriberFlags.Dirty;
 	let stack = 0;
+	let nextSub: Link | undefined;
 
 	top: do {
 		const sub = subs.sub;
@@ -204,8 +205,7 @@ export function propagate(subs: Link): void {
 			}
 		}
 
-		const nextSub = subs.nextSub;
-		if (nextSub === undefined) {
+		if ((nextSub = subs.nextSub) === undefined) {
 			if (stack > 0) {
 				let dep = subs.dep as Subscriber;
 				do {
