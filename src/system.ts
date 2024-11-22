@@ -314,7 +314,7 @@ export function endTrack(sub: Subscriber): void {
 	sub.flags &= ~SubscriberFlags.Tracking;
 }
 
-export function clearTrack(link: Link): void {
+function clearTrack(link: Link): void {
 	do {
 		const dep = link.dep;
 		const nextDep = link.nextDep;

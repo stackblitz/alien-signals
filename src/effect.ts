@@ -1,5 +1,5 @@
 import { activeEffectScope } from './effectScope.js';
-import { checkDirty, clearTrack, Dependency, endTrack, IEffect, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
+import { checkDirty, Dependency, endTrack, IEffect, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeSub: Subscriber | undefined;
 export let activeTrackId = 0;
@@ -83,11 +83,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	stop(): void {
-		if (this.deps !== undefined) {
-			clearTrack(this.deps);
-			this.deps = undefined;
-			this.depsTail = undefined;
-		}
-		this.flags = SubscriberFlags.None;
+		startTrack(this);
+		endTrack(this);
 	}
 }

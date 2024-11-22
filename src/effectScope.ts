@@ -1,4 +1,4 @@
-import { clearTrack, Link, Subscriber, SubscriberFlags } from './system.js';
+import { endTrack, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
 
@@ -37,11 +37,7 @@ export class EffectScope implements Subscriber {
 	}
 
 	stop(): void {
-		if (this.deps !== undefined) {
-			clearTrack(this.deps);
-			this.deps = undefined;
-			this.depsTail = undefined;
-		}
-		this.flags = SubscriberFlags.None;
+		startTrack(this);
+		endTrack(this);
 	}
 }
