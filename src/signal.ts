@@ -1,6 +1,6 @@
 import { ISignal } from './computed.js';
 import { activeSub, activeTrackId } from './effect.js';
-import { Dependency, drainQueuedEffects, link, Link, propagate } from './system.js';
+import { Dependency, link, Link, propagate } from './system.js';
 
 export interface IWritableSignal<T = any> extends ISignal<T> {
 	set(value: T): void;
@@ -35,7 +35,6 @@ export class Signal<T = any> implements Dependency {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
-				drainQueuedEffects();
 			}
 		}
 	}

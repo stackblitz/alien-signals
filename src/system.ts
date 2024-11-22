@@ -51,24 +51,23 @@ export function startBatch(): void {
 }
 
 export function endBatch(): void {
-	--batchDepth;
-	drainQueuedEffects();
+	if (--batchDepth === 0) {
+		drainQueuedEffects();
+	}
 }
 
-export function drainQueuedEffects(): void {
-	if (batchDepth === 0) {
-		while (queuedEffects !== undefined) {
-			const effect = queuedEffects;
-			const queuedNext = effect.nextNotify;
-			if (queuedNext !== undefined) {
-				effect.nextNotify = undefined;
-				queuedEffects = queuedNext;
-			} else {
-				queuedEffects = undefined;
-				queuedEffectsTail = undefined;
-			}
-			effect.notify();
+function drainQueuedEffects(): void {
+	while (queuedEffects !== undefined) {
+		const effect = queuedEffects;
+		const queuedNext = effect.nextNotify;
+		if (queuedNext !== undefined) {
+			effect.nextNotify = undefined;
+			queuedEffects = queuedNext;
+		} else {
+			queuedEffects = undefined;
+			queuedEffectsTail = undefined;
 		}
+		effect.notify();
 	}
 }
 
@@ -226,10 +225,14 @@ export function propagate(subs: Link): void {
 					dep = prevLink.dep as Subscriber;
 				} while (stack > 0);
 			}
-			return;
+			break;
 		}
 		subs = nextSub;
 	} while (true);
+
+	if (batchDepth === 0) {
+		drainQueuedEffects();
+	}
 }
 
 export function checkDirty(deps: Link): boolean {
