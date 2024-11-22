@@ -41,36 +41,31 @@ export const enum SubscriberFlags {
 	Dirty = 1 << 4,
 }
 
-export const System = {
-	activeSub: undefined as Subscriber | undefined,
-	activeTrackId: 0,
-	batchDepth: 0,
-	lastTrackId: 0,
-	queuedEffects: undefined as IEffect | undefined,
-	queuedEffectsTail: undefined as IEffect | undefined,
-	linkPool: undefined as Link | undefined,
-};
+let batchDepth = 0;
+let queuedEffects: IEffect | undefined;
+let queuedEffectsTail: IEffect | undefined;
+let linkPool: Link | undefined;
 
 export function startBatch(): void {
-	++System.batchDepth;
+	++batchDepth;
 }
 
 export function endBatch(): void {
-	--System.batchDepth;
+	--batchDepth;
 	drainQueuedEffects();
 }
 
 export function drainQueuedEffects(): void {
-	if (System.batchDepth === 0) {
-		while (System.queuedEffects !== undefined) {
-			const effect = System.queuedEffects;
+	if (batchDepth === 0) {
+		while (queuedEffects !== undefined) {
+			const effect = queuedEffects;
 			const queuedNext = effect.nextNotify;
 			if (queuedNext !== undefined) {
 				effect.nextNotify = undefined;
-				System.queuedEffects = queuedNext;
+				queuedEffects = queuedNext;
 			} else {
-				System.queuedEffects = undefined;
-				System.queuedEffectsTail = undefined;
+				queuedEffects = undefined;
+				queuedEffectsTail = undefined;
 			}
 			effect.notify();
 		}
@@ -93,9 +88,9 @@ export function link(dep: Dependency, sub: Subscriber): Link {
 function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, depsTail: Link | undefined): Link {
 	let newLink: Link;
 
-	if (System.linkPool !== undefined) {
-		newLink = System.linkPool;
-		System.linkPool = newLink.nextDep;
+	if (linkPool !== undefined) {
+		newLink = linkPool;
+		linkPool = newLink.nextDep;
 		newLink.nextDep = old;
 		newLink.dep = dep;
 		newLink.sub = sub;
@@ -161,13 +156,12 @@ export function propagate(subs: Link): void {
 					continue;
 				}
 				if ('notify' in sub) {
-					const queuedEffectsTail = System.queuedEffectsTail;
 					if (queuedEffectsTail !== undefined) {
 						queuedEffectsTail.nextNotify = sub;
 					} else {
-						System.queuedEffects = sub;
+						queuedEffects = sub;
 					}
-					System.queuedEffectsTail = sub;
+					queuedEffectsTail = sub;
 				}
 			}
 		} else {
@@ -342,8 +336,8 @@ export function clearTrack(link: Link): void {
 		link.sub = undefined;
 		link.prevSub = undefined;
 		link.nextSub = undefined;
-		link.nextDep = System.linkPool;
-		System.linkPool = link;
+		link.nextDep = linkPool;
+		linkPool = link;
 
 		if (dep.subs === undefined && 'deps' in dep) {
 			if ('notify' in dep) {

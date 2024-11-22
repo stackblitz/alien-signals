@@ -1,4 +1,5 @@
-import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags, System } from './system.js';
+import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
+import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags } from './system.js';
 
 export interface ISignal<T = any> {
 	get(): T;
@@ -36,27 +37,24 @@ export class Computed<T = any> implements IComputed {
 				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		const activeTrackId = System.activeTrackId;
 		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
 			this.lastTrackedId = activeTrackId;
-			link(this, System.activeSub!).version = this.version;
+			link(this, activeSub!).version = this.version;
 		}
 		return this.cachedValue!;
 	}
 
 	update(): boolean {
-		const prevSub = System.activeSub;
-		const prevTrackId = System.activeTrackId;
-		System.activeSub = this;
-		System.activeTrackId = ++System.lastTrackId;
+		const prevSub = activeSub;
+		const prevTrackId = activeTrackId;
+		setActiveSub(this, nextTrackId());
 		startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
 		try {
 			newValue = this.getter(oldValue);
 		} finally {
-			System.activeSub = prevSub;
-			System.activeTrackId = prevTrackId;
+			setActiveSub(prevSub, prevTrackId);
 			endTrack(this);
 		}
 		if (oldValue !== newValue) {

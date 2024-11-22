@@ -1,5 +1,6 @@
 import { ISignal } from './computed.js';
-import { Dependency, drainQueuedEffects, link, Link, propagate, System } from './system.js';
+import { activeSub, activeTrackId } from './effect.js';
+import { Dependency, drainQueuedEffects, link, Link, propagate } from './system.js';
 
 export interface IWritableSignal<T = any> extends ISignal<T> {
 	set(value: T): void;
@@ -22,10 +23,9 @@ export class Signal<T = any> implements Dependency {
 	) { }
 
 	get(): NonNullable<T> {
-		const activeTrackId = System.activeTrackId;
 		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
 			this.lastTrackedId = activeTrackId;
-			link(this, System.activeSub!);
+			link(this, activeSub!);
 		}
 		return this.currentValue!;
 	}
