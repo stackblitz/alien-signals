@@ -4,6 +4,7 @@ export interface IEffect extends Subscriber {
 }
 
 export interface IComputed extends Dependency, Subscriber {
+	version: number;
 	update(): boolean;
 }
 
@@ -26,10 +27,12 @@ export interface Link {
 	dep: Dependency | IComputed | (Dependency & IEffect);
 	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
 	trackId: number;
-	// Also used to link prev stack in propagate and checkDirty
+	version: number;
+	// Reuse to link prev stack in checkDirty
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Also used to link next released link
+	// Reuse to link prev stack in propagate
+	// Reuse to link next released link in linkPool
 	nextDep: Link | undefined;
 }
 
@@ -76,7 +79,7 @@ export function drainQueuedEffects(): void {
 	}
 }
 
-export function link(dep: Dependency, sub: Subscriber, trackId: number): void {
+export function link(dep: Dependency, sub: Subscriber, trackId: number): Link {
 	const depsTail = sub.depsTail;
 	const oldDep = depsTail !== undefined
 		? depsTail.nextDep
@@ -84,12 +87,13 @@ export function link(dep: Dependency, sub: Subscriber, trackId: number): void {
 	if (oldDep !== undefined && oldDep.dep === dep) {
 		oldDep.trackId = trackId;
 		sub.depsTail = oldDep;
+		return oldDep;
 	} else {
-		linkNewDep(dep, sub, trackId, oldDep, depsTail);
+		return linkNewDep(dep, sub, trackId, oldDep, depsTail);
 	}
 }
 
-function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link | undefined, depsTail: Link | undefined): void {
+function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link | undefined, depsTail: Link | undefined): Link {
 	let newLink: Link;
 
 	if (System.linkPool !== undefined) {
@@ -104,6 +108,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link
 			dep,
 			sub,
 			trackId,
+			version: 0,
 			nextDep: old,
 			prevSub: undefined,
 			nextSub: undefined,
@@ -126,19 +131,19 @@ function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link
 
 	sub.depsTail = newLink;
 	dep.subsTail = newLink;
+
+	return newLink;
 }
 
 export function propagate(subs: Link): void {
-	let link = subs;
 	let dirtyLevel = DirtyLevels.Dirty;
 	let stack = 0;
 
 	top: do {
-		const sub = link.sub;
+		const sub = subs.sub;
 		const subTrackId = sub.trackId;
 
 		if (subTrackId < 0) {
-
 			const subDirtyLevel = sub.dirtyLevel;
 			const notDirty = subDirtyLevel === DirtyLevels.None;
 
@@ -152,9 +157,8 @@ export function propagate(subs: Link): void {
 				}
 
 				if ('subs' in sub && sub.subs !== undefined) {
+					sub.depsTail!.nextDep = subs;
 					subs = sub.subs;
-					subs.prevSub = link;
-					link = subs;
 					if ('notify' in sub) {
 						dirtyLevel = DirtyLevels.SideEffectsOnly;
 					} else {
@@ -174,7 +178,7 @@ export function propagate(subs: Link): void {
 					System.queuedEffectsTail = sub;
 				}
 			}
-		} else if (subTrackId === link.trackId) {
+		} else if (subTrackId === subs.trackId) {
 			const subDirtyLevel = sub.dirtyLevel;
 			if (subDirtyLevel < dirtyLevel) {
 				sub.dirtyLevel = dirtyLevel;
@@ -182,9 +186,8 @@ export function propagate(subs: Link): void {
 					sub.canPropagate = true;
 
 					if ('subs' in sub && sub.subs !== undefined) {
+						sub.depsTail!.nextDep = subs;
 						subs = sub.subs;
-						subs.prevSub = link;
-						link = subs;
 						if ('notify' in sub) {
 							dirtyLevel = DirtyLevels.SideEffectsOnly;
 						} else {
@@ -198,26 +201,31 @@ export function propagate(subs: Link): void {
 			}
 		}
 
-		link = link.nextSub!;
-		if (link === undefined) {
-			while (stack > 0) {
-				--stack;
-				const prevLink = subs.prevSub!;
-				subs.prevSub = undefined;
-				subs = prevLink.dep.subs!;
-				link = prevLink.nextSub!;
+		const nextSub = subs.nextSub;
+		if (nextSub === undefined) {
+			if (stack > 0) {
+				let dep = subs.dep as Subscriber;
+				do {
+					--stack;
+					const depsTail = dep.depsTail!;
+					const prevLink = depsTail.nextDep!;
+					depsTail.nextDep = undefined;
+					subs = prevLink.nextSub!;
 
-				if (link !== undefined) {
-					if (stack === 0) {
-						dirtyLevel = DirtyLevels.Dirty;
-					} else {
-						dirtyLevel = DirtyLevels.MaybeDirty;
+					if (subs !== undefined) {
+						if (stack === 0) {
+							dirtyLevel = DirtyLevels.Dirty;
+						} else {
+							dirtyLevel = DirtyLevels.MaybeDirty;
+						}
+						continue top;
 					}
-					continue top;
-				}
+					dep = prevLink.dep as Subscriber;
+				} while (stack > 0);
 			}
 			return;
 		}
+		subs = nextSub;
 	} while (true);
 }
 
@@ -230,18 +238,21 @@ export function checkDirty(deps: Link): boolean {
 		const dep = deps.dep;
 
 		if ('update' in dep) {
-			const dirtyLevel = dep.dirtyLevel;
-			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				dep.subs!.prevSub = deps;
-				deps = dep.deps!;
-				++stack;
-				continue;
-			}
-			if (dirtyLevel === DirtyLevels.Dirty && dep.update()) {
-				propagate(dep.subs!);
+			if (dep.version !== deps.version) {
 				dirty = true;
 			} else {
-				dirty = false;
+				const dirtyLevel = dep.dirtyLevel;
+				if (dirtyLevel === DirtyLevels.MaybeDirty) {
+					dep.subs!.prevSub = deps;
+					deps = dep.deps!;
+					++stack;
+					continue;
+				}
+				if (dirtyLevel === DirtyLevels.Dirty && dep.update()) {
+					dirty = true;
+				} else {
+					dirty = false;
+				}
 			}
 		} else {
 			dirty = false;
@@ -257,7 +268,6 @@ export function checkDirty(deps: Link): boolean {
 					subSubs.prevSub = undefined;
 					if (dirty) {
 						if (sub.update()) {
-							propagate(subSubs);
 							deps = prevLink;
 							sub = prevLink.sub as IComputed;
 							dirty = true;
