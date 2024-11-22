@@ -1,5 +1,5 @@
 import { activeEffectScope } from './effectScope.js';
-import { checkDirty, clearTrack, Dependency, DirtyLevels, endTrack, IEffect, link, Link, startTrack, System } from './system.js';
+import { checkDirty, clearTrack, Dependency, endTrack, IEffect, link, Link, startTrack, SubscriberFlags, System } from './system.js';
 
 export function effect(fn: () => void): Effect<void> {
 	const e = new Effect(fn);
@@ -18,8 +18,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	tracking = false;
-	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
+	flags: SubscriberFlags = SubscriberFlags.Dirty;
 
 	constructor(
 		public fn: () => T
@@ -32,28 +31,28 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	notify(): void {
-		let dirtyLevel = this.dirtyLevel;
-		if (dirtyLevel > DirtyLevels.None) {
-			if (dirtyLevel === DirtyLevels.MaybeDirty) {
-				dirtyLevel = checkDirty(this.deps!)
-					? DirtyLevels.Dirty
-					: DirtyLevels.SideEffectsOnly;
-			}
-			if (dirtyLevel === DirtyLevels.Dirty) {
+		if ((this.flags & SubscriberFlags.Dirty) !== 0) {
+			this.run();
+			return;
+		}
+		if ((this.flags & SubscriberFlags.ToCheckDirty) !== 0) {
+			if (checkDirty(this.deps!)) {
 				this.run();
+				return;
 			} else {
-				this.dirtyLevel = DirtyLevels.None;
-				if (dirtyLevel === DirtyLevels.SideEffectsOnly) {
-					let link = this.deps!;
-					do {
-						const dep = link.dep;
-						if ('notify' in dep) {
-							dep.notify();
-						}
-						link = link.nextDep!;
-					} while (link !== undefined);
-				}
+				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
+		}
+		if ((this.flags & SubscriberFlags.RunInnerEffects) !== 0) {
+			this.flags &= ~SubscriberFlags.RunInnerEffects;
+			let link = this.deps!;
+			do {
+				const dep = link.dep;
+				if ('notify' in dep) {
+					dep.notify();
+				}
+				link = link.nextDep!;
+			} while (link !== undefined);
 		}
 	}
 
@@ -78,6 +77,6 @@ export class Effect<T = any> implements IEffect, Dependency {
 			this.deps = undefined;
 			this.depsTail = undefined;
 		}
-		this.dirtyLevel = DirtyLevels.None;
+		this.flags = SubscriberFlags.None;
 	}
 }

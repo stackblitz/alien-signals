@@ -1,4 +1,4 @@
-import { checkDirty, DirtyLevels, endTrack, IComputed, Link, link, startTrack, System } from './system.js';
+import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags, System } from './system.js';
 
 export interface ISignal<T = any> {
 	get(): T;
@@ -20,20 +20,20 @@ export class Computed<T = any> implements IComputed {
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	tracking = false;
-	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
+	flags: SubscriberFlags = SubscriberFlags.Dirty;
 
 	constructor(
 		public getter: (cachedValue?: T) => T
 	) { }
 
 	get(): T {
-		const dirtyLevel = this.dirtyLevel;
-		if (dirtyLevel > DirtyLevels.None) {
-			if (dirtyLevel === DirtyLevels.Dirty || checkDirty(this.deps!)) {
+		if ((this.flags & SubscriberFlags.Dirty) !== 0) {
+			this.update();
+		} else if ((this.flags & SubscriberFlags.ToCheckDirty) !== 0) {
+			if (checkDirty(this.deps!)) {
 				this.update();
 			} else {
-				this.dirtyLevel = DirtyLevels.None;
+				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
 		const activeTrackId = System.activeTrackId;

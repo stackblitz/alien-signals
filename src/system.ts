@@ -15,13 +15,9 @@ export interface Dependency {
 }
 
 export interface Subscriber {
-	tracking: boolean;
-	dirtyLevel: DirtyLevels;
+	flags: SubscriberFlags;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
-	// This is an exception property used to handle the side effects of computed.
-	// It will not be used in normal use cases, so we do not require it to be initialized.
-	canPropagate?: boolean;
 }
 
 export interface Link {
@@ -36,11 +32,13 @@ export interface Link {
 	nextDep: Link | undefined;
 }
 
-export const enum DirtyLevels {
-	None,
-	SideEffectsOnly,
-	MaybeDirty,
-	Dirty,
+export const enum SubscriberFlags {
+	None = 0,
+	Tracking = 1 << 0,
+	CanPropagate = 1 << 1,
+	RunInnerEffects = 1 << 2,
+	ToCheckDirty = 1 << 3,
+	Dirty = 1 << 4,
 }
 
 export const System = {
@@ -133,32 +131,30 @@ function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, dep
 }
 
 export function propagate(subs: Link): void {
-	let dirtyLevel = DirtyLevels.Dirty;
+	let targetFlag = SubscriberFlags.Dirty;
 	let stack = 0;
 
 	top: do {
 		const sub = subs.sub;
 
-		if (!sub.tracking) {
-			const subDirtyLevel = sub.dirtyLevel;
-			const notDirty = subDirtyLevel === DirtyLevels.None;
+		if ((sub.flags & SubscriberFlags.Tracking) === 0) {
+			let canPropagate = (sub.flags >> 3) === 0;
 
-			if (subDirtyLevel < dirtyLevel) {
-				sub.dirtyLevel = dirtyLevel;
+			if (!canPropagate && (sub.flags & SubscriberFlags.CanPropagate) !== 0) {
+				sub.flags &= ~SubscriberFlags.CanPropagate;
+				canPropagate = true;
 			}
 
-			if (notDirty || sub.canPropagate) {
-				if (!notDirty) {
-					sub.canPropagate = false;
-				}
+			sub.flags |= targetFlag;
 
+			if (canPropagate) {
 				if ('subs' in sub && sub.subs !== undefined) {
 					sub.depsTail!.nextDep = subs;
 					subs = sub.subs;
 					if ('notify' in sub) {
-						dirtyLevel = DirtyLevels.SideEffectsOnly;
+						targetFlag = SubscriberFlags.RunInnerEffects;
 					} else {
-						dirtyLevel = DirtyLevels.MaybeDirty;
+						targetFlag = SubscriberFlags.ToCheckDirty;
 					}
 					++stack;
 
@@ -191,24 +187,24 @@ export function propagate(subs: Link): void {
 				} while (link !== undefined);
 			}
 			if (tracking) {
-				const subDirtyLevel = sub.dirtyLevel;
-				if (subDirtyLevel < dirtyLevel) {
-					sub.dirtyLevel = dirtyLevel;
-					if (subDirtyLevel === DirtyLevels.None) {
-						sub.canPropagate = true;
+				const canPropagate = (sub.flags >> 3) === 0;
 
-						if ('subs' in sub && sub.subs !== undefined) {
-							sub.depsTail!.nextDep = subs;
-							subs = sub.subs;
-							if ('notify' in sub) {
-								dirtyLevel = DirtyLevels.SideEffectsOnly;
-							} else {
-								dirtyLevel = DirtyLevels.MaybeDirty;
-							}
-							++stack;
+				sub.flags |= targetFlag;
 
-							continue;
+				if (canPropagate) {
+					sub.flags |= SubscriberFlags.CanPropagate;
+
+					if ('subs' in sub && sub.subs !== undefined) {
+						sub.depsTail!.nextDep = subs;
+						subs = sub.subs;
+						if ('notify' in sub) {
+							targetFlag = SubscriberFlags.RunInnerEffects;
+						} else {
+							targetFlag = SubscriberFlags.ToCheckDirty;
 						}
+						++stack;
+
+						continue;
 					}
 				}
 			}
@@ -227,9 +223,9 @@ export function propagate(subs: Link): void {
 
 					if (subs !== undefined) {
 						if (stack === 0) {
-							dirtyLevel = DirtyLevels.Dirty;
+							targetFlag = SubscriberFlags.Dirty;
 						} else {
-							dirtyLevel = DirtyLevels.MaybeDirty;
+							targetFlag = SubscriberFlags.ToCheckDirty;
 						}
 						continue top;
 					}
@@ -254,15 +250,13 @@ export function checkDirty(deps: Link): boolean {
 			if (dep.version !== deps.version) {
 				dirty = true;
 			} else {
-				const dirtyLevel = dep.dirtyLevel;
-				if (dirtyLevel === DirtyLevels.MaybeDirty) {
+				if ((dep.flags & SubscriberFlags.Dirty) !== 0) {
+					dirty = dep.update();
+				} else if ((dep.flags & SubscriberFlags.ToCheckDirty) !== 0) {
 					dep.subs!.prevSub = deps;
 					deps = dep.deps!;
 					++stack;
 					continue;
-				}
-				if (dirtyLevel === DirtyLevels.Dirty && dep.update()) {
-					dirty = true;
 				} else {
 					dirty = false;
 				}
@@ -287,7 +281,7 @@ export function checkDirty(deps: Link): boolean {
 							continue;
 						}
 					} else {
-						sub.dirtyLevel = DirtyLevels.None;
+						sub.flags &= ~(SubscriberFlags.Dirty | SubscriberFlags.ToCheckDirty);
 					}
 					deps = prevLink.nextDep!;
 					if (deps !== undefined) {
@@ -305,8 +299,7 @@ export function checkDirty(deps: Link): boolean {
 
 export function startTrack(sub: Subscriber): void {
 	sub.depsTail = undefined;
-	sub.tracking = true;
-	sub.dirtyLevel = DirtyLevels.None;
+	sub.flags = SubscriberFlags.Tracking;
 }
 
 export function endTrack(sub: Subscriber): void {
@@ -320,7 +313,7 @@ export function endTrack(sub: Subscriber): void {
 		clearTrack(sub.deps);
 		sub.deps = undefined;
 	}
-	sub.tracking = false;
+	sub.flags &= ~SubscriberFlags.Tracking;
 }
 
 export function clearTrack(link: Link): void {
@@ -354,9 +347,9 @@ export function clearTrack(link: Link): void {
 
 		if (dep.subs === undefined && 'deps' in dep) {
 			if ('notify' in dep) {
-				dep.dirtyLevel = DirtyLevels.None;
+				dep.flags = SubscriberFlags.None;
 			} else {
-				dep.dirtyLevel = DirtyLevels.Dirty;
+				dep.flags |= SubscriberFlags.Dirty;
 			}
 			const depDeps = dep.deps;
 			if (depDeps !== undefined) {
