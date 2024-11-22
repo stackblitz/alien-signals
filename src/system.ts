@@ -11,10 +11,11 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
+	lastTrackedId: number;
 }
 
 export interface Subscriber {
-	trackId: number;
+	tracking: boolean;
 	dirtyLevel: DirtyLevels;
 	deps: Link | undefined;
 	depsTail: Link | undefined;
@@ -26,7 +27,6 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | IComputed | (Dependency & IEffect);
 	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
-	trackId: number;
 	version: number;
 	// Reuse to link prev stack in checkDirty
 	prevSub: Link | undefined;
@@ -79,21 +79,20 @@ export function drainQueuedEffects(): void {
 	}
 }
 
-export function link(dep: Dependency, sub: Subscriber, trackId: number): Link {
+export function link(dep: Dependency, sub: Subscriber): Link {
 	const depsTail = sub.depsTail;
 	const oldDep = depsTail !== undefined
 		? depsTail.nextDep
 		: sub.deps;
 	if (oldDep !== undefined && oldDep.dep === dep) {
-		oldDep.trackId = trackId;
 		sub.depsTail = oldDep;
 		return oldDep;
 	} else {
-		return linkNewDep(dep, sub, trackId, oldDep, depsTail);
+		return linkNewDep(dep, sub, oldDep, depsTail);
 	}
 }
 
-function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link | undefined, depsTail: Link | undefined): Link {
+function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, depsTail: Link | undefined): Link {
 	let newLink: Link;
 
 	if (System.linkPool !== undefined) {
@@ -102,12 +101,10 @@ function linkNewDep(dep: Dependency, sub: Subscriber, trackId: number, old: Link
 		newLink.nextDep = old;
 		newLink.dep = dep;
 		newLink.sub = sub;
-		newLink.trackId = trackId;
 	} else {
 		newLink = {
 			dep,
 			sub,
-			trackId,
 			version: 0,
 			nextDep: old,
 			prevSub: undefined,
@@ -141,9 +138,8 @@ export function propagate(subs: Link): void {
 
 	top: do {
 		const sub = subs.sub;
-		const subTrackId = sub.trackId;
 
-		if (subTrackId < 0) {
+		if (!sub.tracking) {
 			const subDirtyLevel = sub.dirtyLevel;
 			const notDirty = subDirtyLevel === DirtyLevels.None;
 
@@ -178,24 +174,41 @@ export function propagate(subs: Link): void {
 					System.queuedEffectsTail = sub;
 				}
 			}
-		} else if (subTrackId === subs.trackId) {
-			const subDirtyLevel = sub.dirtyLevel;
-			if (subDirtyLevel < dirtyLevel) {
-				sub.dirtyLevel = dirtyLevel;
-				if (subDirtyLevel === DirtyLevels.None) {
-					sub.canPropagate = true;
+		} else {
+			let tracking = false;
+			const depsTail = sub.depsTail;
+			if (depsTail !== undefined) {
+				let link = sub.deps!;
+				do {
+					if (link === subs) {
+						tracking = true;
+						break;
+					}
+					if (link === depsTail) {
+						break;
+					}
+					link = link.nextDep!;
+				} while (link !== undefined);
+			}
+			if (tracking) {
+				const subDirtyLevel = sub.dirtyLevel;
+				if (subDirtyLevel < dirtyLevel) {
+					sub.dirtyLevel = dirtyLevel;
+					if (subDirtyLevel === DirtyLevels.None) {
+						sub.canPropagate = true;
 
-					if ('subs' in sub && sub.subs !== undefined) {
-						sub.depsTail!.nextDep = subs;
-						subs = sub.subs;
-						if ('notify' in sub) {
-							dirtyLevel = DirtyLevels.SideEffectsOnly;
-						} else {
-							dirtyLevel = DirtyLevels.MaybeDirty;
+						if ('subs' in sub && sub.subs !== undefined) {
+							sub.depsTail!.nextDep = subs;
+							subs = sub.subs;
+							if ('notify' in sub) {
+								dirtyLevel = DirtyLevels.SideEffectsOnly;
+							} else {
+								dirtyLevel = DirtyLevels.MaybeDirty;
+							}
+							++stack;
+
+							continue;
 						}
-						++stack;
-
-						continue;
 					}
 				}
 			}
@@ -290,12 +303,10 @@ export function checkDirty(deps: Link): boolean {
 	} while (true);
 }
 
-export function startTrack(sub: Subscriber): number {
-	const newTrackId = ++System.lastTrackId;
+export function startTrack(sub: Subscriber): void {
 	sub.depsTail = undefined;
-	sub.trackId = newTrackId;
+	sub.tracking = true;
 	sub.dirtyLevel = DirtyLevels.None;
-	return newTrackId;
 }
 
 export function endTrack(sub: Subscriber): void {
@@ -309,7 +320,7 @@ export function endTrack(sub: Subscriber): void {
 		clearTrack(sub.deps);
 		sub.deps = undefined;
 	}
-	sub.trackId = -sub.trackId;
+	sub.tracking = false;
 }
 
 export function clearTrack(link: Link): void {
@@ -321,6 +332,7 @@ export function clearTrack(link: Link): void {
 
 		if (nextSub !== undefined) {
 			nextSub.prevSub = prevSub;
+			dep.lastTrackedId = 0;
 		} else {
 			dep.subsTail = prevSub;
 		}

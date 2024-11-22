@@ -15,6 +15,7 @@ export class Signal<T = any> implements Dependency {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
+	lastTrackedId = 0;
 
 	constructor(
 		public currentValue: T
@@ -22,11 +23,9 @@ export class Signal<T = any> implements Dependency {
 
 	get(): NonNullable<T> {
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId > 0) {
-			const subsTail = this.subsTail;
-			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				link(this, System.activeSub!, activeTrackId);
-			}
+		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
+			this.lastTrackedId = activeTrackId;
+			link(this, System.activeSub!);
 		}
 		return this.currentValue!;
 	}

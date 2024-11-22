@@ -13,27 +13,21 @@ export class Effect<T = any> implements IEffect, Dependency {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
+	lastTrackedId = 0;
 
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	trackId = 0;
+	tracking = false;
 	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
 
 	constructor(
 		public fn: () => T
 	) {
-		const activeTrackId = System.activeTrackId;
-		if (activeTrackId > 0) {
-			link(this, System.activeSub!, activeTrackId);
-			return;
-		}
-		if (activeEffectScope !== undefined) {
-			const subsTail = this.subsTail;
-			const trackId = activeEffectScope.trackId;
-			if (subsTail === undefined || subsTail.trackId !== trackId) {
-				link(this, activeEffectScope, trackId);
-			}
+		if (System.activeTrackId > 0) {
+			link(this, System.activeSub!);
+		} else if (activeEffectScope !== undefined) {
+			link(this, activeEffectScope);
 		}
 	}
 
@@ -67,7 +61,8 @@ export class Effect<T = any> implements IEffect, Dependency {
 		const prevSub = System.activeSub;
 		const prevTrackId = System.activeTrackId;
 		System.activeSub = this;
-		System.activeTrackId = startTrack(this);
+		System.activeTrackId = ++System.lastTrackId;
+		startTrack(this);
 		try {
 			return this.fn();
 		} finally {

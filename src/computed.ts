@@ -15,11 +15,12 @@ export class Computed<T = any> implements IComputed {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
+	lastTrackedId = 0;
 
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	trackId = 0;
+	tracking = false;
 	dirtyLevel: DirtyLevels = DirtyLevels.Dirty;
 
 	constructor(
@@ -36,11 +37,9 @@ export class Computed<T = any> implements IComputed {
 			}
 		}
 		const activeTrackId = System.activeTrackId;
-		if (activeTrackId > 0) {
-			const subsTail = this.subsTail;
-			if (subsTail === undefined || subsTail.trackId !== activeTrackId) {
-				link(this, System.activeSub!, activeTrackId).version = this.version;
-			}
+		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
+			this.lastTrackedId = activeTrackId;
+			link(this, System.activeSub!).version = this.version;
 		}
 		return this.cachedValue!;
 	}
@@ -49,7 +48,8 @@ export class Computed<T = any> implements IComputed {
 		const prevSub = System.activeSub;
 		const prevTrackId = System.activeTrackId;
 		System.activeSub = this;
-		System.activeTrackId = startTrack(this);
+		System.activeTrackId = ++System.lastTrackId;
+		startTrack(this);
 		const oldValue = this.cachedValue;
 		let newValue: T;
 		try {

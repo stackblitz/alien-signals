@@ -1,4 +1,4 @@
-import { clearTrack, DirtyLevels, Link, Subscriber, System } from './system.js';
+import { clearTrack, DirtyLevels, Link, Subscriber } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
 
@@ -10,7 +10,7 @@ export class EffectScope implements Subscriber {
 	// Subscriber
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
-	trackId: number = -(++System.lastTrackId);
+	tracking = false;
 	dirtyLevel: DirtyLevels = DirtyLevels.None;
 
 	notify(): void {
@@ -30,12 +30,12 @@ export class EffectScope implements Subscriber {
 	run<T>(fn: () => T): T {
 		const prevSub = activeEffectScope;
 		activeEffectScope = this;
-		this.trackId = Math.abs(this.trackId);
+		this.tracking = true;
 		try {
 			return fn();
 		} finally {
+			this.tracking = false;
 			activeEffectScope = prevSub;
-			this.trackId = -Math.abs(this.trackId);
 		}
 	}
 
