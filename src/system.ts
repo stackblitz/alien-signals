@@ -133,7 +133,7 @@ export function propagate(subs: Link): void {
 		const sub = subs.sub;
 
 		if ((sub.flags & SubscriberFlags.Tracking) === 0) {
-			let canPropagate = (sub.flags >> 3) === 0;
+			let canPropagate = (sub.flags >> 2) === 0;
 
 			if (!canPropagate && (sub.flags & SubscriberFlags.CanPropagate) !== 0) {
 				sub.flags &= ~SubscriberFlags.CanPropagate;
@@ -181,7 +181,7 @@ export function propagate(subs: Link): void {
 				} while (link !== undefined);
 			}
 			if (tracking) {
-				const canPropagate = (sub.flags >> 3) === 0;
+				const canPropagate = (sub.flags >> 2) === 0;
 
 				sub.flags |= targetFlag;
 
