@@ -324,12 +324,14 @@ export function clearTrack(link: Link): void {
 		if (nextSub !== undefined) {
 			nextSub.prevSub = prevSub;
 			dep.lastTrackedId = 0;
+			link.nextSub = undefined;
 		} else {
 			dep.subsTail = prevSub;
 		}
 
 		if (prevSub !== undefined) {
 			prevSub.nextSub = nextSub;
+			link.prevSub = undefined;
 		} else {
 			dep.subs = nextSub;
 		}
@@ -338,8 +340,6 @@ export function clearTrack(link: Link): void {
 		link.dep = undefined;
 		// @ts-expect-error
 		link.sub = undefined;
-		link.prevSub = undefined;
-		link.nextSub = undefined;
 		link.nextDep = linkPool;
 		linkPool = link;
 
