@@ -31,6 +31,12 @@ In the past, I accumulated some knowledge of reactivity systems in https://githu
 
 Since Vue 3.5 switched to a Pull reactivity system in https://github.com/vuejs/core/pull/10397, I continued to research the Push-Pull reactivity system here. It is worth mentioning that I was inspired by the doubly-linked concept, but `alien-signals` does not use a similar implementation.
 
+## Integrations
+
+- Used in Vue language tools (https://github.com/vuejs/language-tools) for virtual code generation.
+
+- The core reactivity system code was ported to Vue 3.6 and later. (https://github.com/vuejs/core/pull/12349)
+
 ## Usage
 
 ### Basic
