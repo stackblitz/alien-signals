@@ -323,10 +323,10 @@ function clearTrack(link: Link): void {
 
 		if (nextSub !== undefined) {
 			nextSub.prevSub = prevSub;
-			dep.lastTrackedId = 0;
 			link.nextSub = undefined;
 		} else {
 			dep.subsTail = prevSub;
+			dep.lastTrackedId = 0;
 		}
 
 		if (prevSub !== undefined) {
