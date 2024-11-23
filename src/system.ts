@@ -132,17 +132,16 @@ export function propagate(subs: Link): void {
 
 	top: do {
 		const sub = subs.sub;
+		const subFlags = sub.flags;
 
-		if ((sub.flags & SubscriberFlags.Tracking) === 0) {
-			let canPropagate = (sub.flags >> 2) === 0;
+		if ((subFlags & SubscriberFlags.Tracking) === 0) {
+			sub.flags |= targetFlag;
 
-			if (!canPropagate && (sub.flags & SubscriberFlags.CanPropagate) !== 0) {
+			let canPropagate = (subFlags >> 2) === 0;
+			if (!canPropagate && (subFlags & SubscriberFlags.CanPropagate) !== 0) {
 				sub.flags &= ~SubscriberFlags.CanPropagate;
 				canPropagate = true;
 			}
-
-			sub.flags |= targetFlag;
-
 			if (canPropagate) {
 				if ('subs' in sub && sub.subs !== undefined) {
 					sub.depsTail!.nextDep = subs;
@@ -182,11 +181,8 @@ export function propagate(subs: Link): void {
 				} while (link !== undefined);
 			}
 			if (tracking) {
-				const canPropagate = (sub.flags >> 2) === 0;
-
 				sub.flags |= targetFlag;
-
-				if (canPropagate) {
+				if ((subFlags >> 2) === 0) {
 					sub.flags |= SubscriberFlags.CanPropagate;
 
 					if ('subs' in sub && sub.subs !== undefined) {
