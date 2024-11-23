@@ -14,7 +14,7 @@ export function nextTrackId(): number {
 	return ++lastTrackId;
 }
 
-export function effect(fn: () => void): Effect<void> {
+export function effect<T>(fn: () => T): Effect<T> {
 	const e = new Effect(fn);
 	e.run();
 	return e;

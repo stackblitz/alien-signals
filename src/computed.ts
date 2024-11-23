@@ -1,15 +1,12 @@
 import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
 import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags } from './system.js';
+import type { ISignal } from './types.js';
 
-export interface ISignal<T = any> {
-	get(): T;
-}
-
-export function computed<T>(getter: (cachedValue?: T) => T): ISignal<T> {
+export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
 	return new Computed<T>(getter);
 }
 
-export class Computed<T = any> implements IComputed {
+export class Computed<T = any> implements IComputed, ISignal<T> {
 	cachedValue: T | undefined = undefined;
 	version = 0;
 

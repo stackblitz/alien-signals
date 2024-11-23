@@ -1,10 +1,6 @@
-import { ISignal } from './computed.js';
 import { activeSub, activeTrackId } from './effect.js';
 import { Dependency, link, Link, propagate } from './system.js';
-
-export interface IWritableSignal<T = any> extends ISignal<T> {
-	set(value: T): void;
-}
+import type { IWritableSignal } from './types.js';
 
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
@@ -12,7 +8,7 @@ export function signal<T>(oldValue?: T): Signal<T | undefined> {
 	return new Signal(oldValue);
 }
 
-export class Signal<T = any> implements Dependency {
+export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
