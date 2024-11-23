@@ -26,7 +26,6 @@ export class Effect<T = any> implements IEffect, Dependency {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	lastTrackedId = 0;
 
 	// Subscriber
 	deps: Link | undefined = undefined;

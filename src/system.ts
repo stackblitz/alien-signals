@@ -11,7 +11,7 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	lastTrackedId: number;
+	lastTrackedId?: number;
 }
 
 export interface Subscriber {
@@ -326,7 +326,9 @@ function clearTrack(link: Link): void {
 			link.nextSub = undefined;
 		} else {
 			dep.subsTail = prevSub;
-			dep.lastTrackedId = 0;
+			if ('lastTrackedId' in dep) {
+				dep.lastTrackedId = 0;
+			}
 		}
 
 		if (prevSub !== undefined) {
