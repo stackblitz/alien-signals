@@ -248,9 +248,10 @@ export function checkDirty(deps: Link): boolean {
 			if (dep.version !== deps.version) {
 				dirty = true;
 			} else {
-				if ((dep.flags & SubscriberFlags.Dirty) !== 0) {
+				const depFlags = dep.flags;
+				if ((depFlags & SubscriberFlags.Dirty) !== 0) {
 					dirty = dep.update();
-				} else if ((dep.flags & SubscriberFlags.ToCheckDirty) !== 0) {
+				} else if ((depFlags & SubscriberFlags.ToCheckDirty) !== 0) {
 					dep.subs!.prevSub = deps;
 					deps = dep.deps!;
 					++stack;

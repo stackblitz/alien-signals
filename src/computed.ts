@@ -25,9 +25,10 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 	) { }
 
 	get(): T {
-		if ((this.flags & SubscriberFlags.Dirty) !== 0) {
+		const flags = this.flags;
+		if ((flags & SubscriberFlags.Dirty) !== 0) {
 			this.update();
-		} else if ((this.flags & SubscriberFlags.ToCheckDirty) !== 0) {
+		} else if ((flags & SubscriberFlags.ToCheckDirty) !== 0) {
 			if (checkDirty(this.deps!)) {
 				this.update();
 			} else {
