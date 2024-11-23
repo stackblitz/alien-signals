@@ -73,25 +73,25 @@ function drainQueuedEffects(): void {
 }
 
 export function link(dep: Dependency, sub: Subscriber): Link {
-	const depsTail = sub.depsTail;
-	const oldDep = depsTail !== undefined
-		? depsTail.nextDep
+	const currentDep = sub.depsTail;
+	const nextDep = currentDep !== undefined
+		? currentDep.nextDep
 		: sub.deps;
-	if (oldDep !== undefined && oldDep.dep === dep) {
-		sub.depsTail = oldDep;
-		return oldDep;
+	if (nextDep !== undefined && nextDep.dep === dep) {
+		sub.depsTail = nextDep;
+		return nextDep;
 	} else {
-		return linkNewDep(dep, sub, oldDep, depsTail);
+		return linkNewDep(dep, sub, nextDep, currentDep);
 	}
 }
 
-function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, depsTail: Link | undefined): Link {
+function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): Link {
 	let newLink: Link;
 
 	if (linkPool !== undefined) {
 		newLink = linkPool;
 		linkPool = newLink.nextDep;
-		newLink.nextDep = old;
+		newLink.nextDep = nextDep;
 		newLink.dep = dep;
 		newLink.sub = sub;
 	} else {
@@ -99,7 +99,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, old: Link | undefined, dep
 			dep,
 			sub,
 			version: 0,
-			nextDep: old,
+			nextDep,
 			prevSub: undefined,
 			nextSub: undefined,
 		};
