@@ -11,6 +11,9 @@ importers:
       esbuild:
         specifier: latest
         version: 0.24.0
+      mitata:
+        specifier: latest
+        version: 1.0.15
       typescript:
         specifier: latest
         version: 5.6.2
@@ -477,6 +480,9 @@ packages:
   magic-string@0.30.11:
     resolution: {integrity: sha512-+Wri9p0QHMy+545hKww7YAu5NyzF8iomPL/RQazugQ9+Ez4Ic3mERMd8ZTX5rfK944j+560ZJi8iAwgak1Ac7A==}
 
+  mitata@1.0.15:
+    resolution: {integrity: sha512-+Jf3UfqhZkf8r4y0mqgwMdC36D+mqn72eEYdgbMeihnAVDa3BSMN7xpyhgfpZMsZZoE4DxACNoftCk8Mur01IQ==}
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -930,6 +936,8 @@ snapshots:
   magic-string@0.30.11:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  mitata@1.0.15: {}
 
   ms@2.1.3: {}
 
