@@ -136,24 +136,25 @@ export function propagate(subs: Link): void {
 
 		if ((subFlags & SubscriberFlags.Tracking) === 0) {
 			sub.flags |= targetFlag;
-
 			let canPropagate = (subFlags >> 2) === 0;
 			if (!canPropagate && (subFlags & SubscriberFlags.CanPropagate) !== 0) {
 				sub.flags &= ~SubscriberFlags.CanPropagate;
 				canPropagate = true;
 			}
 			if (canPropagate) {
-				if ('subs' in sub && sub.subs !== undefined) {
-					sub.depsTail!.nextDep = subs;
-					subs = sub.subs;
-					if ('notify' in sub) {
-						targetFlag = SubscriberFlags.RunInnerEffects;
-					} else {
-						targetFlag = SubscriberFlags.ToCheckDirty;
+				if ('subs' in sub) {
+					const subSubs = sub.subs;
+					if (subSubs !== undefined) {
+						sub.depsTail!.nextDep = subs;
+						subs = subSubs;
+						if ('notify' in sub) {
+							targetFlag = SubscriberFlags.RunInnerEffects;
+						} else {
+							targetFlag = SubscriberFlags.ToCheckDirty;
+						}
+						++stack;
+						continue;
 					}
-					++stack;
-
-					continue;
 				}
 				if ('notify' in sub) {
 					if (queuedEffectsTail !== undefined) {
@@ -168,18 +169,19 @@ export function propagate(subs: Link): void {
 			sub.flags |= targetFlag;
 			if ((subFlags >> 2) === 0) {
 				sub.flags |= SubscriberFlags.CanPropagate;
-
-				if ('subs' in sub && sub.subs !== undefined) {
-					sub.depsTail!.nextDep = subs;
-					subs = sub.subs;
-					if ('notify' in sub) {
-						targetFlag = SubscriberFlags.RunInnerEffects;
-					} else {
-						targetFlag = SubscriberFlags.ToCheckDirty;
+				if ('subs' in sub) {
+					const subSubs = sub.subs;
+					if (subSubs !== undefined) {
+						sub.depsTail!.nextDep = subs;
+						subs = subSubs;
+						if ('notify' in sub) {
+							targetFlag = SubscriberFlags.RunInnerEffects;
+						} else {
+							targetFlag = SubscriberFlags.ToCheckDirty;
+						}
+						++stack;
+						continue;
 					}
-					++stack;
-
-					continue;
 				}
 			}
 		}
