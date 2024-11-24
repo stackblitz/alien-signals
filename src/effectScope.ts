@@ -13,7 +13,7 @@ export class EffectScope implements Subscriber {
 	flags: SubscriberFlags = SubscriberFlags.None;
 
 	notify(): void {
-		if ((this.flags & SubscriberFlags.RunInnerEffects) !== 0) {
+		if (this.flags & SubscriberFlags.RunInnerEffects) {
 			this.flags &= ~SubscriberFlags.RunInnerEffects;
 			let link = this.deps!;
 			do {

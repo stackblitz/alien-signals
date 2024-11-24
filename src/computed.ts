@@ -26,16 +26,16 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 
 	get(): T {
 		const flags = this.flags;
-		if ((flags & SubscriberFlags.Dirty) !== 0) {
+		if (flags & SubscriberFlags.Dirty) {
 			this.update();
-		} else if ((flags & SubscriberFlags.ToCheckDirty) !== 0) {
+		} else if (flags & SubscriberFlags.ToCheckDirty) {
 			if (checkDirty(this.deps!)) {
 				this.update();
 			} else {
 				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
+		if (activeTrackId && this.lastTrackedId !== activeTrackId) {
 			this.lastTrackedId = activeTrackId;
 			link(this, activeSub!).version = this.version;
 		}

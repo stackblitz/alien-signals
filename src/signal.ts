@@ -19,7 +19,7 @@ export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 	) { }
 
 	get(): NonNullable<T> {
-		if (activeTrackId > 0 && this.lastTrackedId !== activeTrackId) {
+		if (activeTrackId && this.lastTrackedId !== activeTrackId) {
 			this.lastTrackedId = activeTrackId;
 			link(this, activeSub!);
 		}

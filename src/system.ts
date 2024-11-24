@@ -52,7 +52,7 @@ export function startBatch(): void {
 }
 
 export function endBatch(): void {
-	if (--batchDepth === 0) {
+	if (!--batchDepth) {
 		drainQueuedEffects();
 	}
 }
@@ -134,10 +134,10 @@ export function propagate(subs: Link): void {
 		const sub = subs.sub;
 		const subFlags = sub.flags;
 
-		if ((subFlags & SubscriberFlags.Tracking) === 0) {
+		if (!(subFlags & SubscriberFlags.Tracking)) {
 			sub.flags |= targetFlag;
-			let canPropagate = (subFlags >> 2) === 0;
-			if (!canPropagate && (subFlags & SubscriberFlags.CanPropagate) !== 0) {
+			let canPropagate = !(subFlags >> 2);
+			if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
 				sub.flags &= ~SubscriberFlags.CanPropagate;
 				canPropagate = true;
 			}
@@ -167,7 +167,7 @@ export function propagate(subs: Link): void {
 			}
 		} else if (isValidLink(subs, sub)) {
 			sub.flags |= targetFlag;
-			if ((subFlags >> 2) === 0) {
+			if (!(subFlags >> 2)) {
 				sub.flags |= SubscriberFlags.CanPropagate;
 				if ('subs' in sub) {
 					const subSubs = sub.subs;
@@ -187,7 +187,7 @@ export function propagate(subs: Link): void {
 		}
 
 		if ((nextSub = subs.nextSub) === undefined) {
-			if (stack > 0) {
+			if (stack) {
 				let dep = subs.dep as Subscriber;
 				do {
 					--stack;
@@ -197,7 +197,7 @@ export function propagate(subs: Link): void {
 					subs = prevLink.nextSub!;
 
 					if (subs !== undefined) {
-						if (stack === 0) {
+						if (!stack) {
 							targetFlag = SubscriberFlags.Dirty;
 						} else {
 							targetFlag = SubscriberFlags.ToCheckDirty;
@@ -205,14 +205,14 @@ export function propagate(subs: Link): void {
 						continue top;
 					}
 					dep = prevLink.dep as Subscriber;
-				} while (stack > 0);
+				} while (stack);
 			}
 			break;
 		}
 		subs = nextSub;
 	} while (true);
 
-	if (batchDepth === 0) {
+	if (!batchDepth) {
 		drainQueuedEffects();
 	}
 }
@@ -247,9 +247,9 @@ export function checkDirty(deps: Link): boolean {
 				dirty = true;
 			} else {
 				const depFlags = dep.flags;
-				if ((depFlags & SubscriberFlags.Dirty) !== 0) {
+				if (depFlags & SubscriberFlags.Dirty) {
 					dirty = dep.update();
-				} else if ((depFlags & SubscriberFlags.ToCheckDirty) !== 0) {
+				} else if (depFlags & SubscriberFlags.ToCheckDirty) {
 					dep.subs!.prevSub = deps;
 					deps = dep.deps!;
 					++stack;
@@ -258,7 +258,7 @@ export function checkDirty(deps: Link): boolean {
 			}
 		}
 		if (dirty || (nextDep = deps.nextDep) === undefined) {
-			if (stack > 0) {
+			if (stack) {
 				let sub = deps.sub as IComputed;
 				do {
 					--stack;
@@ -281,7 +281,7 @@ export function checkDirty(deps: Link): boolean {
 					}
 					sub = prevLink.sub as IComputed;
 					dirty = false;
-				} while (stack > 0);
+				} while (stack);
 			}
 			return dirty;
 		}

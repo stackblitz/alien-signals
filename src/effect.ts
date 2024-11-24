@@ -35,7 +35,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 	constructor(
 		public fn: () => T
 	) {
-		if (activeTrackId > 0) {
+		if (activeTrackId) {
 			link(this, activeSub!);
 		} else if (activeEffectScope !== undefined) {
 			link(this, activeEffectScope);
@@ -44,11 +44,11 @@ export class Effect<T = any> implements IEffect, Dependency {
 
 	notify(): void {
 		const flags = this.flags;
-		if ((flags & SubscriberFlags.Dirty) !== 0) {
+		if (flags & SubscriberFlags.Dirty) {
 			this.run();
 			return;
 		}
-		if ((flags & SubscriberFlags.ToCheckDirty) !== 0) {
+		if (flags & SubscriberFlags.ToCheckDirty) {
 			if (checkDirty(this.deps!)) {
 				this.run();
 				return;
@@ -56,7 +56,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		if ((flags & SubscriberFlags.RunInnerEffects) !== 0) {
+		if (flags & SubscriberFlags.RunInnerEffects) {
 			this.flags &= ~SubscriberFlags.RunInnerEffects;
 			let link = this.deps!;
 			do {
