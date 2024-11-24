@@ -240,8 +240,8 @@ export function checkDirty(deps: Link): boolean {
 	let nextDep: Link | undefined;
 
 	top: do {
+		dirty = false;
 		const dep = deps.dep;
-
 		if ('update' in dep) {
 			if (dep.version !== deps.version) {
 				dirty = true;
@@ -254,14 +254,9 @@ export function checkDirty(deps: Link): boolean {
 					deps = dep.deps!;
 					++stack;
 					continue;
-				} else {
-					dirty = false;
 				}
 			}
-		} else {
-			dirty = false;
 		}
-
 		if (dirty || (nextDep = deps.nextDep) === undefined) {
 			if (stack > 0) {
 				let sub = deps.sub as IComputed;
