@@ -32,7 +32,6 @@ test('should not run untracked inner effect', () => {
 					throw new Error("bad");
 				}
 			});
-		} else {
 		}
 	});
 
