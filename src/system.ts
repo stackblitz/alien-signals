@@ -127,11 +127,12 @@ function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined,
 
 export function propagate(subs: Link): void {
 	let targetFlag = SubscriberFlags.Dirty;
+	let link = subs;
 	let stack = 0;
 	let nextSub: Link | undefined;
 
 	top: do {
-		const sub = subs.sub;
+		const sub = link.sub;
 		const subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
@@ -145,14 +146,17 @@ export function propagate(subs: Link): void {
 				if ('subs' in sub) {
 					const subSubs = sub.subs;
 					if (subSubs !== undefined) {
-						sub.depsTail!.nextDep = subs;
-						subs = subSubs;
-						if ('notify' in sub) {
-							targetFlag = SubscriberFlags.RunInnerEffects;
-						} else {
+						if (subSubs.nextSub !== undefined) {
+							sub.depsTail!.nextDep = subs;
+							link = subs = subSubs;
+							++stack;
 							targetFlag = SubscriberFlags.ToCheckDirty;
+						} else {
+							link = subSubs;
+							targetFlag = 'notify' in sub
+								? SubscriberFlags.RunInnerEffects
+								: SubscriberFlags.ToCheckDirty;
 						}
-						++stack;
 						continue;
 					}
 				}
@@ -165,21 +169,24 @@ export function propagate(subs: Link): void {
 					queuedEffectsTail = sub;
 				}
 			}
-		} else if (isValidLink(subs, sub)) {
+		} else if (isValidLink(link, sub)) {
 			sub.flags |= targetFlag;
 			if (!(subFlags >> 2)) {
 				sub.flags |= SubscriberFlags.CanPropagate;
 				if ('subs' in sub) {
 					const subSubs = sub.subs;
 					if (subSubs !== undefined) {
-						sub.depsTail!.nextDep = subs;
-						subs = subSubs;
-						if ('notify' in sub) {
-							targetFlag = SubscriberFlags.RunInnerEffects;
-						} else {
+						if (subSubs.nextSub !== undefined) {
+							sub.depsTail!.nextDep = subs;
+							link = subs = subSubs;
+							++stack;
 							targetFlag = SubscriberFlags.ToCheckDirty;
+						} else {
+							link = subSubs;
+							targetFlag = 'notify' in sub
+								? SubscriberFlags.RunInnerEffects
+								: SubscriberFlags.ToCheckDirty;
 						}
-						++stack;
 						continue;
 					}
 				}
@@ -194,14 +201,11 @@ export function propagate(subs: Link): void {
 					const depsTail = dep.depsTail!;
 					const prevLink = depsTail.nextDep!;
 					depsTail.nextDep = undefined;
-					subs = prevLink.nextSub!;
-
+					link = subs = prevLink.nextSub!;
 					if (subs !== undefined) {
-						if (!stack) {
-							targetFlag = SubscriberFlags.Dirty;
-						} else {
-							targetFlag = SubscriberFlags.ToCheckDirty;
-						}
+						targetFlag = stack
+							? SubscriberFlags.ToCheckDirty
+							: SubscriberFlags.Dirty;
 						continue top;
 					}
 					dep = prevLink.dep as Subscriber;
@@ -209,7 +213,15 @@ export function propagate(subs: Link): void {
 			}
 			break;
 		}
-		subs = nextSub;
+		if (link !== subs) {
+			const dep = subs.dep;
+			targetFlag = 'update' in dep
+				? SubscriberFlags.ToCheckDirty
+				: 'notify' in dep
+					? SubscriberFlags.RunInnerEffects
+					: SubscriberFlags.Dirty;
+		}
+		link = subs = nextSub;
 	} while (true);
 
 	if (!batchDepth) {
