@@ -242,15 +242,18 @@ function isValidLink(subLink: Link, sub: Subscriber) {
 	return false;
 }
 
-export function checkDirty(deps: Link): boolean {
+export function checkDirty(
+	deps: Link,
+	singleDep: boolean = deps.nextDep === undefined
+): boolean {
 	let stack = 0;
 	let dirty: boolean;
 	let nextDep: Link | undefined;
 
 	top: do {
 		dirty = false;
-		const dep = deps.dep;
-		if ('update' in dep) {
+		const dep = deps.dep as IComputed;
+		if (singleDep || 'update' in dep) {
 			if (dep.version !== deps.version) {
 				dirty = true;
 			} else {
@@ -258,10 +261,22 @@ export function checkDirty(deps: Link): boolean {
 				if (depFlags & SubscriberFlags.Dirty) {
 					dirty = dep.update();
 				} else if (depFlags & SubscriberFlags.ToCheckDirty) {
-					dep.subs!.prevSub = deps;
-					deps = dep.deps!;
-					++stack;
-					continue;
+					const depDeps = dep.deps!;
+					if (
+						!singleDep
+						|| depDeps.dep.subs!.nextSub !== undefined
+					) {
+						dep.subs!.prevSub = deps;
+						deps = depDeps;
+						singleDep = depDeps.nextDep === undefined;
+						++stack;
+						continue;
+					}
+					if (checkSingleDirty(depDeps)) {
+						dirty = dep.update();
+					} else {
+						dep.flags &= ~SubscriberFlags.ToCheckDirty;
+					}
 				}
 			}
 		}
@@ -284,6 +299,7 @@ export function checkDirty(deps: Link): boolean {
 					}
 					deps = prevLink.nextDep!;
 					if (deps !== undefined) {
+						singleDep = false;
 						continue top;
 					}
 					sub = prevLink.sub as IComputed;
@@ -294,6 +310,48 @@ export function checkDirty(deps: Link): boolean {
 		}
 		deps = nextDep;
 	} while (true);
+}
+
+function checkSingleDirty(deps: Link): boolean {
+	let stack = 0;
+	let dirty = false;
+
+	do {
+		const dep = deps.dep as IComputed;
+		const depDeps = dep.deps!;
+		const singleDep = depDeps.nextDep === undefined;
+		const depDep = depDeps.dep as IComputed;
+		if (
+			singleDep
+			&& depDep.subs!.nextSub === undefined
+			&& (depDep.flags & SubscriberFlags.Dirtys) === SubscriberFlags.ToCheckDirty
+		) {
+			deps.sub.flags &= ~SubscriberFlags.ToCheckDirty;
+			deps = depDeps;
+			++stack;
+			continue;
+		}
+		if (checkDirty(depDeps, singleDep)) {
+			dirty = dep.update();
+		} else {
+			dep.flags &= ~SubscriberFlags.ToCheckDirty;
+		}
+		break;
+	} while (true);
+
+	if (stack && dirty) {
+		let sub = deps.sub as IComputed;
+		do {
+			--stack;
+			const prevLink = sub.subs!;
+			if (!sub.update()) {
+				break;
+			}
+			sub = prevLink.sub as IComputed;
+		} while (stack);
+	}
+
+	return dirty;
 }
 
 export function startTrack(sub: Subscriber): void {
