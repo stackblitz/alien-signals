@@ -25,9 +25,9 @@ export interface Link {
 	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
 	version: number;
 	// Reuse to link prev stack in checkDirty
+	// Reuse to link prev stack in propagate
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Reuse to link prev stack in propagate
 	// Reuse to link next released link in linkPool
 	nextDep: Link | undefined;
 }
@@ -147,10 +147,10 @@ export function propagate(subs: Link): void {
 					const subSubs = sub.subs;
 					if (subSubs !== undefined) {
 						if (subSubs.nextSub !== undefined) {
-							sub.depsTail!.nextDep = subs;
+							subSubs.prevSub = subs;
 							link = subs = subSubs;
-							++stack;
 							targetFlag = SubscriberFlags.ToCheckDirty;
+							++stack;
 						} else {
 							link = subSubs;
 							targetFlag = 'notify' in sub
@@ -177,10 +177,10 @@ export function propagate(subs: Link): void {
 					const subSubs = sub.subs;
 					if (subSubs !== undefined) {
 						if (subSubs.nextSub !== undefined) {
-							sub.depsTail!.nextDep = subs;
+							subSubs.prevSub = subs;
 							link = subs = subSubs;
-							++stack;
 							targetFlag = SubscriberFlags.ToCheckDirty;
+							++stack;
 						} else {
 							link = subSubs;
 							targetFlag = 'notify' in sub
@@ -195,12 +195,12 @@ export function propagate(subs: Link): void {
 
 		if ((nextSub = subs.nextSub) === undefined) {
 			if (stack) {
-				let dep = subs.dep as Subscriber;
+				let dep = subs.dep;
 				do {
 					--stack;
-					const depsTail = dep.depsTail!;
-					const prevLink = depsTail.nextDep!;
-					depsTail.nextDep = undefined;
+					const depSubs = dep.subs!;
+					const prevLink = depSubs.prevSub!;
+					depSubs.prevSub = undefined;
 					link = subs = prevLink.nextSub!;
 					if (subs !== undefined) {
 						targetFlag = stack
@@ -208,7 +208,7 @@ export function propagate(subs: Link): void {
 							: SubscriberFlags.Dirty;
 						continue top;
 					}
-					dep = prevLink.dep as Subscriber;
+					dep = prevLink.dep;
 				} while (stack);
 			}
 			break;
