@@ -275,7 +275,6 @@ export function checkDirty(deps: Link): boolean {
 					subSubs.prevSub = undefined;
 					if (dirty) {
 						if (sub.update()) {
-							deps = prevLink;
 							sub = prevLink.sub as IComputed;
 							dirty = true;
 							continue;
