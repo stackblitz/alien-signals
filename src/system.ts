@@ -143,22 +143,20 @@ export function propagate(subs: Link): void {
 				canPropagate = true;
 			}
 			if (canPropagate) {
-				if ('subs' in sub) {
-					const subSubs = sub.subs;
-					if (subSubs !== undefined) {
-						if (subSubs.nextSub !== undefined) {
-							subSubs.prevSub = subs;
-							link = subs = subSubs;
-							targetFlag = SubscriberFlags.ToCheckDirty;
-							++stack;
-						} else {
-							link = subSubs;
-							targetFlag = 'notify' in sub
-								? SubscriberFlags.RunInnerEffects
-								: SubscriberFlags.ToCheckDirty;
-						}
-						continue;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					if (subSubs.nextSub !== undefined) {
+						subSubs.prevSub = subs;
+						link = subs = subSubs;
+						targetFlag = SubscriberFlags.ToCheckDirty;
+						++stack;
+					} else {
+						link = subSubs;
+						targetFlag = 'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty;
 					}
+					continue;
 				}
 				if ('notify' in sub) {
 					if (queuedEffectsTail !== undefined) {
@@ -173,22 +171,20 @@ export function propagate(subs: Link): void {
 			sub.flags |= targetFlag;
 			if (!(subFlags >> 2)) {
 				sub.flags |= SubscriberFlags.CanPropagate;
-				if ('subs' in sub) {
-					const subSubs = sub.subs;
-					if (subSubs !== undefined) {
-						if (subSubs.nextSub !== undefined) {
-							subSubs.prevSub = subs;
-							link = subs = subSubs;
-							targetFlag = SubscriberFlags.ToCheckDirty;
-							++stack;
-						} else {
-							link = subSubs;
-							targetFlag = 'notify' in sub
-								? SubscriberFlags.RunInnerEffects
-								: SubscriberFlags.ToCheckDirty;
-						}
-						continue;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					if (subSubs.nextSub !== undefined) {
+						subSubs.prevSub = subs;
+						link = subs = subSubs;
+						targetFlag = SubscriberFlags.ToCheckDirty;
+						++stack;
+					} else {
+						link = subSubs;
+						targetFlag = 'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty;
 					}
+					continue;
 				}
 			}
 		}
@@ -214,12 +210,9 @@ export function propagate(subs: Link): void {
 			break;
 		}
 		if (link !== subs) {
-			const dep = subs.dep;
-			targetFlag = 'update' in dep
+			targetFlag = stack
 				? SubscriberFlags.ToCheckDirty
-				: 'notify' in dep
-					? SubscriberFlags.RunInnerEffects
-					: SubscriberFlags.Dirty;
+				: SubscriberFlags.Dirty;
 		}
 		link = subs = nextSub;
 	} while (true);
