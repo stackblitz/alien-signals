@@ -4,4 +4,4 @@ export * from './effectScope.js';
 export * from './signal.js';
 export * from './system.js';
 export * from './types.js';
-export * as Unstable from './unstable/index.js';
+export * as unstable from './unstable/index.js';
