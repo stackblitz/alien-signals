@@ -83,6 +83,107 @@ scope.stop();
 count.set(3); // No console output
 ```
 
+## About `propagate` and `checkDirty` functions
+
+In order to eliminate recursive calls and improve performance, we record the last link node of the previous loop in `propagate` and `checkDirty` functions, and implement the rollback logic to return to this node.
+
+This results in code that is difficult to understand, and you don't necessarily get the same performance improvements in other languages, so we record the original implementation without eliminating recursive calls here for reference.
+
+`propagate`:
+
+```ts
+export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
+	do {
+		const sub = link.sub;
+		const subFlags = sub.flags;
+
+		if (!(subFlags & SubscriberFlags.Tracking)) {
+			let canPropagate = !(subFlags >> 2);
+			if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
+				sub.flags &= ~SubscriberFlags.CanPropagate;
+				canPropagate = true;
+			}
+			if (canPropagate) {
+				sub.flags |= targetFlag;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					if (subSubs.nextSub !== undefined) {
+						propagate(subSubs, SubscriberFlags.ToCheckDirty);
+					} else {
+						propagate(subSubs, 'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty);
+					}
+				} else if ('notify' in sub) {
+					if (queuedEffectsTail !== undefined) {
+						queuedEffectsTail.nextNotify = sub;
+					} else {
+						queuedEffects = sub;
+					}
+					queuedEffectsTail = sub;
+				}
+			} else if (!(sub.flags & targetFlag)) {
+				sub.flags |= targetFlag;
+			}
+		} else if (isValidLink(link, sub)) {
+			if (!(subFlags >> 2)) {
+				sub.flags |= targetFlag | SubscriberFlags.CanPropagate;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					if (subSubs.nextSub !== undefined) {
+						propagate(subSubs, SubscriberFlags.ToCheckDirty);
+					} else {
+						propagate(subSubs, 'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty);
+					}
+				}
+			} else if (!(sub.flags & targetFlag)) {
+				sub.flags |= targetFlag;
+			}
+		}
+
+		link = link.nextSub!;
+	} while (link !== undefined);
+
+	if (targetFlag === SubscriberFlags.Dirty && !batchDepth) {
+		drainQueuedEffects();
+	}
+}
+```
+
+`checkDirty`:
+
+```ts
+export function checkDirty(link: Link): boolean {
+	do {
+		const dep = link.dep;
+		if ('update' in dep) {
+			if (dep.version !== link.version) {
+				return true;
+			} else {
+				const depFlags = dep.flags;
+				if (depFlags & SubscriberFlags.Dirty) {
+					if (dep.update()) {
+						return true;
+					}
+				} else if (depFlags & SubscriberFlags.ToCheckDirty) {
+					if (checkDirty(dep.deps!)) {
+						if (dep.update()) {
+							return true;
+						}
+					} else {
+						dep.flags &= ~SubscriberFlags.ToCheckDirty;
+					}
+				}
+			}
+		}
+		link = link.nextDep!;
+	} while (link !== undefined);
+	return false;
+}
+```
+
 ## Roadmap
 
 | Version | Savings                                                                                       |
