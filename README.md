@@ -153,20 +153,19 @@ export function checkDirty(link: Link): boolean {
 		if ('update' in dep) {
 			if (dep.version !== link.version) {
 				return true;
-			} else {
-				const depFlags = dep.flags;
-				if (depFlags & SubscriberFlags.Dirty) {
+			}
+			const depFlags = dep.flags;
+			if (depFlags & SubscriberFlags.Dirty) {
+				if (dep.update()) {
+					return true;
+				}
+			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
+				if (checkDirty(dep.deps!)) {
 					if (dep.update()) {
 						return true;
 					}
-				} else if (depFlags & SubscriberFlags.ToCheckDirty) {
-					if (checkDirty(dep.deps!)) {
-						if (dep.update()) {
-							return true;
-						}
-					} else {
-						dep.flags &= ~SubscriberFlags.ToCheckDirty;
-					}
+				} else {
+					dep.flags &= ~SubscriberFlags.ToCheckDirty;
 				}
 			}
 		}
