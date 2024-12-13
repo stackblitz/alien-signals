@@ -89,7 +89,7 @@ In order to eliminate recursive calls and improve performance, we record the las
 
 This results in code that is difficult to understand, and you don't necessarily get the same performance improvements in other languages, so we record the original implementation without eliminating recursive calls here for reference.
 
-`propagate`:
+#### `propagate`
 
 ```ts
 export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
@@ -152,7 +152,7 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 }
 ```
 
-`checkDirty`:
+#### `checkDirty`
 
 ```ts
 export function checkDirty(link: Link): boolean {
@@ -180,6 +180,7 @@ export function checkDirty(link: Link): boolean {
 		}
 		link = link.nextDep!;
 	} while (link !== undefined);
+
 	return false;
 }
 ```

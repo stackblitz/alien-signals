@@ -125,6 +125,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined,
 	return newLink;
 }
 
+// See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
 export function propagate(subs: Link): void {
 	let targetFlag = SubscriberFlags.Dirty;
 	let link = subs;
@@ -242,6 +243,7 @@ function isValidLink(subLink: Link, sub: Subscriber) {
 	return false;
 }
 
+// See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
 export function checkDirty(deps: Link): boolean {
 	let stack = 0;
 	let dirty: boolean;
