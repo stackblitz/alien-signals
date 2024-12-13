@@ -39,7 +39,6 @@ export const enum SubscriberFlags {
 	RunInnerEffects = 1 << 2,
 	ToCheckDirty = 1 << 3,
 	Dirty = 1 << 4,
-	Dirtys = ToCheckDirty | Dirty,
 }
 
 let batchDepth = 0;
@@ -282,7 +281,7 @@ export function checkDirty(deps: Link): boolean {
 							continue;
 						}
 					} else {
-						sub.flags &= ~SubscriberFlags.Dirtys;
+						sub.flags &= ~SubscriberFlags.ToCheckDirty;
 					}
 					deps = prevLink.nextDep!;
 					if (deps !== undefined) {
