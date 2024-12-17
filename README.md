@@ -6,9 +6,12 @@
 	<a href="https://npmjs.com/package/alien-signals"><img src="https://badgen.net/npm/v/alien-signals" alt="npm package"></a>
 </p>
 
-# alien-signals
+<h3 align="center">
+    <p>[<a href="https://github.com/YanqingXu/alien-signals-in-lua">Alien Signals in Lua</a>]</p>
+    <p>[<a href="https://github.com/medz/alien-signals-dart">Alien Signals in Dart</a>]</p>
+</h3>
 
-Project Status: **Preview**
+# alien-signals
 
 The goal of `alien-signals` is to create a push-pull model based signal library with the lowest overhead.
 
@@ -30,12 +33,6 @@ To achieve high-performance code generation in https://github.com/vuejs/language
 In the past, I accumulated some knowledge of reactivity systems in https://github.com/vuejs/core/pull/5912, so I attempted to develop `alien-signals` with the goal of creating a Signal library with minimal memory usage and excellent performance.
 
 Since Vue 3.5 switched to a Pull reactivity system in https://github.com/vuejs/core/pull/10397, I continued to research the Push-Pull reactivity system here. It is worth mentioning that I was inspired by the doubly-linked concept, but `alien-signals` does not use a similar implementation.
-
-## Other Languages
-
-- Lua: https://github.com/YanqingXu/alien-signals-in-lua
-
-- Dart: https://github.com/medz/alien-signals-dart
 
 ## Adoptions
 
