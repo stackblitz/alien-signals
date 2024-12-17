@@ -1,4 +1,4 @@
-import { activeEffectScope } from './effectScope.js';
+import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
 import { checkDirty, Dependency, endTrack, IEffect, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeSub: Subscriber | undefined;
@@ -37,8 +37,8 @@ export class Effect<T = any> implements IEffect, Dependency {
 	) {
 		if (activeTrackId) {
 			link(this, activeSub!);
-		} else if (activeEffectScope !== undefined) {
-			link(this, activeEffectScope);
+		} else if (activeScopeTrackId) {
+			link(this, activeEffectScope!);
 		}
 	}
 

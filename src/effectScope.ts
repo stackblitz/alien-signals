@@ -1,6 +1,8 @@
+import { nextTrackId } from './effect.js';
 import { endTrack, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
+export let activeScopeTrackId = 0;
 
 export function effectScope(): EffectScope {
 	return new EffectScope();
@@ -11,6 +13,8 @@ export class EffectScope implements Subscriber {
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
 	flags: SubscriberFlags = SubscriberFlags.None;
+
+	trackId: number = nextTrackId();
 
 	notify(): void {
 		if (this.flags & SubscriberFlags.RunInnerEffects) {
@@ -28,11 +32,14 @@ export class EffectScope implements Subscriber {
 
 	run<T>(fn: () => T): T {
 		const prevSub = activeEffectScope;
+		const prevTrackId = activeScopeTrackId;
 		activeEffectScope = this;
+		activeScopeTrackId = this.trackId;
 		try {
 			return fn();
 		} finally {
 			activeEffectScope = prevSub;
+			activeScopeTrackId = prevTrackId;
 		}
 	}
 

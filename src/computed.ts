@@ -1,3 +1,4 @@
+import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
 import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
 import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags } from './system.js';
 import type { ISignal } from './types.js';
@@ -35,9 +36,16 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		if (activeTrackId && this.lastTrackedId !== activeTrackId) {
-			this.lastTrackedId = activeTrackId;
-			link(this, activeSub!).version = this.version;
+		if (activeTrackId) {
+			if (this.lastTrackedId !== activeTrackId) {
+				this.lastTrackedId = activeTrackId;
+				link(this, activeSub!).version = this.version;
+			}
+		} else if (activeScopeTrackId) {
+			if (this.lastTrackedId !== activeScopeTrackId) {
+				this.lastTrackedId = activeScopeTrackId;
+				link(this, activeEffectScope!).version = this.version;
+			}
 		}
 		return this.cachedValue!;
 	}
