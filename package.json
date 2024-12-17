@@ -43,7 +43,6 @@
 		"esbuild": "latest",
 		"mitata": "latest",
 		"typescript": "latest",
-		"vite": "latest",
 		"vitest": "latest"
 	}
 }
