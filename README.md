@@ -35,6 +35,8 @@ Since Vue 3.5 switched to a Pull reactivity system in https://github.com/vuejs/c
 
 - Lua: https://github.com/YanqingXu/alien-signals-in-lua
 
+- Dart: https://github.com/medz/alien-signals-dart
+
 ## Adoptions
 
 - Used in Vue language tools (https://github.com/vuejs/language-tools) for virtual code generation.
