@@ -183,3 +183,48 @@ export function checkDirty(link: Link): boolean {
 | 0.2     | Correctly schedule computed side effects                                                      |
 | 0.1     | Correctly schedule inner effect callbacks                                                     |
 | 0.0     | Add APIs: `signal()`, `computed()`, `effect()`, `effectScope()`, `startBatch()`, `endBatch()` |
+
+## Kotlin Usage
+
+### Basic
+
+```kotlin
+import alien.signals.Signal
+import alien.signals.Computed
+import alien.signals.Effect
+
+val count = Signal(1)
+val doubleCount = Computed { count.get() * 2 }
+
+Effect {
+    println("Count is: ${count.get()}")
+} // Console: Count is: 1
+
+println(doubleCount.get()) // 2
+
+count.set(2) // Console: Count is: 2
+
+println(doubleCount.get()) // 4
+```
+
+### Effect Scope
+
+```kotlin
+import alien.signals.Signal
+import alien.signals.EffectScope
+
+val count = Signal(1)
+val scope = EffectScope()
+
+scope.run {
+    Effect {
+        println("Count in scope: ${count.get()}")
+    } // Console: Count in scope: 1
+
+    count.set(2) // Console: Count in scope: 2
+}
+
+scope.stop()
+
+count.set(3) // No console output
+```

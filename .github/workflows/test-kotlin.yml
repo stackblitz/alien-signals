@@ -1,4 +1,4 @@
-name: testing
+name: test-kotlin
 
 on: [push, pull_request]
 
