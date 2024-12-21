@@ -77,9 +77,9 @@ export function link(dep: Dependency, sub: Subscriber): Link {
   if (nextDep !== undefined && nextDep.dep === dep) {
     sub.depsTail = nextDep;
     return nextDep;
-  } else {
-    return linkNewDep(dep, sub, nextDep, currentDep);
   }
+
+  return linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(
@@ -139,7 +139,7 @@ export function propagate(subs: Link): void {
     const subFlags = sub.flags;
 
     if (!(subFlags & SubscriberFlags.Tracking)) {
-      let canPropagate = !(subFlags >> 2);
+      let canPropagate = !(subFlags >> SubscriberFlags.CanPropagate);
       if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
         sub.flags &= ~SubscriberFlags.CanPropagate;
         canPropagate = true;
@@ -174,7 +174,7 @@ export function propagate(subs: Link): void {
         sub.flags |= targetFlag;
       }
     } else if (isValidLink(link, sub)) {
-      if (!(subFlags >> 2)) {
+      if (!(subFlags >> SubscriberFlags.CanPropagate)) {
         sub.flags |= targetFlag | SubscriberFlags.CanPropagate;
         const subSubs = (sub as Dependency).subs;
         if (subSubs !== undefined) {
@@ -321,10 +321,10 @@ export function endTrack(sub: Subscriber): void {
 
 function clearTrack(link: Link): void {
   do {
-    const dep = link.dep;
-    const nextDep = link.nextDep;
-    const nextSub = link.nextSub;
-    const prevSub = link.prevSub;
+    const dep = link.dep,
+      nextDep = link.nextDep,
+      nextSub = link.nextSub,
+      prevSub = link.prevSub;
 
     if (nextSub !== undefined) {
       nextSub.prevSub = prevSub;
