@@ -79,9 +79,8 @@ export function link(dep: Dependency, sub: Subscriber): Link {
 	if (nextDep !== undefined && nextDep.dep === dep) {
 		sub.depsTail = nextDep;
 		return nextDep;
-	} else {
-		return linkNewDep(dep, sub, nextDep, currentDep);
 	}
+	return linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): Link {
