@@ -1,3 +1,3 @@
-export * from './computedArray.js';
-export * from './computedSet.js';
-export * from './equalityComputed.js';
+export * from "./computedArray.js";
+export * from "./computedSet.js";
+export * from "./equalityComputed.js";
