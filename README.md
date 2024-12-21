@@ -91,64 +91,61 @@ This results in code that is difficult to understand, and you don't necessarily 
 #### `propagate`
 
 ```ts
-export function propagate(
-  link: Link,
-  targetFlag: SubscriberFlags = SubscriberFlags.Dirty,
-): void {
-  do {
-    const sub = link.sub;
-    const subFlags = sub.flags;
+export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
+	do {
+		const sub = link.sub;
+		let subFlags = sub.flags;
 
-    if (!(subFlags & SubscriberFlags.Tracking)) {
-      let canPropagate = !(subFlags >> 2);
-      if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
-        sub.flags &= ~SubscriberFlags.CanPropagate;
-        canPropagate = true;
-      }
-      if (canPropagate) {
-        sub.flags |= targetFlag;
-        const subSubs = (sub as Dependency).subs;
-        if (subSubs !== undefined) {
-          propagate(
-            subSubs,
-            'notify' in sub
-              ? SubscriberFlags.RunInnerEffects
-              : SubscriberFlags.ToCheckDirty,
-          );
-        } else if ('notify' in sub) {
-          if (queuedEffectsTail !== undefined) {
-            queuedEffectsTail.nextNotify = sub;
-          } else {
-            queuedEffects = sub;
-          }
-          queuedEffectsTail = sub;
-        }
-      } else if (!(sub.flags & targetFlag)) {
-        sub.flags |= targetFlag;
-      }
-    } else if (isValidLink(link, sub)) {
-      if (!(subFlags >> 2)) {
-        sub.flags |= targetFlag | SubscriberFlags.CanPropagate;
-        const subSubs = (sub as Dependency).subs;
-        if (subSubs !== undefined) {
-          propagate(
-            subSubs,
-            'notify' in sub
-              ? SubscriberFlags.RunInnerEffects
-              : SubscriberFlags.ToCheckDirty,
-          );
-        }
-      } else if (!(sub.flags & targetFlag)) {
-        sub.flags |= targetFlag;
-      }
-    }
+		if (!(subFlags & SubscriberFlags.Tracking)) {
+			let canPropagate = !(subFlags >> 2);
+			if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
+				sub.flags = subFlags &= ~SubscriberFlags.CanPropagate;
+				canPropagate = true;
+			}
+			if (canPropagate) {
+				sub.flags = subFlags | targetFlag;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					propagate(
+						subSubs,
+						'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty
+					);
+				} else if ('notify' in sub) {
+					if (queuedEffectsTail !== undefined) {
+						queuedEffectsTail.nextNotify = sub;
+					} else {
+						queuedEffects = sub;
+					}
+					queuedEffectsTail = sub;
+				}
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
+			}
+		} else if (isValidLink(link, sub)) {
+			if (!(subFlags >> 2)) {
+				sub.flags = subFlags | targetFlag | SubscriberFlags.CanPropagate;
+				const subSubs = (sub as Dependency).subs;
+				if (subSubs !== undefined) {
+					propagate(
+						subSubs,
+						'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty
+					);
+				}
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
+			}
+		}
 
-    link = link.nextSub!;
-  } while (link !== undefined);
+		link = link.nextSub!;
+	} while (link !== undefined);
 
-  if (targetFlag === SubscriberFlags.Dirty && !batchDepth) {
-    drainQueuedEffects();
-  }
+	if (targetFlag === SubscriberFlags.Dirty && !batchDepth) {
+		drainQueuedEffects();
+	}
 }
 ```
 
@@ -156,38 +153,38 @@ export function propagate(
 
 ```ts
 export function checkDirty(link: Link): boolean {
-  do {
-    const dep = link.dep;
-    if ('update' in dep) {
-      if (dep.version !== link.version) {
-        return true;
-      }
-      const depFlags = dep.flags;
-      if (depFlags & SubscriberFlags.Dirty) {
-        if (dep.update()) {
-          return true;
-        }
-      } else if (depFlags & SubscriberFlags.ToCheckDirty) {
-        if (checkDirty(dep.deps!)) {
-          if (dep.update()) {
-            return true;
-          }
-        } else {
-          dep.flags &= ~SubscriberFlags.ToCheckDirty;
-        }
-      }
-    }
-    link = link.nextDep!;
-  } while (link !== undefined);
+	do {
+		const dep = link.dep;
+		if ('update' in dep) {
+			if (dep.version !== link.version) {
+				return true;
+			}
+			const depFlags = dep.flags;
+			if (depFlags & SubscriberFlags.Dirty) {
+				if (dep.update()) {
+					return true;
+				}
+			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
+				if (checkDirty(dep.deps!)) {
+					if (dep.update()) {
+						return true;
+					}
+				} else {
+					dep.flags &= ~SubscriberFlags.ToCheckDirty;
+				}
+			}
+		}
+		link = link.nextDep!;
+	} while (link !== undefined);
 
-  return false;
+	return false;
 }
 ```
 
 ## Roadmap
 
 | Version | Savings                                                                                       |
-| ------- | --------------------------------------------------------------------------------------------- |
+|---------|-----------------------------------------------------------------------------------------------|
 | 0.3     | Satisfy all 4 constraints                                                                     |
 | 0.2     | Correctly schedule computed side effects                                                      |
 | 0.1     | Correctly schedule inner effect callbacks                                                     |
