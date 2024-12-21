@@ -8,8 +8,7 @@ export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
 }
 
 export class Computed<T = any> implements IComputed, ISignal<T> {
-	cachedValue: T | undefined = undefined;
-	version = 0;
+	currentValue: T | undefined = undefined;
 
 	// Dependency
 	subs: Link | undefined = undefined;
@@ -36,38 +35,31 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 				this.flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
+		const currentValue = this.currentValue!;
 		if (activeTrackId) {
 			if (this.lastTrackedId !== activeTrackId) {
 				this.lastTrackedId = activeTrackId;
-				link(this, activeSub!).version = this.version;
+				link(this, activeSub!).value = currentValue;
 			}
 		} else if (activeScopeTrackId) {
 			if (this.lastTrackedId !== activeScopeTrackId) {
 				this.lastTrackedId = activeScopeTrackId;
-				link(this, activeEffectScope!).version = this.version;
+				link(this, activeEffectScope!).value = currentValue;
 			}
 		}
-		return this.cachedValue!;
+		return currentValue;
 	}
 
-	update(): boolean {
+	update(): T {
 		const prevSub = activeSub;
 		const prevTrackId = activeTrackId;
 		setActiveSub(this, nextTrackId());
 		startTrack(this);
-		const oldValue = this.cachedValue;
-		let newValue: T;
 		try {
-			newValue = this.getter(oldValue);
+			return this.currentValue = this.getter(this.currentValue);
 		} finally {
 			setActiveSub(prevSub, prevTrackId);
 			endTrack(this);
 		}
-		if (oldValue !== newValue) {
-			this.cachedValue = newValue;
-			this.version++;
-			return true;
-		}
-		return false;
 	}
 }

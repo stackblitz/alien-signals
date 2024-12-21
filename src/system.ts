@@ -4,11 +4,11 @@ export interface IEffect extends Subscriber {
 }
 
 export interface IComputed extends Dependency, Subscriber {
-	version: number;
-	update(): boolean;
+	update(): any;
 }
 
 export interface Dependency {
+	currentValue?: any;
 	subs: Link | undefined;
 	subsTail: Link | undefined;
 	lastTrackedId?: number;
@@ -23,7 +23,7 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | IComputed | (Dependency & IEffect);
 	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
-	version: number;
+	value: any;
 	// Reuse to link prev stack in checkDirty
 	// Reuse to link prev stack in propagate
 	prevSub: Link | undefined;
@@ -79,9 +79,8 @@ export function link(dep: Dependency, sub: Subscriber): Link {
 	if (nextDep !== undefined && nextDep.dep === dep) {
 		sub.depsTail = nextDep;
 		return nextDep;
-	} else {
-		return linkNewDep(dep, sub, nextDep, currentDep);
 	}
+	return linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): Link {
@@ -97,7 +96,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined,
 		newLink = {
 			dep,
 			sub,
-			version: 0,
+			value: undefined,
 			nextDep,
 			prevSub: undefined,
 			nextSub: undefined,
@@ -243,47 +242,51 @@ function isValidLink(subLink: Link, sub: Subscriber) {
 }
 
 // See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-export function checkDirty(deps: Link): boolean {
+export function checkDirty(link: Link): boolean {
 	let stack = 0;
 	let dirty: boolean;
 	let nextDep: Link | undefined;
 
 	top: do {
 		dirty = false;
-		const dep = deps.dep;
+		const dep = link.dep;
 		if ('update' in dep) {
-			if (dep.version !== deps.version) {
-				dirty = true;
-			} else {
-				const depFlags = dep.flags;
-				if (depFlags & SubscriberFlags.Dirty) {
-					dirty = dep.update();
-				} else if (depFlags & SubscriberFlags.ToCheckDirty) {
-					dep.subs!.prevSub = deps;
-					deps = dep.deps!;
-					++stack;
-					continue;
+			const depFlags = dep.flags;
+			if (depFlags & SubscriberFlags.Dirty) {
+				if (dep.update() !== link.value) {
+					dirty = true;
 				}
+			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
+				dep.subs!.prevSub = link;
+				link = dep.deps!;
+				++stack;
+				continue;
+			} else if (dep.currentValue !== link.value) {
+				dirty = true;
+			}
+		} else if ('currentValue' in dep) {
+			if (dep.currentValue !== link.value) {
+				dirty = true;
 			}
 		}
-		if (dirty || (nextDep = deps.nextDep) === undefined) {
+		if (dirty || (nextDep = link.nextDep) === undefined) {
 			if (stack) {
-				let sub = deps.sub as IComputed;
+				let sub = link.sub as IComputed;
 				do {
 					--stack;
 					const subSubs = sub.subs!;
 					const prevLink = subSubs.prevSub!;
 					subSubs.prevSub = undefined;
 					if (dirty) {
-						if (sub.update()) {
+						if (sub.update() !== prevLink.value) {
 							sub = prevLink.sub as IComputed;
 							continue;
 						}
 					} else {
 						sub.flags &= ~SubscriberFlags.ToCheckDirty;
 					}
-					deps = prevLink.nextDep!;
-					if (deps !== undefined) {
+					link = prevLink.nextDep!;
+					if (link !== undefined) {
 						continue top;
 					}
 					sub = prevLink.sub as IComputed;
@@ -292,7 +295,7 @@ export function checkDirty(deps: Link): boolean {
 			}
 			return dirty;
 		}
-		deps = nextDep;
+		link = nextDep;
 	} while (true);
 }
 
@@ -343,6 +346,7 @@ function clearTrack(link: Link): void {
 		link.dep = undefined;
 		// @ts-expect-error
 		link.sub = undefined;
+		link.value = undefined;
 		link.nextDep = linkPool;
 		linkPool = link;
 
