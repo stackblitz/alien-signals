@@ -77,9 +77,9 @@ export function link(dep: Dependency, sub: Subscriber): Link {
   if (nextDep !== undefined && nextDep.dep === dep) {
     sub.depsTail = nextDep;
     return nextDep;
+  } else {
+    return linkNewDep(dep, sub, nextDep, currentDep);
   }
-
-  return linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(
@@ -136,16 +136,16 @@ export function propagate(subs: Link): void {
 
   top: do {
     const sub = link.sub;
-    const subFlags = sub.flags;
+    let subFlags = sub.flags;
 
     if (!(subFlags & SubscriberFlags.Tracking)) {
-      let canPropagate = !(subFlags >> SubscriberFlags.CanPropagate);
+      let canPropagate = !(subFlags >> 2);
       if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
-        sub.flags &= ~SubscriberFlags.CanPropagate;
+        sub.flags = subFlags &= ~SubscriberFlags.CanPropagate;
         canPropagate = true;
       }
       if (canPropagate) {
-        sub.flags |= targetFlag;
+        sub.flags = subFlags | targetFlag;
         const subSubs = (sub as Dependency).subs;
         if (subSubs !== undefined) {
           if (subSubs.nextSub !== undefined) {
@@ -170,12 +170,12 @@ export function propagate(subs: Link): void {
           }
           queuedEffectsTail = sub;
         }
-      } else if (!(sub.flags & targetFlag)) {
-        sub.flags |= targetFlag;
+      } else if (!(subFlags & targetFlag)) {
+        sub.flags = subFlags | targetFlag;
       }
     } else if (isValidLink(link, sub)) {
-      if (!(subFlags >> SubscriberFlags.CanPropagate)) {
-        sub.flags |= targetFlag | SubscriberFlags.CanPropagate;
+      if (!(subFlags >> 2)) {
+        sub.flags = subFlags | targetFlag | SubscriberFlags.CanPropagate;
         const subSubs = (sub as Dependency).subs;
         if (subSubs !== undefined) {
           if (subSubs.nextSub !== undefined) {
@@ -192,8 +192,8 @@ export function propagate(subs: Link): void {
           }
           continue;
         }
-      } else if (!(sub.flags & targetFlag)) {
-        sub.flags |= targetFlag;
+      } else if (!(subFlags & targetFlag)) {
+        sub.flags = subFlags | targetFlag;
       }
     }
 
@@ -280,7 +280,6 @@ export function checkDirty(deps: Link): boolean {
           if (dirty) {
             if (sub.update()) {
               sub = prevLink.sub as IComputed;
-              dirty = true;
               continue;
             }
           } else {
@@ -321,10 +320,10 @@ export function endTrack(sub: Subscriber): void {
 
 function clearTrack(link: Link): void {
   do {
-    const dep = link.dep,
-      nextDep = link.nextDep,
-      nextSub = link.nextSub,
-      prevSub = link.prevSub;
+    const dep = link.dep;
+    const nextDep = link.nextDep;
+    const nextSub = link.nextSub;
+    const prevSub = link.prevSub;
 
     if (nextSub !== undefined) {
       nextSub.prevSub = prevSub;
