@@ -16,8 +16,8 @@ boxplot(() => {
 		}
 		yield () => src.set(src.get() + 1);
 	})
-		.args('w', [1, 10, 100])
-		.args('h', [1, 10, 100]);
+		.args('h', [1, 10, 100])
+		.args('w', [1, 10, 100]);
 });
 
 run({ format: 'markdown' });
