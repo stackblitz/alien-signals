@@ -94,21 +94,24 @@ This results in code that is difficult to understand, and you don't necessarily 
 export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
 	do {
 		const sub = link.sub;
-		const subFlags = sub.flags;
+		let subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
 			let canPropagate = !(subFlags >> 2);
 			if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
-				sub.flags &= ~SubscriberFlags.CanPropagate;
+				sub.flags = subFlags &= ~SubscriberFlags.CanPropagate;
 				canPropagate = true;
 			}
 			if (canPropagate) {
-				sub.flags |= targetFlag;
+				sub.flags = subFlags | targetFlag;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
-					propagate(subSubs, 'notify' in sub
-						? SubscriberFlags.RunInnerEffects
-						: SubscriberFlags.ToCheckDirty);
+					propagate(
+						subSubs,
+						'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty
+					);
 				} else if ('notify' in sub) {
 					if (queuedEffectsTail !== undefined) {
 						queuedEffectsTail.nextNotify = sub;
@@ -117,20 +120,23 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 					}
 					queuedEffectsTail = sub;
 				}
-			} else if (!(sub.flags & targetFlag)) {
-				sub.flags |= targetFlag;
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
 			if (!(subFlags >> 2)) {
-				sub.flags |= targetFlag | SubscriberFlags.CanPropagate;
+				sub.flags = subFlags | targetFlag | SubscriberFlags.CanPropagate;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
-					propagate(subSubs, 'notify' in sub
-						? SubscriberFlags.RunInnerEffects
-						: SubscriberFlags.ToCheckDirty);
+					propagate(
+						subSubs,
+						'notify' in sub
+							? SubscriberFlags.RunInnerEffects
+							: SubscriberFlags.ToCheckDirty
+					);
 				}
-			} else if (!(sub.flags & targetFlag)) {
-				sub.flags |= targetFlag;
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
 			}
 		}
 
