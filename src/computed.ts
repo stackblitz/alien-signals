@@ -1,10 +1,10 @@
-import { activeEffectScope, activeScopeTrackId } from "./effectScope.js";
+import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
 import {
   activeSub,
   activeTrackId,
   nextTrackId,
   setActiveSub,
-} from "./effect.js";
+} from './effect.js';
 import {
   checkDirty,
   endTrack,
@@ -13,8 +13,8 @@ import {
   link,
   startTrack,
   SubscriberFlags,
-} from "./system.js";
-import type { ISignal } from "./types.js";
+} from './system.js';
+import type { ISignal } from './types.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
   return new Computed<T>(getter);

@@ -1,17 +1,17 @@
 {
-	"compilerOptions": {
-		"target": "ES2021",
-		"lib": [ "ES2021" ],
-		"module": "CommonJS",
-		"declaration": true,
-		"emitDeclarationOnly": true,
-		"strict": true,
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"skipLibCheck": true,
-		"isolatedDeclarations": true,
-		"rootDir": "src",
-		"outDir": "types",
-	},
-	"include": [ "src" ],
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "module": "CommonJS",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "isolatedDeclarations": true,
+    "rootDir": "src",
+    "outDir": "types"
+  },
+  "include": ["src"]
 }

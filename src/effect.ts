@@ -1,4 +1,4 @@
-import { activeEffectScope, activeScopeTrackId } from "./effectScope.js";
+import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
 import {
   checkDirty,
   Dependency,
@@ -9,7 +9,7 @@ import {
   startTrack,
   Subscriber,
   SubscriberFlags,
-} from "./system.js";
+} from './system.js';
 
 export let activeSub: Subscriber | undefined;
 export let activeTrackId = 0;
@@ -72,7 +72,7 @@ export class Effect<T = any> implements IEffect, Dependency {
       let link = this.deps!;
       do {
         const dep = link.dep;
-        if ("notify" in dep) {
+        if ('notify' in dep) {
           dep.notify();
         }
         link = link.nextDep!;

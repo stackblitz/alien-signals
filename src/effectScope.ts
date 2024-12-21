@@ -1,11 +1,11 @@
-import { nextTrackId } from "./effect.js";
+import { nextTrackId } from './effect.js';
 import {
   endTrack,
   Link,
   startTrack,
   Subscriber,
   SubscriberFlags,
-} from "./system.js";
+} from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
 export let activeScopeTrackId = 0;
@@ -28,7 +28,7 @@ export class EffectScope implements Subscriber {
       let link = this.deps!;
       do {
         const dep = link.dep;
-        if ("notify" in dep) {
+        if ('notify' in dep) {
           dep.notify();
         }
         link = link.nextDep!;

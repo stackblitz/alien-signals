@@ -156,13 +156,13 @@ export function propagate(subs: Link): void {
           } else {
             link = subSubs;
             targetFlag =
-              "notify" in sub
+              'notify' in sub
                 ? SubscriberFlags.RunInnerEffects
                 : SubscriberFlags.ToCheckDirty;
           }
           continue;
         }
-        if ("notify" in sub) {
+        if ('notify' in sub) {
           if (queuedEffectsTail !== undefined) {
             queuedEffectsTail.nextNotify = sub;
           } else {
@@ -186,7 +186,7 @@ export function propagate(subs: Link): void {
           } else {
             link = subSubs;
             targetFlag =
-              "notify" in sub
+              'notify' in sub
                 ? SubscriberFlags.RunInnerEffects
                 : SubscriberFlags.ToCheckDirty;
           }
@@ -254,7 +254,7 @@ export function checkDirty(deps: Link): boolean {
   top: do {
     dirty = false;
     const dep = deps.dep;
-    if ("update" in dep) {
+    if ('update' in dep) {
       if (dep.version !== deps.version) {
         dirty = true;
       } else {
@@ -331,7 +331,7 @@ function clearTrack(link: Link): void {
       link.nextSub = undefined;
     } else {
       dep.subsTail = prevSub;
-      if ("lastTrackedId" in dep) {
+      if ('lastTrackedId' in dep) {
         dep.lastTrackedId = 0;
       }
     }
@@ -350,8 +350,8 @@ function clearTrack(link: Link): void {
     link.nextDep = linkPool;
     linkPool = link;
 
-    if (dep.subs === undefined && "deps" in dep) {
-      if ("notify" in dep) {
+    if (dep.subs === undefined && 'deps' in dep) {
+      if ('notify' in dep) {
         dep.flags = SubscriberFlags.None;
       } else {
         dep.flags |= SubscriberFlags.Dirty;

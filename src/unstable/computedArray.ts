@@ -1,4 +1,4 @@
-import { computed, ISignal } from "../index.js";
+import { computed, ISignal } from '../index.js';
 
 export function computedArray<I, O>(
   arr: ISignal<I[]>,
@@ -12,7 +12,7 @@ export function computedArray<I, O>(
     }
     return keys;
   });
-  const items = computed<ISignal<O>[]>((array) => {
+  const items = computed<ISignal<O>[]>(array => {
     array ??= [];
     while (array.length < length.get()) {
       const index = array.length;
@@ -29,10 +29,10 @@ export function computedArray<I, O>(
     {},
     {
       get(_, p, receiver) {
-        if (p === "length") {
+        if (p === 'length') {
           return length.get();
         }
-        if (typeof p === "string" && !isNaN(Number(p))) {
+        if (typeof p === 'string' && !isNaN(Number(p))) {
           return items.get()[Number(p)]?.get();
         }
         return Reflect.get(items.get(), p, receiver);

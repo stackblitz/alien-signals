@@ -1,4 +1,4 @@
-import { Computed, ISignal } from "../index.js";
+import { Computed, ISignal } from '../index.js';
 
 export function equalityComputed<T>(getter: () => T): ISignal<T> {
   return new EqualityComputed(getter);
@@ -6,7 +6,7 @@ export function equalityComputed<T>(getter: () => T): ISignal<T> {
 
 export class EqualityComputed<T = any> extends Computed<T> {
   constructor(getter: () => T) {
-    super((oldValue) => {
+    super(oldValue => {
       const newValue = getter();
       if (this.equals(oldValue, newValue)) {
         return oldValue!;
@@ -24,7 +24,7 @@ export class EqualityComputed<T = any> extends Computed<T> {
       return false;
     }
 
-    if (typeof a === "object") {
+    if (typeof a === 'object') {
       if (Array.isArray(a) && Array.isArray(b)) {
         if (a.length !== b.length) {
           return false;

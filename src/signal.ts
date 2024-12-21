@@ -1,6 +1,6 @@
-import { activeSub, activeTrackId } from "./effect.js";
-import { Dependency, link, Link, propagate } from "./system.js";
-import type { IWritableSignal } from "./types.js";
+import { activeSub, activeTrackId } from './effect.js';
+import { Dependency, link, Link, propagate } from './system.js';
+import type { IWritableSignal } from './types.js';
 
 export function signal<T>(): Signal<T | undefined>;
 export function signal<T>(oldValue: T): Signal<T>;
