@@ -35,7 +35,7 @@ export interface Link {
 export const enum SubscriberFlags {
 	None = 0,
 	Tracking = 1 << 0,
-	CanPropagate = 1 << 1,
+	Recursed = 1 << 1,
 	RunInnerEffects = 1 << 2,
 	ToCheckDirty = 1 << 3,
 	Dirty = 1 << 4,
@@ -141,8 +141,8 @@ export function propagate(subs: Link): void {
 					&& (sub.flags = subFlags | targetFlag, true)
 				)
 				|| (
-					subFlags & SubscriberFlags.CanPropagate
-					&& (sub.flags = (subFlags & ~SubscriberFlags.CanPropagate) | targetFlag, true)
+					subFlags & SubscriberFlags.Recursed
+					&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
 				)
 			) {
 				const subSubs = (sub as Dependency).subs;
@@ -173,7 +173,7 @@ export function propagate(subs: Link): void {
 			}
 		} else if (isValidLink(link, sub)) {
 			if (!(subFlags >> 2)) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.CanPropagate;
+				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					if (subSubs.nextSub !== undefined) {
