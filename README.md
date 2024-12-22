@@ -98,12 +98,17 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
 			let canPropagate = !(subFlags >> 2);
-			if (!canPropagate && subFlags & SubscriberFlags.CanPropagate) {
-				sub.flags = subFlags &= ~SubscriberFlags.CanPropagate;
-				canPropagate = true;
+			if (!canPropagate) {
+				if (subFlags & SubscriberFlags.CanPropagate) {
+					sub.flags = (subFlags & ~SubscriberFlags.CanPropagate) | targetFlag;
+					canPropagate = true;
+				} else if (!(subFlags & targetFlag)) {
+					sub.flags = subFlags | targetFlag;
+				}
+			} else {
+				sub.flags = subFlags | targetFlag;
 			}
 			if (canPropagate) {
-				sub.flags = subFlags | targetFlag;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					propagate(
@@ -120,8 +125,6 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 					}
 					queuedEffectsTail = sub;
 				}
-			} else if (!(subFlags & targetFlag)) {
-				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
 			if (!(subFlags >> 2)) {
