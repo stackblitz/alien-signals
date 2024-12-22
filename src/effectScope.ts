@@ -17,8 +17,9 @@ export class EffectScope implements Subscriber {
 	trackId: number = nextTrackId();
 
 	notify(): void {
-		if (this.flags & SubscriberFlags.RunInnerEffects) {
-			this.flags &= ~SubscriberFlags.RunInnerEffects;
+		const flags = this.flags;
+		if (flags & SubscriberFlags.RunInnerEffects) {
+			this.flags = flags & ~SubscriberFlags.RunInnerEffects;
 			let link = this.deps!;
 			do {
 				const dep = link.dep;
