@@ -13,9 +13,9 @@
 
 # alien-signals
 
-The goal of `alien-signals` is to create a push-pull model based signal library with the lowest overhead.
+The goal of `alien-signals` is to create a ~~push-pull~~ [push-pull-push model](https://github.com/stackblitz/alien-signals/pull/19) based signal library with the lowest overhead.
 
-We have set the following scheduling logic constraints:
+We have set the following constraints in scheduling logic:
 
 1. No dynamic object fields
 2. No use of Array/Set/Map
