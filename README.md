@@ -159,22 +159,25 @@ export function checkDirty(link: Link): boolean {
 	do {
 		const dep = link.dep;
 		if ('update' in dep) {
-			if (dep.version !== link.version) {
-				return true;
-			}
 			const depFlags = dep.flags;
+			const linkValue = link.value;
 			if (depFlags & SubscriberFlags.Dirty) {
-				if (dep.update()) {
+				if (dep.update() !== linkValue) {
 					return true;
 				}
 			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
 				if (checkDirty(dep.deps!)) {
-					if (dep.update()) {
+					if (dep.update() !== linkValue) {
 						return true;
 					}
 				} else {
-					dep.flags &= ~SubscriberFlags.ToCheckDirty;
+					dep.flags = depFlags & ~SubscriberFlags.ToCheckDirty;
+					if (dep.currentValue !== linkValue) {
+						return true;
+					}
 				}
+			} else if (dep.currentValue !== linkValue) {
+				return true;
 			}
 		}
 		link = link.nextDep!;

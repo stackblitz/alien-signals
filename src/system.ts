@@ -283,6 +283,11 @@ export function checkDirty(link: Link): boolean {
 						}
 					} else {
 						sub.flags &= ~SubscriberFlags.ToCheckDirty;
+						if (sub.currentValue !== prevLink.value) {
+							dirty = true;
+							sub = prevLink.sub as IComputed;
+							continue;
+						}
 					}
 					link = prevLink.nextDep!;
 					if (link !== undefined) {
