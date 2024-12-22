@@ -18,8 +18,8 @@ export class EffectScope implements Subscriber {
 
 	notify(): void {
 		const flags = this.flags;
-		if (flags & SubscriberFlags.RunInnerEffects) {
-			this.flags = flags & ~SubscriberFlags.RunInnerEffects;
+		if (flags & SubscriberFlags.InnerEffectsPending) {
+			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
 			let link = this.deps!;
 			do {
 				const dep = link.dep;

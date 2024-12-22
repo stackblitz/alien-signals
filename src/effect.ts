@@ -56,8 +56,8 @@ export class Effect<T = any> implements IEffect, Dependency {
 				this.flags = flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		if (flags & SubscriberFlags.RunInnerEffects) {
-			this.flags = flags & ~SubscriberFlags.RunInnerEffects;
+		if (flags & SubscriberFlags.InnerEffectsPending) {
+			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
 			let link = this.deps!;
 			do {
 				const dep = link.dep;

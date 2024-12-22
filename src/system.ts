@@ -36,7 +36,7 @@ export const enum SubscriberFlags {
 	None = 0,
 	Tracking = 1 << 0,
 	Recursed = 1 << 1,
-	RunInnerEffects = 1 << 2,
+	InnerEffectsPending = 1 << 2,
 	ToCheckDirty = 1 << 3,
 	Dirty = 1 << 4,
 }
@@ -155,7 +155,7 @@ export function propagate(subs: Link): void {
 					} else {
 						link = subSubs;
 						targetFlag = 'notify' in sub
-							? SubscriberFlags.RunInnerEffects
+							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.ToCheckDirty;
 					}
 					continue;
@@ -184,7 +184,7 @@ export function propagate(subs: Link): void {
 					} else {
 						link = subSubs;
 						targetFlag = 'notify' in sub
-							? SubscriberFlags.RunInnerEffects
+							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.ToCheckDirty;
 					}
 					continue;
