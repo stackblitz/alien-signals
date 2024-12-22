@@ -228,7 +228,7 @@ export function shallowPropagate(link: Link): void {
 	do {
 		const updateSub = link.sub;
 		const updateSubFlags = updateSub.flags;
-		if (!(updateSubFlags & (SubscriberFlags.Dirty | SubscriberFlags.Tracking))) {
+		if (updateSubFlags & SubscriberFlags.ToCheckDirty) {
 			updateSub.flags = updateSubFlags | SubscriberFlags.Dirty;
 		}
 		link = link.nextSub!;
