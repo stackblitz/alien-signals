@@ -43,7 +43,7 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	notify(): void {
-		const flags = this.flags;
+		let flags = this.flags;
 		if (flags & SubscriberFlags.Dirty) {
 			this.run();
 			return;
@@ -53,11 +53,11 @@ export class Effect<T = any> implements IEffect, Dependency {
 				this.run();
 				return;
 			} else {
-				this.flags &= ~SubscriberFlags.ToCheckDirty;
+				this.flags = flags &= ~SubscriberFlags.ToCheckDirty;
 			}
 		}
 		if (flags & SubscriberFlags.RunInnerEffects) {
-			this.flags &= ~SubscriberFlags.RunInnerEffects;
+			this.flags = flags & ~SubscriberFlags.RunInnerEffects;
 			let link = this.deps!;
 			do {
 				const dep = link.dep;

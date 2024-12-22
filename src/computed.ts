@@ -32,7 +32,7 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 			if (checkDirty(this.deps!)) {
 				this.update();
 			} else {
-				this.flags &= ~SubscriberFlags.ToCheckDirty;
+				this.flags = flags & ~SubscriberFlags.ToCheckDirty;
 			}
 		}
 		const currentValue = this.currentValue!;
