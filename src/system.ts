@@ -263,6 +263,10 @@ export function checkDirty(link: Link): boolean {
 			} else if (dep.currentValue !== link.value) {
 				dirty = true;
 			}
+		} else if ('currentValue' in dep) {
+			if (dep.currentValue !== link.value) {
+				dirty = true;
+			}
 		}
 		if (dirty || (nextDep = link.nextDep) === undefined) {
 			if (stack) {
