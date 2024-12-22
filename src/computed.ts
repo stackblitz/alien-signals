@@ -1,6 +1,6 @@
-import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
 import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
-import { checkDirty, endTrack, IComputed, Link, link, startTrack, SubscriberFlags } from './system.js';
+import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
+import { checkDirty, endTrack, IComputed, Link, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
 import type { ISignal } from './types.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
@@ -27,36 +27,46 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 	get(): T {
 		const flags = this.flags;
 		if (flags & SubscriberFlags.Dirty) {
-			this.update();
+			if (this.update()) {
+				const subs = this.subs;
+				if (subs !== undefined) {
+					shallowPropagate(subs);
+				}
+			}
 		} else if (flags & SubscriberFlags.ToCheckDirty) {
 			if (checkDirty(this.deps!)) {
-				this.update();
+				if (this.update()) {
+					const subs = this.subs;
+					if (subs !== undefined) {
+						shallowPropagate(subs);
+					}
+				}
 			} else {
 				this.flags = flags & ~SubscriberFlags.ToCheckDirty;
 			}
 		}
-		const currentValue = this.currentValue!;
 		if (activeTrackId) {
 			if (this.lastTrackedId !== activeTrackId) {
 				this.lastTrackedId = activeTrackId;
-				link(this, activeSub!).value = currentValue;
+				link(this, activeSub!);
 			}
 		} else if (activeScopeTrackId) {
 			if (this.lastTrackedId !== activeScopeTrackId) {
 				this.lastTrackedId = activeScopeTrackId;
-				link(this, activeEffectScope!).value = currentValue;
+				link(this, activeEffectScope!);
 			}
 		}
-		return currentValue;
+		return this.currentValue!;
 	}
 
-	update(): T {
+	update(): boolean {
 		const prevSub = activeSub;
 		const prevTrackId = activeTrackId;
 		setActiveSub(this, nextTrackId());
 		startTrack(this);
+		const oldValue = this.currentValue;
 		try {
-			return this.currentValue = this.getter(this.currentValue);
+			return (this.currentValue = this.getter(oldValue)) !== oldValue;
 		} finally {
 			setActiveSub(prevSub, prevTrackId);
 			endTrack(this);
