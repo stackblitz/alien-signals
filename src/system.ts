@@ -71,7 +71,9 @@ function drainQueuedEffects(): void {
 
 export function link(dep: Dependency, sub: Subscriber): Link {
 	const currentDep = sub.depsTail;
-	const nextDep = currentDep !== undefined ? currentDep.nextDep : sub.deps;
+	const nextDep = currentDep !== undefined
+		? currentDep.nextDep
+		: sub.deps;
 	if (nextDep !== undefined && nextDep.dep === dep) {
 		sub.depsTail = nextDep;
 		return nextDep;
@@ -83,7 +85,7 @@ function linkNewDep(
 	dep: Dependency,
 	sub: Subscriber,
 	nextDep: Link | undefined,
-	depsTail: Link | undefined,
+	depsTail: Link | undefined
 ): Link {
 	let newLink: Link;
 
@@ -140,7 +142,7 @@ export function propagate(subs: Link): void {
 				!(subFlags >> 2) ||
 				(subFlags & SubscriberFlags.Recursed &&
 					((sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag),
-					true))
+						true))
 			) {
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
@@ -151,10 +153,9 @@ export function propagate(subs: Link): void {
 						++stack;
 					} else {
 						link = subSubs;
-						targetFlag =
-							'notify' in sub
-								? SubscriberFlags.InnerEffectsPending
-								: SubscriberFlags.ToCheckDirty;
+						targetFlag = 'notify' in sub
+							? SubscriberFlags.InnerEffectsPending
+							: SubscriberFlags.ToCheckDirty;
 					}
 					continue;
 				}
@@ -180,10 +181,9 @@ export function propagate(subs: Link): void {
 						++stack;
 					} else {
 						link = subSubs;
-						targetFlag =
-							'notify' in sub
-								? SubscriberFlags.InnerEffectsPending
-								: SubscriberFlags.ToCheckDirty;
+						targetFlag = 'notify' in sub
+							? SubscriberFlags.InnerEffectsPending
+							: SubscriberFlags.ToCheckDirty;
 					}
 					continue;
 				}
@@ -211,7 +211,9 @@ export function propagate(subs: Link): void {
 			break;
 		}
 		if (link !== subs) {
-			targetFlag = stack ? SubscriberFlags.ToCheckDirty : SubscriberFlags.Dirty;
+			targetFlag = stack
+				? SubscriberFlags.ToCheckDirty
+				: SubscriberFlags.Dirty;
 		}
 		link = subs = nextSub;
 	} while (true);
@@ -225,11 +227,7 @@ export function shallowPropagate(link: Link): void {
 	do {
 		const updateSub = link.sub;
 		const updateSubFlags = updateSub.flags;
-		if (
-			(updateSubFlags &
-				(SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)) ===
-			SubscriberFlags.ToCheckDirty
-		) {
+		if ((updateSubFlags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)) === SubscriberFlags.ToCheckDirty) {
 			updateSub.flags = updateSubFlags | SubscriberFlags.Dirty;
 		}
 		link = link.nextSub!;
