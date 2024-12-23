@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, signal } from '../src';
+import { computed, signal } from './api';
 
 test('should correctly propagate changes through computed signals', () => {
 	const src = signal(0);

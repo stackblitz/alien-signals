@@ -66,7 +66,12 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 		startTrack(this);
 		try {
 			const oldValue = this.currentValue;
-			return oldValue !== (this.currentValue = this.getter(oldValue));
+			const newValue = this.getter(oldValue);
+			if (oldValue !== newValue) {
+				this.currentValue = newValue;
+				return true;
+			}
+			return false;
 		} finally {
 			setActiveSub(prevSub, prevTrackId);
 			endTrack(this);

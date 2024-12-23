@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
-import { effect, signal } from '../src';
 import { computedArray } from '../src/unstable/computedArray';
+import { effect, signal } from './api';
 
 test('should get updated item value', () => {
 	const src = signal([1]);

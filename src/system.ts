@@ -132,9 +132,11 @@ export function propagate(subs: Link): void {
 		const subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
-			sub.flags = subFlags | targetFlag;
 			if (
-				!(subFlags >> 2)
+				(
+					!(subFlags >> 2)
+					&& (sub.flags = subFlags | targetFlag, true)
+				)
 				|| (
 					subFlags & SubscriberFlags.Recursed
 					&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
@@ -163,11 +165,12 @@ export function propagate(subs: Link): void {
 					}
 					queuedEffectsTail = sub;
 				}
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
-			sub.flags = targetFlag = subFlags | targetFlag;
 			if (!(subFlags >> 2)) {
-				sub.flags = targetFlag | SubscriberFlags.Recursed;
+				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					if (subSubs.nextSub !== undefined) {
@@ -183,6 +186,8 @@ export function propagate(subs: Link): void {
 					}
 					continue;
 				}
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
 			}
 		}
 
@@ -373,7 +378,10 @@ function clearTrack(link: Link): void {
 			if ('notify' in dep) {
 				dep.flags = SubscriberFlags.None;
 			} else {
-				dep.flags |= SubscriberFlags.Dirty;
+				const depFlags = dep.flags;
+				if (!(depFlags & SubscriberFlags.Dirty)) {
+					dep.flags = depFlags | SubscriberFlags.Dirty;
+				}
 			}
 			const depDeps = dep.deps;
 			if (depDeps !== undefined) {

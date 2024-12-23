@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, endBatch, signal, startBatch } from '../src';
+import { computed, effect, effectScope, endBatch, signal, startBatch } from './api';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
