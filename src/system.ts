@@ -132,11 +132,9 @@ export function propagate(subs: Link): void {
 		const subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
+			sub.flags = subFlags | targetFlag;
 			if (
-				(
-					!(subFlags >> 2)
-					&& (sub.flags = subFlags | targetFlag, true)
-				)
+				!(subFlags >> 2)
 				|| (
 					subFlags & SubscriberFlags.Recursed
 					&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
@@ -165,12 +163,11 @@ export function propagate(subs: Link): void {
 					}
 					queuedEffectsTail = sub;
 				}
-			} else {
-				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
+			sub.flags = targetFlag = subFlags | targetFlag;
 			if (!(subFlags >> 2)) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
+				sub.flags = targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					if (subSubs.nextSub !== undefined) {
@@ -186,8 +183,6 @@ export function propagate(subs: Link): void {
 					}
 					continue;
 				}
-			} else if (!(subFlags & targetFlag)) {
-				sub.flags = subFlags | targetFlag;
 			}
 		}
 
