@@ -135,8 +135,9 @@ export function propagate(subs: Link): void {
 		const subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
+			sub.flags = subFlags | targetFlag;
 			if (
-				(!(subFlags >> 2) && ((sub.flags = subFlags | targetFlag), true)) ||
+				!(subFlags >> 2) ||
 				(subFlags & SubscriberFlags.Recursed &&
 					((sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag),
 					true))
