@@ -134,7 +134,7 @@ export function propagate(subs: Link): void {
 		if (!(subFlags & SubscriberFlags.Tracking)) {
 			if (
 				(
-					!(subFlags >> 2)
+					!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
 					&& (sub.flags = subFlags | targetFlag, true)
 				)
 				|| (
@@ -169,7 +169,7 @@ export function propagate(subs: Link): void {
 				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
-			if (!(subFlags >> 2)) {
+			if (!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))) {
 				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
