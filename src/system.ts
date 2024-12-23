@@ -168,8 +168,9 @@ export function propagate(subs: Link): void {
 				}
 			}
 		} else if (isValidLink(link, sub)) {
+			sub.flags = targetFlag = subFlags | targetFlag;
 			if (!(subFlags >> 2)) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
+				sub.flags = targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					if (subSubs.nextSub !== undefined) {
@@ -186,8 +187,6 @@ export function propagate(subs: Link): void {
 					}
 					continue;
 				}
-			} else if (!(subFlags & targetFlag)) {
-				sub.flags = subFlags | targetFlag;
 			}
 		}
 
