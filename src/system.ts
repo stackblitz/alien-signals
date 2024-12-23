@@ -81,12 +81,7 @@ export function link(dep: Dependency, sub: Subscriber): Link {
 	return linkNewDep(dep, sub, nextDep, currentDep);
 }
 
-function linkNewDep(
-	dep: Dependency,
-	sub: Subscriber,
-	nextDep: Link | undefined,
-	depsTail: Link | undefined
-): Link {
+function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): Link {
 	let newLink: Link;
 
 	if (linkPool !== undefined) {
