@@ -137,7 +137,7 @@ export function propagate(subs: Link): void {
 				!(subFlags >> 2) ||
 				(
 					subFlags & SubscriberFlags.Recursed
-					&& ((sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag), true)
+					&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
 				)
 			) {
 				const subSubs = (sub as Dependency).subs;
