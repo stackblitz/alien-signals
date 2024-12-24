@@ -14,7 +14,7 @@ test('should track dep after await', async () => {
 	expect(await c.get()).toBe(1);
 });
 
-test('should trigger effect', async () => {
+test('should trigger asyncEffect', async () => {
 	let triggerTimes = 0;
 
 	const src = signal(0);
