@@ -49,9 +49,9 @@ export class AsyncComputed<T = any> extends Computed {
 				}
 				current = await generator.next();
 
-				if (this.flags & SubscriberFlags.Recursed) {
-					return await this.get() !== oldValue;
-				}
+				// if (this.flags & SubscriberFlags.Recursed) {
+				// 	return await this.get() !== oldValue;
+				// }
 			}
 			const newValue = await current.value;
 			if (oldValue !== newValue) {

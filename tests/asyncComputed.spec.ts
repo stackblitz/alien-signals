@@ -36,6 +36,32 @@ test('should trigger asyncEffect', async () => {
 	expect(triggerTimes).toBe(2);
 });
 
+test.skip('should stop calculating when dep updated', async () => {
+	let calcTimes = 0;
+
+	const a = signal('a0');
+	const b = signal('b0');
+	const c = asyncComputed(async function* () {
+		calcTimes++;
+		const v1 = (yield a, a).get();
+		await sleep(200);
+		const v2 = (yield b, b).get();
+		return v1 + '-' + v2;
+	});
+
+	expect(await c.get()).toBe('a0-b0');
+	expect(calcTimes).toBe(1);
+
+	a.set('a1');
+	const promise = c.get();
+	await sleep(100);
+	expect(calcTimes).toBe(2);
+	a.set('a2');
+
+	expect(await promise).toBe('a2-b0');
+	expect(calcTimes).toBe(3);
+});
+
 function sleep(ms: number) {
 	return new Promise(r => setTimeout(r, ms));
 }
