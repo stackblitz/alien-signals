@@ -5,7 +5,7 @@ import { signal } from './api';
 test('should track dep after await', async () => {
 	const src = signal(0);
 	const c = asyncComputed(async function* () {
-		await new Promise(r => setTimeout(r, 100));
+		await sleep(100);
 		return (yield src, src).get();
 	});
 	expect(await c.get()).toBe(0);
@@ -19,7 +19,7 @@ test('should trigger asyncEffect', async () => {
 
 	const src = signal(0);
 	const c = asyncComputed(async function* () {
-		await new Promise(r => setTimeout(r, 100));
+		await sleep(100);
 		return (yield src, src).get();
 	});
 	asyncEffect(async function* () {
@@ -28,8 +28,12 @@ test('should trigger asyncEffect', async () => {
 	});
 	expect(triggerTimes).toBe(1);
 
-	await new Promise(r => setTimeout(r, 200));
+	await sleep(200);
 	src.set(1);
-	await new Promise(r => setTimeout(r, 200));
+	await sleep(200);
 	expect(triggerTimes).toBe(2);
 });
+
+function sleep(ms: number) {
+	return new Promise(r => setTimeout(r, ms));
+}
