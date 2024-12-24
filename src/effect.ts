@@ -5,6 +5,17 @@ export let activeSub: Subscriber | undefined;
 export let activeTrackId = 0;
 export let lastTrackId = 0;
 
+export function untrack<T>(fn: () => T): T {
+	const prevSub = activeSub;
+	const prevTrackId = activeTrackId;
+	setActiveSub(undefined, 0);
+	try {
+		return fn();
+	} finally {
+		setActiveSub(prevSub, prevTrackId);
+	}
+}
+
 export function setActiveSub(sub: Subscriber | undefined, trackId: number): void {
 	activeSub = sub;
 	activeTrackId = trackId;
