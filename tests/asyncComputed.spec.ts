@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest';
-import { asyncComputed, asyncEffect } from '../src';
+import { unstable } from '../src';
 import { signal } from './api';
+
+const { asyncComputed, asyncEffect } = unstable;
 
 test('should track dep after await', async () => {
 	const src = signal(0);
