@@ -1,6 +1,7 @@
-import { Computed } from './computed.js';
-import { nextTrackId } from './effect.js';
-import { asyncCheckDirty, Dependency, endTrack, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
+import { Computed } from '../computed.js';
+import { nextTrackId } from '../effect.js';
+import { Dependency, endTrack, link, shallowPropagate, startTrack, SubscriberFlags } from '../system.js';
+import { asyncCheckDirty } from './asyncSystem.js';
 
 export function asyncComputed<T>(getter: (cachedValue?: T) => AsyncGenerator<Dependency, T>): AsyncComputed<T> {
 	return new AsyncComputed<T>(getter);
@@ -47,6 +48,10 @@ export class AsyncComputed<T = any> extends Computed {
 					link(dep, this);
 				}
 				current = await generator.next();
+
+				if (this.flags & SubscriberFlags.Recursed) {
+					return await this.get() !== oldValue;
+				}
 			}
 			const newValue = await current.value;
 			if (oldValue !== newValue) {
