@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { checkDirty, Computed, shallowPropagate, SubscriberFlags } from '../src';
+import { checkDirty, Computed, Effect, shallowPropagate, SubscriberFlags } from '../src';
 import { computed, effect, effectScope, endBatch, signal, startBatch } from './api';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
@@ -198,4 +198,43 @@ test('should custom computed support recursion', () => {
 	});
 
 	expect(logs).toEqual(['b-0', 'b-1 100', 'b-2 200', 'b-2 200']);
+});
+
+test('should custom effect support batch', () => {
+	class BatchEffect<T = any> extends Effect<T> {
+		run(): T {
+			startBatch();
+			try {
+				return super.run();
+			} finally {
+				endBatch();
+			}
+		}
+	}
+
+	const logs: string[] = [];
+	const a = signal(0);
+	const b = signal(0);
+
+	const aa = computed(() => {
+		logs.push('aa-0');
+		if (a.get() === 0) {
+			b.set(1);
+		}
+		logs.push('aa-1');
+	});
+
+	const bb = computed(() => {
+		logs.push('bb');
+		return b.get();
+	});
+
+	new BatchEffect(() => {
+		bb.get();
+	}).run();
+	new BatchEffect(() => {
+		aa.get();
+	}).run();
+
+	expect(logs).toEqual(['bb', 'aa-0', 'aa-1', 'bb']);
 });
