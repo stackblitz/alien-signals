@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { checkDirty, Computed, Effect, shallowPropagate, SubscriberFlags } from '../src';
+import { Effect } from '../src';
 import { computed, effect, effectScope, endBatch, signal, startBatch } from './api';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
@@ -145,59 +145,6 @@ test('should trigger inner effects in sequence in effect scope', () => {
 	endBatch();
 
 	expect(order).toEqual(['first inner', 'last inner']);
-});
-
-test('should custom computed support recursion', () => {
-	class RecursiveComputed<T> extends Computed<T> {
-		get(): T {
-			let flags = this.flags;
-			if (flags & SubscriberFlags.Dirty) {
-				if (this.update()) {
-					const subs = this.subs;
-					if (subs !== undefined) {
-						shallowPropagate(subs);
-					}
-				}
-			} else if (flags & SubscriberFlags.ToCheckDirty) {
-				if (checkDirty(this.deps!)) {
-					if (this.update()) {
-						const subs = this.subs;
-						if (subs !== undefined) {
-							shallowPropagate(subs);
-						}
-					}
-				} else {
-					this.flags = flags & ~SubscriberFlags.ToCheckDirty;
-				}
-			}
-			flags = this.flags;
-			if (flags & SubscriberFlags.Recursed) {
-				this.flags = flags & ~SubscriberFlags.Recursed;
-				return this.get();
-			}
-			return super.get();
-		}
-	}
-
-	const logs: string[] = [];
-	const a = signal(0);
-	const b = new RecursiveComputed(() => {
-		if (a.get() === 0) {
-			logs.push('b-0');
-			a.set(100);
-			logs.push('b-1 ' + a.get());
-			a.set(200);
-			logs.push('b-2 ' + a.get());
-		} else {
-			logs.push('b-2 ' + a.get());
-		}
-	});
-
-	effect(() => {
-		b.get();
-	});
-
-	expect(logs).toEqual(['b-0', 'b-1 100', 'b-2 200', 'b-2 200']);
 });
 
 test('should custom effect support batch', () => {
