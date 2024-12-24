@@ -4,6 +4,22 @@ import { endTrack, Link, startTrack, Subscriber, SubscriberFlags } from './syste
 export let activeEffectScope: EffectScope | undefined = undefined;
 export let activeScopeTrackId = 0;
 
+export function untrackScope<T>(fn: () => T): T {
+	const prevSub = activeEffectScope;
+	const prevTrackId = activeScopeTrackId;
+	setActiveScope(undefined, 0);
+	try {
+		return fn();
+	} finally {
+		setActiveScope(prevSub, prevTrackId);
+	}
+}
+
+export function setActiveScope(sub: EffectScope | undefined, trackId: number): void {
+	activeEffectScope = sub;
+	activeScopeTrackId = trackId;
+}
+
 export function effectScope(): EffectScope {
 	return new EffectScope();
 }
@@ -34,13 +50,11 @@ export class EffectScope implements Subscriber {
 	run<T>(fn: () => T): T {
 		const prevSub = activeEffectScope;
 		const prevTrackId = activeScopeTrackId;
-		activeEffectScope = this;
-		activeScopeTrackId = this.trackId;
+		setActiveScope(this, this.trackId);
 		try {
 			return fn();
 		} finally {
-			activeEffectScope = prevSub;
-			activeScopeTrackId = prevTrackId;
+			setActiveScope(prevSub, prevTrackId);
 		}
 	}
 
