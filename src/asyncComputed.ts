@@ -1,6 +1,6 @@
 import { Computed } from './computed.js';
 import { nextTrackId } from './effect.js';
-import { checkDirty, Dependency, endTrack, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
+import { asyncCheckDirty, Dependency, endTrack, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
 
 export function asyncComputed<T>(getter: (cachedValue?: T) => AsyncGenerator<Dependency, T>): AsyncComputed<T> {
 	return new AsyncComputed<T>(getter);
@@ -18,7 +18,7 @@ export class AsyncComputed<T = any> extends Computed {
 				}
 			}
 		} else if (flags & SubscriberFlags.ToCheckDirty) {
-			if (checkDirty(this.deps!)) {
+			if (await asyncCheckDirty(this.deps!)) {
 				if (await this.update()) {
 					const subs = this.subs;
 					if (subs !== undefined) {
