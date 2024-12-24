@@ -1,3 +1,5 @@
+export * from './asyncComputed.js';
+export * from './asyncEffect.js';
 export * from './computed.js';
 export * from './effect.js';
 export * from './effectScope.js';
