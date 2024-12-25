@@ -94,27 +94,25 @@ This results in code that is difficult to understand, and you don't necessarily 
 export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
 	do {
 		const sub = link.sub;
-		let subFlags = sub.flags;
+		const subFlags = sub.flags;
 
 		if (!(subFlags & SubscriberFlags.Tracking)) {
-			let canPropagate = !(subFlags >> 2);
-			if (!canPropagate) {
-				if (subFlags & SubscriberFlags.CanPropagate) {
-					sub.flags = (subFlags & ~SubscriberFlags.CanPropagate) | targetFlag;
-					canPropagate = true;
-				} else if (!(subFlags & targetFlag)) {
-					sub.flags = subFlags | targetFlag;
-				}
-			} else {
-				sub.flags = subFlags | targetFlag;
-			}
-			if (canPropagate) {
+			if (
+				(
+					!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
+					&& (sub.flags = subFlags | targetFlag, true)
+				)
+				|| (
+					subFlags & SubscriberFlags.Recursed
+					&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
+				)
+			) {
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					propagate(
 						subSubs,
 						'notify' in sub
-							? SubscriberFlags.RunInnerEffects
+							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.ToCheckDirty
 					);
 				} else if ('notify' in sub) {
@@ -125,16 +123,18 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 					}
 					queuedEffectsTail = sub;
 				}
+			} else if (!(subFlags & targetFlag)) {
+				sub.flags = subFlags | targetFlag;
 			}
 		} else if (isValidLink(link, sub)) {
-			if (!(subFlags >> 2)) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.CanPropagate;
+			if (!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))) {
+				sub.flags = subFlags | targetFlag | SubscriberFlags.Recursed;
 				const subSubs = (sub as Dependency).subs;
 				if (subSubs !== undefined) {
 					propagate(
 						subSubs,
 						'notify' in sub
-							? SubscriberFlags.RunInnerEffects
+							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.ToCheckDirty
 					);
 				}
