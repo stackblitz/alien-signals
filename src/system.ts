@@ -235,7 +235,7 @@ export function shallowPropagate(link: Link): void {
 	} while (link !== undefined);
 }
 
-export function isValidLink(subLink: Link, sub: Subscriber): boolean {
+function isValidLink(subLink: Link, sub: Subscriber): boolean {
 	const depsTail = sub.depsTail;
 	if (depsTail !== undefined) {
 		let link = sub.deps!;
