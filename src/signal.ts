@@ -27,7 +27,8 @@ export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 	}
 
 	set(value: T): void {
-		if (this.currentValue !== (this.currentValue = value)) {
+		if (this.currentValue !== value) {
+			this.currentValue = value;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
