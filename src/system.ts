@@ -332,8 +332,9 @@ export function startTrack(sub: Subscriber): void {
 export function endTrack(sub: Subscriber): void {
 	const depsTail = sub.depsTail;
 	if (depsTail !== undefined) {
-		if (depsTail.nextDep !== undefined) {
-			clearTrack(depsTail.nextDep);
+		const nextDep = depsTail.nextDep;
+		if (nextDep !== undefined) {
+			clearTrack(nextDep);
 			depsTail.nextDep = undefined;
 		}
 	} else if (sub.deps !== undefined) {
