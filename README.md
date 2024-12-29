@@ -9,6 +9,7 @@
 <h3 align="center">
     <p>[<a href="https://github.com/YanqingXu/alien-signals-in-lua">Alien Signals in Lua</a>]</p>
     <p>[<a href="https://github.com/medz/alien-signals-dart">Alien Signals in Dart</a>]</p>
+    <p>[<a href="https://github.com/Rajaniraiyn/react-alien-signals">React Binding</a>]</p>
 </h3>
 
 # alien-signals
