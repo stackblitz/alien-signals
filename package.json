@@ -1,6 +1,6 @@
 {
 	"name": "alien-signals",
-	"version": "0.4.11",
+	"version": "0.4.12",
 	"sideEffects": false,
 	"license": "MIT",
 	"description": "The lightest signal library.",
