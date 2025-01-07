@@ -174,6 +174,7 @@ export function propagate(subs: Link): void {
 			!(subFlags & (SubscriberFlags.Tracking | targetFlag))
 			|| (
 				!(subFlags & targetFlag)
+				&& (subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
 				&& isValidLink(link, sub)
 			)
 		) {
