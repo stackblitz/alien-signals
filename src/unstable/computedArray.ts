@@ -2,7 +2,7 @@ import { computed, ISignal } from '../index.js';
 
 export function computedArray<I, O>(
 	arr: ISignal<I[]>,
-	getter: (item: I, index: number) => O
+	getGetter: (item: ISignal<I>, index: number) => () => O
 ) {
 	const length = computed(() => arr.get().length);
 	const keys = computed(
@@ -20,7 +20,7 @@ export function computedArray<I, O>(
 			while (array.length < length.get()) {
 				const index = array.length;
 				const item = computed(() => arr.get()[index]);
-				array.push(computed(() => getter(item.get(), index)));
+				array.push(computed(getGetter(item, index)));
 			}
 			if (array.length > length.get()) {
 				array.length = length.get();
