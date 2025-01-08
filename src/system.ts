@@ -119,9 +119,9 @@ function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined,
 }
 
 // See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-export function propagate(subs: Link): void {
+export function propagate(link: Link): void {
 	let targetFlag = SubscriberFlags.Dirty;
-	let link = subs;
+	let subs = link;
 	let stack = 0;
 
 	top: do {
