@@ -180,7 +180,12 @@ export function propagate(link: Link): void {
 			sub.flags = subFlags | targetFlag;
 		}
 
-		if ((link = subs.nextSub!) === undefined) {
+		if ((link = subs.nextSub!) !== undefined) {
+			subs = link;
+			targetFlag = stack
+				? SubscriberFlags.ToCheckDirty
+				: SubscriberFlags.Dirty;
+		} else {
 			while (stack) {
 				--stack;
 				const dep = subs.dep;
@@ -197,10 +202,6 @@ export function propagate(link: Link): void {
 			}
 			break;
 		}
-		subs = link;
-		targetFlag = stack
-			? SubscriberFlags.ToCheckDirty
-			: SubscriberFlags.Dirty;
 	} while (true);
 
 	if (!batchDepth) {
