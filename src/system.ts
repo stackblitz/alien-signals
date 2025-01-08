@@ -185,23 +185,25 @@ export function propagate(link: Link): void {
 			targetFlag = stack
 				? SubscriberFlags.ToCheckDirty
 				: SubscriberFlags.Dirty;
-		} else {
-			while (stack) {
-				--stack;
-				const dep = subs.dep;
-				const depSubs = dep.subs!;
-				subs = depSubs.prevSub!;
-				depSubs.prevSub = undefined;
-				if ((link = subs.nextSub!) !== undefined) {
-					subs = link;
-					targetFlag = stack
-						? SubscriberFlags.ToCheckDirty
-						: SubscriberFlags.Dirty;
-					continue top;
-				}
-			}
-			break;
+			continue;
 		}
+
+		while (stack) {
+			--stack;
+			const dep = subs.dep;
+			const depSubs = dep.subs!;
+			subs = depSubs.prevSub!;
+			depSubs.prevSub = undefined;
+			if ((link = subs.nextSub!) !== undefined) {
+				subs = link;
+				targetFlag = stack
+					? SubscriberFlags.ToCheckDirty
+					: SubscriberFlags.Dirty;
+				continue top;
+			}
+		}
+
+		break;
 	} while (true);
 
 	if (!batchDepth) {
@@ -241,11 +243,11 @@ function isValidLink(subLink: Link, sub: Subscriber): boolean {
 export function checkDirty(link: Link): boolean {
 	let stack = 0;
 	let dirty: boolean;
-	let nextDep: Link | undefined;
 
 	top: do {
 		dirty = false;
 		const dep = link.dep;
+
 		if ('update' in dep) {
 			const depFlags = dep.flags;
 			if (depFlags & SubscriberFlags.Dirty) {
@@ -266,46 +268,52 @@ export function checkDirty(link: Link): boolean {
 				continue;
 			}
 		}
-		if (dirty || (nextDep = link.nextDep) === undefined) {
-			if (stack) {
-				let sub = link.sub as IComputed;
-				do {
-					--stack;
-					const subSubs = sub.subs!;
-					let prevLink = subSubs.prevSub!;
-					if (prevLink !== undefined) {
-						subSubs.prevSub = undefined;
-						if (dirty) {
-							if (sub.update()) {
-								shallowPropagate(sub.subs!);
-								sub = prevLink.sub as IComputed;
-								continue;
-							}
+
+		if (!dirty && link.nextDep !== undefined) {
+			link = link.nextDep;
+			continue;
+		}
+
+		if (stack) {
+			let sub = link.sub as IComputed;
+			do {
+				--stack;
+				const subSubs = sub.subs!;
+
+				if (dirty) {
+					if (sub.update()) {
+						if ((link = subSubs.prevSub!) !== undefined) {
+							subSubs.prevSub = undefined;
+							shallowPropagate(sub.subs!);
+							sub = link.sub as IComputed;
 						} else {
-							sub.flags &= ~SubscriberFlags.ToCheckDirty;
+							sub = subSubs.sub as IComputed;
 						}
-					} else {
-						if (dirty) {
-							if (sub.update()) {
-								sub = subSubs.sub as IComputed;
-								continue;
-							}
-						} else {
-							sub.flags &= ~SubscriberFlags.ToCheckDirty;
-						}
-						prevLink = subSubs;
+						continue;
 					}
-					link = prevLink.nextDep!;
-					if (link !== undefined) {
+				} else {
+					sub.flags &= ~SubscriberFlags.ToCheckDirty;
+				}
+
+				if ((link = subSubs.prevSub!) !== undefined) {
+					subSubs.prevSub = undefined;
+					if (link.nextDep !== undefined) {
+						link = link.nextDep;
 						continue top;
 					}
-					sub = prevLink.sub as IComputed;
-					dirty = false;
-				} while (stack);
-			}
-			return dirty;
+					sub = link.sub as IComputed;
+				} else {
+					if ((link = subSubs.nextDep!) !== undefined) {
+						continue top;
+					}
+					sub = subSubs.sub as IComputed;
+				}
+
+				dirty = false;
+			} while (stack);
 		}
-		link = nextDep;
+
+		return dirty;
 	} while (true);
 }
 
