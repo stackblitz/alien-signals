@@ -181,23 +181,19 @@ export function propagate(subs: Link): void {
 		}
 
 		if ((link = subs.nextSub!) === undefined) {
-			if (stack) {
-				let dep = subs.dep;
-				do {
-					--stack;
-					const depSubs = dep.subs!;
-					const prevLink = depSubs.prevSub!;
-					depSubs.prevSub = undefined;
-					link = prevLink.nextSub!;
-					if (link !== undefined) {
-						subs = link;
-						targetFlag = stack
-							? SubscriberFlags.ToCheckDirty
-							: SubscriberFlags.Dirty;
-						continue top;
-					}
-					dep = prevLink.dep;
-				} while (stack);
+			while (stack) {
+				--stack;
+				const dep = subs.dep;
+				const depSubs = dep.subs!;
+				subs = depSubs.prevSub!;
+				depSubs.prevSub = undefined;
+				if ((link = subs.nextSub!) !== undefined) {
+					subs = link;
+					targetFlag = stack
+						? SubscriberFlags.ToCheckDirty
+						: SubscriberFlags.Dirty;
+					continue top;
+				}
 			}
 			break;
 		}
