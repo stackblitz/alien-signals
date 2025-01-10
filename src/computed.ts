@@ -1,5 +1,5 @@
-import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
-import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
+import { activeSub, setActiveSub } from './effect.js';
+import { activeEffectScope } from './effectScope.js';
 import { endTrack, IComputed, isDirty, Link, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
 import type { ISignal } from './types.js';
 
@@ -13,7 +13,6 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	lastTrackedId = 0;
 
 	// Subscriber
 	deps: Link | undefined = undefined;
@@ -37,24 +36,17 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 				}
 			}
 		}
-		if (activeTrackId) {
-			if (this.lastTrackedId !== activeTrackId) {
-				this.lastTrackedId = activeTrackId;
-				link(this, activeSub!);
-			}
-		} else if (activeScopeTrackId) {
-			if (this.lastTrackedId !== activeScopeTrackId) {
-				this.lastTrackedId = activeScopeTrackId;
-				link(this, activeEffectScope!);
-			}
+		if (activeSub !== undefined) {
+			link(this, activeSub);
+		} else if (activeEffectScope !== undefined) {
+			link(this, activeEffectScope);
 		}
 		return this.currentValue!;
 	}
 
 	update(): boolean {
 		const prevSub = activeSub;
-		const prevTrackId = activeTrackId;
-		setActiveSub(this, nextTrackId());
+		setActiveSub(this);
 		startTrack(this);
 		try {
 			const oldValue = this.currentValue;
@@ -65,7 +57,7 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 			}
 			return false;
 		} finally {
-			setActiveSub(prevSub, prevTrackId);
+			setActiveSub(prevSub);
 			endTrack(this);
 		}
 	}

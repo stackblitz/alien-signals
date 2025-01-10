@@ -1,28 +1,20 @@
-import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
+import { activeEffectScope } from './effectScope.js';
 import { Dependency, endTrack, runInnerEffects, IEffect, isDirty, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeSub: Subscriber | undefined;
-export let activeTrackId = 0;
-export let lastTrackId = 0;
 
 export function untrack<T>(fn: () => T): T {
 	const prevSub = activeSub;
-	const prevTrackId = activeTrackId;
-	setActiveSub(undefined, 0);
+	setActiveSub(undefined);
 	try {
 		return fn();
 	} finally {
-		setActiveSub(prevSub, prevTrackId);
+		setActiveSub(prevSub);
 	}
 }
 
-export function setActiveSub(sub: Subscriber | undefined, trackId: number): void {
+export function setActiveSub(sub: Subscriber | undefined): void {
 	activeSub = sub;
-	activeTrackId = trackId;
-}
-
-export function nextTrackId(): number {
-	return ++lastTrackId;
 }
 
 export function effect<T>(fn: () => T): Effect<T> {
@@ -46,10 +38,10 @@ export class Effect<T = any> implements IEffect, Dependency {
 	constructor(
 		public fn: () => T
 	) {
-		if (activeTrackId) {
-			link(this, activeSub!);
-		} else if (activeScopeTrackId) {
-			link(this, activeEffectScope!);
+		if (activeSub !== undefined) {
+			link(this, activeSub);
+		} else if (activeEffectScope !== undefined) {
+			link(this, activeEffectScope);
 		}
 	}
 
@@ -70,13 +62,12 @@ export class Effect<T = any> implements IEffect, Dependency {
 
 	run(): T {
 		const prevSub = activeSub;
-		const prevTrackId = activeTrackId;
-		setActiveSub(this, nextTrackId());
+		setActiveSub(this);
 		startTrack(this);
 		try {
 			return this.fn();
 		} finally {
-			setActiveSub(prevSub, prevTrackId);
+			setActiveSub(prevSub);
 			endTrack(this);
 		}
 	}

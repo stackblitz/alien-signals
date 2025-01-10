@@ -10,7 +10,6 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	lastTrackedId?: number;
 }
 
 export interface Subscriber {
@@ -72,14 +71,31 @@ function drainQueuedEffects(): void {
 
 export function link(dep: Dependency, sub: Subscriber): void {
 	const currentDep = sub.depsTail;
-	const nextDep = currentDep !== undefined
-		? currentDep.nextDep
-		: sub.deps;
-	if (nextDep !== undefined && nextDep.dep === dep) {
-		sub.depsTail = nextDep;
+	let nextDep: Link | undefined;
+	if (currentDep !== undefined) {
+		if (currentDep.dep === dep) {
+			return;
+		}
+		nextDep = currentDep.nextDep;
 	} else {
-		linkNewDep(dep, sub, nextDep, currentDep);
+		nextDep = sub.deps;
 	}
+	if (
+		nextDep !== undefined
+		&& nextDep.dep === dep
+	) {
+		sub.depsTail = nextDep;
+		return;
+	}
+	const depLastSub = dep.subsTail;
+	if (
+		depLastSub !== undefined
+		&& depLastSub.sub === sub
+		&& isValidLink(depLastSub, sub)
+	) {
+		return;
+	}
+	linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
@@ -351,9 +367,6 @@ function clearTrack(link: Link): void {
 			link.nextSub = undefined;
 		} else {
 			dep.subsTail = prevSub;
-			if ('lastTrackedId' in dep) {
-				dep.lastTrackedId = 0;
-			}
 		}
 
 		if (prevSub !== undefined) {
