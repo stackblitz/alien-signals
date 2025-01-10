@@ -37,6 +37,7 @@ export const enum SubscriberFlags {
 	InnerEffectsPending = 1 << 2,
 	ToCheckDirty = 1 << 3,
 	Dirty = 1 << 4,
+	Notified = InnerEffectsPending | ToCheckDirty | Dirty,
 }
 
 let batchDepth = 0;
@@ -130,7 +131,7 @@ export function propagate(link: Link): void {
 
 		if (
 			(
-				!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
+				!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Notified))
 				&& (sub.flags = subFlags | targetFlag, true)
 			)
 			|| (
@@ -139,7 +140,7 @@ export function propagate(link: Link): void {
 				&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
 			)
 			|| (
-				!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
+				!(subFlags & SubscriberFlags.Notified)
 				&& isValidLink(link, sub)
 				&& (
 					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag,
@@ -174,7 +175,7 @@ export function propagate(link: Link): void {
 			!(subFlags & (SubscriberFlags.Tracking | targetFlag))
 			|| (
 				!(subFlags & targetFlag)
-				&& (subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
+				&& (subFlags & SubscriberFlags.Notified)
 				&& isValidLink(link, sub)
 			)
 		) {
