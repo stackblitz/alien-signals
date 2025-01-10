@@ -1,9 +1,9 @@
-import { IComputed, Link, shallowPropagate, SubscriberFlags } from "../system";
+import { IComputed, ILink, shallowPropagate, SubscriberFlags } from "../system";
 
-export async function asyncCheckDirty(link: Link): Promise<boolean> {
+export async function asyncCheckDirty(link: ILink): Promise<boolean> {
 	let stack = 0;
 	let dirty: boolean;
-	let nextDep: Link | undefined;
+	let nextDep: ILink | undefined;
 
 	top: do {
 		dirty = false;

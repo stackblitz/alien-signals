@@ -1,7 +1,7 @@
 import { activeEffectScope } from './effectScope.js';
-import { Dependency, endTrack, runInnerEffects, IEffect, isDirty, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
+import { IDependency, IEffect, ILink, ISubscriber, SubscriberFlags, endTrack, isDirty, link, runInnerEffects, startTrack } from './system.js';
 
-export let activeSub: Subscriber | undefined;
+export let activeSub: ISubscriber | undefined;
 
 export function untrack<T>(fn: () => T): T {
 	const prevSub = activeSub;
@@ -13,7 +13,7 @@ export function untrack<T>(fn: () => T): T {
 	}
 }
 
-export function setActiveSub(sub: Subscriber | undefined): void {
+export function setActiveSub(sub: ISubscriber | undefined): void {
 	activeSub = sub;
 }
 
@@ -23,16 +23,16 @@ export function effect<T>(fn: () => T): Effect<T> {
 	return e;
 }
 
-export class Effect<T = any> implements IEffect, Dependency {
+export class Effect<T = any> implements IEffect, IDependency {
 	nextNotify: IEffect | undefined = undefined;
 
 	// Dependency
-	subs: Link | undefined = undefined;
-	subsTail: Link | undefined = undefined;
+	subs: ILink | undefined = undefined;
+	subsTail: ILink | undefined = undefined;
 
 	// Subscriber
-	deps: Link | undefined = undefined;
-	depsTail: Link | undefined = undefined;
+	deps: ILink | undefined = undefined;
+	depsTail: ILink | undefined = undefined;
 	flags: SubscriberFlags = SubscriberFlags.Dirty;
 
 	constructor(

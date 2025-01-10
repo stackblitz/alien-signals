@@ -1,8 +1,8 @@
 import { Effect } from '../effect.js';
-import { Dependency, endTrack, link, startTrack, SubscriberFlags } from '../system.js';
+import { endTrack, IDependency, link, startTrack, SubscriberFlags } from '../system.js';
 import { asyncCheckDirty } from './asyncSystem.js';
 
-export function asyncEffect<T>(fn: () => AsyncGenerator<Dependency, T>): AsyncEffect<T> {
+export function asyncEffect<T>(fn: () => AsyncGenerator<IDependency, T>): AsyncEffect<T> {
 	const e = new AsyncEffect(fn);
 	e.run();
 	return e;

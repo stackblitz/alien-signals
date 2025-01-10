@@ -1,32 +1,32 @@
-export interface IEffect extends Subscriber {
+export interface IEffect extends ISubscriber {
 	nextNotify: IEffect | undefined;
 	notify(): void;
 }
 
-export interface IComputed extends Dependency, Subscriber {
+export interface IComputed extends IDependency, ISubscriber {
 	update(): boolean;
 }
 
-export interface Dependency {
-	subs: Link | undefined;
-	subsTail: Link | undefined;
+export interface IDependency {
+	subs: ILink | undefined;
+	subsTail: ILink | undefined;
 }
 
-export interface Subscriber {
+export interface ISubscriber {
 	flags: SubscriberFlags;
-	deps: Link | undefined;
-	depsTail: Link | undefined;
+	deps: ILink | undefined;
+	depsTail: ILink | undefined;
 }
 
-export interface Link {
-	dep: Dependency | IComputed | (Dependency & IEffect);
-	sub: Subscriber | IComputed | (Dependency & IEffect) | IEffect;
+export interface ILink {
+	dep: IDependency | IComputed | (IDependency & IEffect);
+	sub: ISubscriber | IComputed | (IDependency & IEffect) | IEffect;
 	// Reuse to link prev stack in checkDirty
 	// Reuse to link prev stack in propagate
-	prevSub: Link | undefined;
-	nextSub: Link | undefined;
+	prevSub: ILink | undefined;
+	nextSub: ILink | undefined;
 	// Reuse to link next released link in linkPool
-	nextDep: Link | undefined;
+	nextDep: ILink | undefined;
 }
 
 export const enum SubscriberFlags {
@@ -41,7 +41,7 @@ export const enum SubscriberFlags {
 
 let queuedEffects: IEffect | undefined;
 let queuedEffectsTail: IEffect | undefined;
-let linkPool: Link | undefined;
+let linkPool: ILink | undefined;
 
 export function drainQueuedEffects(): void {
 	while (queuedEffects !== undefined) {
@@ -58,7 +58,7 @@ export function drainQueuedEffects(): void {
 	}
 }
 
-export function link(dep: Dependency, sub: Subscriber): void {
+export function link(dep: IDependency, sub: ISubscriber): void {
 	const currentDep = sub.depsTail;
 	if (
 		currentDep !== undefined
@@ -87,8 +87,8 @@ export function link(dep: Dependency, sub: Subscriber): void {
 	linkNewDep(dep, sub, nextDep, currentDep);
 }
 
-function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
-	let newLink: Link;
+function linkNewDep(dep: IDependency, sub: ISubscriber, nextDep: ILink | undefined, depsTail: ILink | undefined): void {
+	let newLink: ILink;
 
 	if (linkPool !== undefined) {
 		newLink = linkPool;
@@ -125,7 +125,7 @@ function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined,
 }
 
 // See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-export function propagate(link: Link): void {
+export function propagate(link: ILink): void {
 	let targetFlag = SubscriberFlags.Dirty;
 	let subs = link;
 	let stack = 0;
@@ -149,11 +149,11 @@ export function propagate(link: Link): void {
 				&& isValidLink(link, sub)
 				&& (
 					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag,
-					(sub as Dependency).subs !== undefined
+					(sub as IDependency).subs !== undefined
 				)
 			)
 		) {
-			const subSubs = (sub as Dependency).subs;
+			const subSubs = (sub as IDependency).subs;
 			if (subSubs !== undefined) {
 				if (subSubs.nextSub !== undefined) {
 					subSubs.prevSub = subs;
@@ -214,7 +214,7 @@ export function propagate(link: Link): void {
 	} while (true);
 }
 
-export function shallowPropagate(link: Link): void {
+export function shallowPropagate(link: ILink): void {
 	do {
 		const updateSub = link.sub;
 		const updateSubFlags = updateSub.flags;
@@ -225,7 +225,7 @@ export function shallowPropagate(link: Link): void {
 	} while (link !== undefined);
 }
 
-function isValidLink(subLink: Link, sub: Subscriber): boolean {
+function isValidLink(subLink: ILink, sub: ISubscriber): boolean {
 	const depsTail = sub.depsTail;
 	if (depsTail !== undefined) {
 		let link = sub.deps!;
@@ -243,7 +243,7 @@ function isValidLink(subLink: Link, sub: Subscriber): boolean {
 }
 
 // See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-export function checkDirty(link: Link): boolean {
+export function checkDirty(link: ILink): boolean {
 	let stack = 0;
 	let dirty: boolean;
 
@@ -320,12 +320,12 @@ export function checkDirty(link: Link): boolean {
 	} while (true);
 }
 
-export function startTrack(sub: Subscriber): void {
+export function startTrack(sub: ISubscriber): void {
 	sub.depsTail = undefined;
 	sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Notified)) | SubscriberFlags.Tracking;
 }
 
-export function endTrack(sub: Subscriber): void {
+export function endTrack(sub: ISubscriber): void {
 	const depsTail = sub.depsTail;
 	if (depsTail !== undefined) {
 		const nextDep = depsTail.nextDep;
@@ -340,7 +340,7 @@ export function endTrack(sub: Subscriber): void {
 	sub.flags &= ~SubscriberFlags.Tracking;
 }
 
-function clearTrack(link: Link): void {
+function clearTrack(link: ILink): void {
 	do {
 		const dep = link.dep;
 		const nextDep = link.nextDep;
@@ -386,7 +386,7 @@ function clearTrack(link: Link): void {
 	} while (link !== undefined);
 }
 
-export function isDirty(sub: Subscriber, flags: SubscriberFlags): boolean {
+export function isDirty(sub: ISubscriber, flags: SubscriberFlags): boolean {
 	if (flags & SubscriberFlags.Dirty) {
 		return true;
 	} else if (flags & SubscriberFlags.ToCheckDirty) {
@@ -400,7 +400,7 @@ export function isDirty(sub: Subscriber, flags: SubscriberFlags): boolean {
 	return false;
 }
 
-export function runInnerEffects(link: Link): void {
+export function runInnerEffects(link: ILink): void {
 	do {
 		const dep = link.dep;
 		if ('notify' in dep) {
