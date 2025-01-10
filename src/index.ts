@@ -1,3 +1,4 @@
+export * from './batch.js';
 export * from './computed.js';
 export * from './effect.js';
 export * from './effectScope.js';

@@ -1,5 +1,6 @@
+import { batchDepth } from './batch.js';
 import { activeSub } from './effect.js';
-import { Dependency, link, Link, propagate } from './system.js';
+import { Dependency, drainQueuedEffects, link, Link, propagate } from './system.js';
 import type { IWritableSignal } from './types.js';
 
 export function signal<T>(): Signal<T | undefined>;
@@ -30,6 +31,9 @@ export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
+				if (!batchDepth) {
+					drainQueuedEffects();
+				}
 			}
 		}
 	}

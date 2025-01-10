@@ -39,22 +39,11 @@ export const enum SubscriberFlags {
 	Notified = InnerEffectsPending | ToCheckDirty | Dirty,
 }
 
-let batchDepth = 0;
 let queuedEffects: IEffect | undefined;
 let queuedEffectsTail: IEffect | undefined;
 let linkPool: Link | undefined;
 
-export function startBatch(): void {
-	++batchDepth;
-}
-
-export function endBatch(): void {
-	if (!--batchDepth) {
-		drainQueuedEffects();
-	}
-}
-
-function drainQueuedEffects(): void {
+export function drainQueuedEffects(): void {
 	while (queuedEffects !== undefined) {
 		const effect = queuedEffects;
 		const queuedNext = effect.nextNotify;
@@ -223,10 +212,6 @@ export function propagate(link: Link): void {
 
 		break;
 	} while (true);
-
-	if (!batchDepth) {
-		drainQueuedEffects();
-	}
 }
 
 export function shallowPropagate(link: Link): void {
