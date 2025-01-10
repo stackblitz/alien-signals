@@ -337,7 +337,7 @@ export function checkDirty(link: Link): boolean {
 
 export function startTrack(sub: Subscriber): void {
 	sub.depsTail = undefined;
-	sub.flags = SubscriberFlags.Tracking;
+	sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Notified)) | SubscriberFlags.Tracking;
 }
 
 export function endTrack(sub: Subscriber): void {
@@ -384,13 +384,9 @@ function clearTrack(link: Link): void {
 		linkPool = link;
 
 		if (dep.subs === undefined && 'deps' in dep) {
-			if ('notify' in dep) {
-				dep.flags = SubscriberFlags.None;
-			} else {
-				const depFlags = dep.flags;
-				if (!(depFlags & SubscriberFlags.Dirty)) {
-					dep.flags = depFlags | SubscriberFlags.Dirty;
-				}
+			const depFlags = dep.flags;
+			if (!(depFlags & SubscriberFlags.Dirty)) {
+				dep.flags = depFlags | SubscriberFlags.Dirty;
 			}
 			const depDeps = dep.deps;
 			if (depDeps !== undefined) {
