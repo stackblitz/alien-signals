@@ -1,5 +1,5 @@
 import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
-import { checkDirty, Dependency, endTrack, IEffect, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
+import { Dependency, endTrack, runInnerEffects, IEffect, isDirty, link, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeSub: Subscriber | undefined;
 export let activeTrackId = 0;
@@ -54,29 +54,17 @@ export class Effect<T = any> implements IEffect, Dependency {
 	}
 
 	notify(): void {
-		let flags = this.flags;
-		if (flags & SubscriberFlags.Dirty) {
+		const flags = this.flags;
+		if (
+			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+			&& isDirty(this, flags)
+		) {
 			this.run();
 			return;
 		}
-		if (flags & SubscriberFlags.ToCheckDirty) {
-			if (checkDirty(this.deps!)) {
-				this.run();
-				return;
-			} else {
-				this.flags = flags &= ~SubscriberFlags.ToCheckDirty;
-			}
-		}
 		if (flags & SubscriberFlags.InnerEffectsPending) {
 			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-			let link = this.deps!;
-			do {
-				const dep = link.dep;
-				if ('notify' in dep) {
-					dep.notify();
-				}
-				link = link.nextDep!;
-			} while (link !== undefined);
+			runInnerEffects(this.deps!);
 		}
 	}
 

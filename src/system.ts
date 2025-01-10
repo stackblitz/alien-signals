@@ -391,3 +391,27 @@ function clearTrack(link: Link): void {
 		link = nextDep!;
 	} while (link !== undefined);
 }
+
+export function isDirty(sub: Subscriber, flags: SubscriberFlags): boolean {
+	if (flags & SubscriberFlags.Dirty) {
+		return true;
+	} else if (flags & SubscriberFlags.ToCheckDirty) {
+		if (checkDirty(sub.deps!)) {
+			sub.flags = flags | SubscriberFlags.Dirty;
+			return true;
+		} else {
+			sub.flags = flags & ~SubscriberFlags.ToCheckDirty;
+		}
+	}
+	return false;
+}
+
+export function runInnerEffects(link: Link): void {
+	do {
+		const dep = link.dep;
+		if ('notify' in dep) {
+			dep.notify();
+		}
+		link = link.nextDep!;
+	} while (link !== undefined);
+}

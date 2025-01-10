@@ -1,6 +1,6 @@
 import { activeSub, activeTrackId, nextTrackId, setActiveSub } from './effect.js';
 import { activeEffectScope, activeScopeTrackId } from './effectScope.js';
-import { checkDirty, endTrack, IComputed, Link, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
+import { endTrack, IComputed, isDirty, Link, link, shallowPropagate, startTrack, SubscriberFlags } from './system.js';
 import type { ISignal } from './types.js';
 
 export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
@@ -26,23 +26,15 @@ export class Computed<T = any> implements IComputed, ISignal<T> {
 
 	get(): T {
 		const flags = this.flags;
-		if (flags & SubscriberFlags.Dirty) {
+		if (
+			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+			&& isDirty(this, flags)
+		) {
 			if (this.update()) {
 				const subs = this.subs;
 				if (subs !== undefined) {
 					shallowPropagate(subs);
 				}
-			}
-		} else if (flags & SubscriberFlags.ToCheckDirty) {
-			if (checkDirty(this.deps!)) {
-				if (this.update()) {
-					const subs = this.subs;
-					if (subs !== undefined) {
-						shallowPropagate(subs);
-					}
-				}
-			} else {
-				this.flags = flags & ~SubscriberFlags.ToCheckDirty;
 			}
 		}
 		if (activeTrackId) {

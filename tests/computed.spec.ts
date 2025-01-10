@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { checkDirty, Computed, shallowPropagate, SubscriberFlags } from '../src';
+import { checkDirty, Computed, isDirty, shallowPropagate, SubscriberFlags } from '../src';
 import { computed, signal } from './api';
 
 test('should correctly propagate changes through computed signals', () => {
@@ -19,27 +19,18 @@ test('should correctly propagate changes through computed signals', () => {
 test('should custom computed support recursion', () => {
 	class RecursiveComputed<T> extends Computed<T> {
 		get(): T {
-			let flags = this.flags;
-			if (flags & SubscriberFlags.Dirty) {
+			const flags = this.flags;
+			if (
+				flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+				&& isDirty(this, flags)
+			) {
 				if (this.update()) {
 					const subs = this.subs;
 					if (subs !== undefined) {
 						shallowPropagate(subs);
 					}
 				}
-			} else if (flags & SubscriberFlags.ToCheckDirty) {
-				if (checkDirty(this.deps!)) {
-					if (this.update()) {
-						const subs = this.subs;
-						if (subs !== undefined) {
-							shallowPropagate(subs);
-						}
-					}
-				} else {
-					this.flags = flags & ~SubscriberFlags.ToCheckDirty;
-				}
 			}
-			flags = this.flags;
 			if (flags & SubscriberFlags.Recursed) {
 				this.flags = flags & ~SubscriberFlags.Recursed;
 				return this.get();
