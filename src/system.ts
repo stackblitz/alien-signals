@@ -71,15 +71,15 @@ function drainQueuedEffects(): void {
 
 export function link(dep: Dependency, sub: Subscriber): void {
 	const currentDep = sub.depsTail;
-	let nextDep: Link | undefined;
-	if (currentDep !== undefined) {
-		if (currentDep.dep === dep) {
-			return;
-		}
-		nextDep = currentDep.nextDep;
-	} else {
-		nextDep = sub.deps;
+	if (
+		currentDep !== undefined
+		&& currentDep.dep === dep
+	) {
+		return;
 	}
+	const nextDep = currentDep !== undefined
+		? currentDep.nextDep
+		: sub.deps;
 	if (
 		nextDep !== undefined
 		&& nextDep.dep === dep
