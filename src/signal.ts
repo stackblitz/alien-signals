@@ -1,4 +1,4 @@
-import { activeSub, activeTrackId } from './effect.js';
+import { activeSub } from './effect.js';
 import { Dependency, link, Link, propagate } from './system.js';
 import type { IWritableSignal } from './types.js';
 
@@ -12,16 +12,14 @@ export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 	// Dependency
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;
-	lastTrackedId = 0;
 
 	constructor(
 		public currentValue: T
 	) { }
 
 	get(): T {
-		if (activeTrackId && this.lastTrackedId !== activeTrackId) {
-			this.lastTrackedId = activeTrackId;
-			link(this, activeSub!);
+		if (activeSub !== undefined) {
+			link(this, activeSub);
 		}
 		return this.currentValue;
 	}

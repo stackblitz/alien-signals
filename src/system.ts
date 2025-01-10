@@ -10,7 +10,6 @@ export interface IComputed extends Dependency, Subscriber {
 export interface Dependency {
 	subs: Link | undefined;
 	subsTail: Link | undefined;
-	lastTrackedId?: number;
 }
 
 export interface Subscriber {
@@ -72,14 +71,31 @@ function drainQueuedEffects(): void {
 
 export function link(dep: Dependency, sub: Subscriber): void {
 	const currentDep = sub.depsTail;
+	if (
+		currentDep !== undefined
+		&& currentDep.dep === dep
+	) {
+		return;
+	}
 	const nextDep = currentDep !== undefined
 		? currentDep.nextDep
 		: sub.deps;
-	if (nextDep !== undefined && nextDep.dep === dep) {
+	if (
+		nextDep !== undefined
+		&& nextDep.dep === dep
+	) {
 		sub.depsTail = nextDep;
-	} else {
-		linkNewDep(dep, sub, nextDep, currentDep);
+		return;
 	}
+	const depLastSub = dep.subsTail;
+	if (
+		depLastSub !== undefined
+		&& depLastSub.sub === sub
+		&& isValidLink(depLastSub, sub)
+	) {
+		return;
+	}
+	linkNewDep(dep, sub, nextDep, currentDep);
 }
 
 function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
@@ -321,7 +337,7 @@ export function checkDirty(link: Link): boolean {
 
 export function startTrack(sub: Subscriber): void {
 	sub.depsTail = undefined;
-	sub.flags = SubscriberFlags.Tracking;
+	sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Notified)) | SubscriberFlags.Tracking;
 }
 
 export function endTrack(sub: Subscriber): void {
@@ -351,9 +367,6 @@ function clearTrack(link: Link): void {
 			link.nextSub = undefined;
 		} else {
 			dep.subsTail = prevSub;
-			if ('lastTrackedId' in dep) {
-				dep.lastTrackedId = 0;
-			}
 		}
 
 		if (prevSub !== undefined) {
@@ -371,13 +384,9 @@ function clearTrack(link: Link): void {
 		linkPool = link;
 
 		if (dep.subs === undefined && 'deps' in dep) {
-			if ('notify' in dep) {
-				dep.flags = SubscriberFlags.None;
-			} else {
-				const depFlags = dep.flags;
-				if (!(depFlags & SubscriberFlags.Dirty)) {
-					dep.flags = depFlags | SubscriberFlags.Dirty;
-				}
+			const depFlags = dep.flags;
+			if (!(depFlags & SubscriberFlags.Dirty)) {
+				dep.flags = depFlags | SubscriberFlags.Dirty;
 			}
 			const depDeps = dep.deps;
 			if (depDeps !== undefined) {

@@ -1,23 +1,19 @@
-import { nextTrackId } from './effect.js';
 import { endTrack, runInnerEffects, Link, startTrack, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
-export let activeScopeTrackId = 0;
 
 export function untrackScope<T>(fn: () => T): T {
 	const prevSub = activeEffectScope;
-	const prevTrackId = activeScopeTrackId;
-	setActiveScope(undefined, 0);
+	setActiveScope(undefined);
 	try {
 		return fn();
 	} finally {
-		setActiveScope(prevSub, prevTrackId);
+		setActiveScope(prevSub);
 	}
 }
 
-export function setActiveScope(sub: EffectScope | undefined, trackId: number): void {
+export function setActiveScope(sub: EffectScope | undefined): void {
 	activeEffectScope = sub;
-	activeScopeTrackId = trackId;
 }
 
 export function effectScope(): EffectScope {
@@ -30,8 +26,6 @@ export class EffectScope implements Subscriber {
 	depsTail: Link | undefined = undefined;
 	flags: SubscriberFlags = SubscriberFlags.None;
 
-	trackId: number = nextTrackId();
-
 	notify(): void {
 		const flags = this.flags;
 		if (flags & SubscriberFlags.InnerEffectsPending) {
@@ -42,12 +36,11 @@ export class EffectScope implements Subscriber {
 
 	run<T>(fn: () => T): T {
 		const prevSub = activeEffectScope;
-		const prevTrackId = activeScopeTrackId;
-		setActiveScope(this, this.trackId);
+		setActiveScope(this);
 		try {
 			return fn();
 		} finally {
-			setActiveScope(prevSub, prevTrackId);
+			setActiveScope(prevSub);
 		}
 	}
 

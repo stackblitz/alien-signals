@@ -1,4 +1,4 @@
-import { Effect, nextTrackId } from '../effect.js';
+import { Effect } from '../effect.js';
 import { Dependency, endTrack, link, startTrack, SubscriberFlags } from '../system.js';
 import { asyncCheckDirty } from './asyncSystem.js';
 
@@ -40,15 +40,11 @@ export class AsyncEffect<T = any> extends Effect {
 	async run(): Promise<T> {
 		try {
 			startTrack(this);
-			const trackId = nextTrackId();
 			const generator = this.fn();
 			let current = await generator.next();
 			while (!current.done) {
 				const dep = current.value;
-				if (dep.lastTrackedId !== trackId) {
-					dep.lastTrackedId = trackId;
-					link(dep, this);
-				}
+				link(dep, this);
 				current = await generator.next();
 			}
 			return await current.value;
