@@ -82,14 +82,14 @@ export function createSystem<
 		if (
 			depLastSub !== undefined
 			&& depLastSub.sub === sub
-			&& isValidLink(depLastSub, sub)
+			&& _isValidLink(depLastSub, sub)
 		) {
 			return;
 		}
-		linkNewDep(dep, sub, nextDep, currentDep);
+		_linkNewDep(dep, sub, nextDep, currentDep);
 	}
 
-	function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
+	function _linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
 		let newLink: Link;
 
 		if (linkPool !== undefined) {
@@ -146,7 +146,7 @@ export function createSystem<
 		if (flags & SubscriberFlags.Dirty) {
 			return true;
 		} else if (flags & SubscriberFlags.ToCheckDirty) {
-			if (checkDirty(sub.deps!)) {
+			if (_checkDirty(sub.deps!)) {
 				sub.flags = flags | SubscriberFlags.Dirty;
 				return true;
 			} else {
@@ -157,7 +157,7 @@ export function createSystem<
 	}
 
 	// See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-	function checkDirty(link: Link): boolean {
+	function _checkDirty(link: Link): boolean {
 		let stack = 0;
 		let dirty: boolean;
 
@@ -279,7 +279,7 @@ export function createSystem<
 				)
 				|| (
 					!(subFlags & SubscriberFlags.Notified)
-					&& isValidLink(link, sub)
+					&& _isValidLink(link, sub)
 					&& (
 						sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag,
 						(sub as Dependency).subs !== undefined
@@ -314,7 +314,7 @@ export function createSystem<
 				|| (
 					!(subFlags & targetFlag)
 					&& (subFlags & SubscriberFlags.Notified)
-					&& isValidLink(link, sub)
+					&& _isValidLink(link, sub)
 				)
 			) {
 				sub.flags = subFlags | targetFlag;
@@ -347,7 +347,7 @@ export function createSystem<
 		} while (true);
 	}
 
-	function isValidLink(subLink: Link, sub: Subscriber): boolean {
+	function _isValidLink(subLink: Link, sub: Subscriber): boolean {
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
 			let link = sub.deps!;
@@ -374,17 +374,17 @@ export function createSystem<
 		if (depsTail !== undefined) {
 			const nextDep = depsTail.nextDep;
 			if (nextDep !== undefined) {
-				clearTrack(nextDep);
+				_clearTrack(nextDep);
 				depsTail.nextDep = undefined;
 			}
 		} else if (sub.deps !== undefined) {
-			clearTrack(sub.deps);
+			_clearTrack(sub.deps);
 			sub.deps = undefined;
 		}
 		sub.flags &= ~SubscriberFlags.Tracking;
 	}
 
-	function clearTrack(link: Link): void {
+	function _clearTrack(link: Link): void {
 		do {
 			const dep = link.dep;
 			const nextDep = link.nextDep;
