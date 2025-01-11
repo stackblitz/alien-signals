@@ -85,10 +85,11 @@ export function createDefaultSystem() {
 		effect,
 	};
 
+	//#region Public functions
 	function signal<T>(): WriteableSignal<T | undefined>;
 	function signal<T>(oldValue: T): WriteableSignal<T>;
 	function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
-		return getSetSignalValue.bind({
+		return signalGetSet.bind({
 			currentValue: oldValue,
 			subs: undefined,
 			subsTail: undefined,
@@ -96,7 +97,7 @@ export function createDefaultSystem() {
 	}
 
 	function computed<T>(getter: (cachedValue?: T) => T): () => T {
-		return getComputedValue.bind({
+		return computedGet.bind({
 			currentValue: undefined,
 			subs: undefined,
 			subsTail: undefined,
@@ -120,9 +121,11 @@ export function createDefaultSystem() {
 			link(e, activeSub);
 		}
 		runEffect(e);
-		return stopEffect.bind(e);
+		return effectStop.bind(e);
 	}
+	//#endregion
 
+	//#region Internal functions
 	function updateComputed(computed: Computed): boolean {
 		const prevSub = activeSub;
 		activeSub = computed;
@@ -141,7 +144,21 @@ export function createDefaultSystem() {
 		}
 	}
 
-	function getComputedValue<T>(this: Computed<T>): T {
+	function runEffect(e: Effect): void {
+		const prevSub = activeSub;
+		activeSub = e;
+		startTrack(e);
+		try {
+			e.fn();
+		} finally {
+			activeSub = prevSub;
+			endTrack(e);
+		}
+	}
+	//#endregion
+
+	//#region Bound functions
+	function computedGet<T>(this: Computed<T>): T {
 		const flags = this.flags;
 		if (
 			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
@@ -160,7 +177,7 @@ export function createDefaultSystem() {
 		return this.currentValue!;
 	}
 
-	function getSetSignalValue<T>(this: Signal<T>, ...value: [T]): T | void {
+	function signalGetSet<T>(this: Signal<T>, ...value: [T]): T | void {
 		if (value.length) {
 			if (this.currentValue !== (this.currentValue = value[0])) {
 				const subs = this.subs;
@@ -179,20 +196,9 @@ export function createDefaultSystem() {
 		}
 	}
 
-	function runEffect(e: Effect): void {
-		const prevSub = activeSub;
-		activeSub = e;
-		startTrack(e);
-		try {
-			e.fn();
-		} finally {
-			activeSub = prevSub;
-			endTrack(e);
-		}
-	}
-
-	function stopEffect(this: Subscriber): void {
+	function effectStop(this: Subscriber): void {
 		startTrack(this);
 		endTrack(this);
 	}
+	//#endregion
 }
