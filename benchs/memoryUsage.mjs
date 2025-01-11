@@ -27,3 +27,25 @@ globalThis.gc();
 end = process.memoryUsage().heapUsed;
 
 console.log(`effect: ${((end - start) / 1024).toFixed(2)} KB`);
+
+start = end;
+
+const w = 100;
+const h = 100;
+const src = signal(1);
+
+for (let i = 0; i < w; i++) {
+	let last = src;
+	for (let j = 0; j < h; j++) {
+		const prev = last;
+		last = computed(() => prev.get() + 1);
+	}
+	effect(() => last.get());
+}
+
+src.set(src.get() + 1);
+
+globalThis.gc();
+end = process.memoryUsage().heapUsed;
+
+console.log(`tree: ${((end - start) / 1024).toFixed(2)} KB`);
