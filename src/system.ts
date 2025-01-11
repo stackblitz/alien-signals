@@ -60,13 +60,13 @@ export function createSystem<
 		runInnerEffects,
 	};
 
-	function link(dep: Dependency, sub: Subscriber): void {
+	function link(dep: Dependency, sub: Subscriber): boolean {
 		const currentDep = sub.depsTail;
 		if (
 			currentDep !== undefined
 			&& currentDep.dep === dep
 		) {
-			return;
+			return false;
 		}
 		const nextDep = currentDep !== undefined
 			? currentDep.nextDep
@@ -76,7 +76,7 @@ export function createSystem<
 			&& nextDep.dep === dep
 		) {
 			sub.depsTail = nextDep;
-			return;
+			return false;
 		}
 		const depLastSub = dep.subsTail;
 		if (
@@ -84,9 +84,10 @@ export function createSystem<
 			&& depLastSub.sub === sub
 			&& _isValidLink(depLastSub, sub)
 		) {
-			return;
+			return false;
 		}
 		_linkNewDep(dep, sub, nextDep, currentDep);
+		return true;
 	}
 
 	function _linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): void {
