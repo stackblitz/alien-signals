@@ -28,27 +28,31 @@ export function createDefaultSystem() {
 		shallowPropagate,
 		startTrack,
 	} = createSystem({
-		isComputed(sub: Subscriber & Dependency): sub is Computed {
-			return 'getter' in sub;
+		computed: {
+			is(sub: Subscriber & Dependency): sub is Computed {
+				return 'getter' in sub;
+			},
+			update: updateComputed,
 		},
-		isEffect(sub: Subscriber): sub is Effect {
-			return !('getter' in sub);
+		effect: {
+			is(sub: Subscriber): sub is Effect {
+				return !('getter' in sub);
+			},
+			notify(effect: Effect): void {
+				const flags = effect.flags;
+				if (
+					flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+					&& isDirty(effect, flags)
+				) {
+					runEffect(effect);
+					return;
+				}
+				if (flags & SubscriberFlags.InnerEffectsPending) {
+					effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
+					runInnerEffects(effect.deps!);
+				}
+			},
 		},
-		notifyEffect(effect: Effect): void {
-			const flags = effect.flags;
-			if (
-				flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
-				&& isDirty(effect, flags)
-			) {
-				runEffect(effect);
-				return;
-			}
-			if (flags & SubscriberFlags.InnerEffectsPending) {
-				effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-				runInnerEffects(effect.deps!);
-			}
-		},
-		updateComputed,
 	});
 	const pauseStack: (Subscriber | undefined)[] = [];
 
