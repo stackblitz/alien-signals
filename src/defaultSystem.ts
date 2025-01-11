@@ -12,6 +12,11 @@ interface Signal<T = any> extends Dependency {
 	currentValue: T;
 }
 
+type WriteableSignal<T> = {
+	(): T;
+	(value: T): void;
+};
+
 export function createDefaultSystem() {
 	const {
 		drainQueuedEffects,
@@ -23,38 +28,61 @@ export function createDefaultSystem() {
 		shallowPropagate,
 		startTrack,
 	} = createSystem({
-		isComputed,
-		isEffect,
+		isComputed(sub: Subscriber & Dependency): sub is Computed {
+			return 'getter' in sub;
+		},
+		isEffect(sub: Subscriber): sub is Effect {
+			return !('getter' in sub);
+		},
+		notifyEffect(effect: Effect): void {
+			const flags = effect.flags;
+			if (
+				flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+				&& isDirty(effect, flags)
+			) {
+				runEffect(effect);
+				return;
+			}
+			if (flags & SubscriberFlags.InnerEffectsPending) {
+				effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
+				runInnerEffects(effect.deps!);
+			}
+		},
 		updateComputed,
-		notifyEffect,
 	});
+	const pauseStack: (Subscriber | undefined)[] = [];
 
 	let batchDepth = 0;
 	let activeSub: Subscriber | undefined;
 
-	function startBatch(): void {
-		++batchDepth;
-	}
-
-	function endBatch(): void {
-		if (!--batchDepth) {
-			drainQueuedEffects();
-		}
-	}
-
-	function untrack<T>(fn: () => T): T {
-		const prevSub = activeSub;
-		activeSub = undefined;
-		try {
-			return fn();
-		} finally {
-			activeSub = prevSub;
-		}
-	}
-
-	type WriteableSignal<T> = {
-		(): T;
-		(value: T): void;
+	return {
+		get batchDepth() {
+			return batchDepth;
+		},
+		get activeSub() {
+			return activeSub;
+		},
+		set activeSub(sub) {
+			activeSub = sub;
+		},
+		startBatch() {
+			++batchDepth;
+		},
+		endBatch() {
+			if (!--batchDepth) {
+				drainQueuedEffects();
+			}
+		},
+		pauseTracking() {
+			pauseStack.push(activeSub);
+			activeSub = undefined;
+		},
+		resumeTracking() {
+			activeSub = pauseStack.pop();
+		},
+		signal,
+		computed,
+		effect,
 	};
 
 	function signal<T>(): WriteableSignal<T | undefined>;
@@ -93,47 +121,6 @@ export function createDefaultSystem() {
 		}
 		runEffect(e);
 		return stopEffect.bind(e);
-	}
-
-	return {
-		get batchDepth() {
-			return batchDepth;
-		},
-		get activeSub() {
-			return activeSub;
-		},
-		set activeSub(sub) {
-			activeSub = sub;
-		},
-		startBatch,
-		endBatch,
-		untrack,
-		signal,
-		computed,
-		effect,
-	};
-
-	function isComputed(sub: Subscriber & Dependency): sub is Computed {
-		return 'getter' in sub;
-	}
-
-	function isEffect(sub: Subscriber): sub is Effect {
-		return !('getter' in sub);
-	}
-
-	function notifyEffect(effect: Effect): void {
-		const flags = effect.flags;
-		if (
-			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
-			&& isDirty(effect, flags)
-		) {
-			runEffect(effect);
-			return;
-		}
-		if (flags & SubscriberFlags.InnerEffectsPending) {
-			effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-			runInnerEffects(effect.deps!);
-		}
 	}
 
 	function updateComputed(computed: Computed): boolean {
