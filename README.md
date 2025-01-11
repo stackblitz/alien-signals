@@ -119,11 +119,11 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 			if (subSubs !== undefined) {
 				propagate(
 					subSubs,
-					'notify' in sub
+					isEffect(sub)
 						? SubscriberFlags.InnerEffectsPending
 						: SubscriberFlags.ToCheckDirty
 				);
-			} else if ('notify' in sub) {
+			} else if (isEffect(sub)) {
 				if (queuedEffectsTail !== undefined) {
 					queuedEffectsTail.nextNotify = sub;
 				} else {
@@ -157,10 +157,10 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 export function checkDirty(link: Link): boolean {
 	do {
 		const dep = link.dep;
-		if ('update' in dep) {
+		if ('flags' in dep) {
 			const depFlags = dep.flags;
 			if (depFlags & SubscriberFlags.Dirty) {
-				if (dep.update()) {
+				if (isComputed(dep) && updateComputed(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
@@ -168,7 +168,7 @@ export function checkDirty(link: Link): boolean {
 					return true;
 				}
 			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
-				if (checkDirty(dep.deps!)) {
+				if (isComputed(dep) && checkDirty(dep.deps!)) {
 					if (dep.update()) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {

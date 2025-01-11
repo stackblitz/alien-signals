@@ -1,4 +1,4 @@
-import { drainQueuedEffects } from './system.js';
+import { drainQueuedEffects } from './internal.js';
 
 export let batchDepth = 0;
 

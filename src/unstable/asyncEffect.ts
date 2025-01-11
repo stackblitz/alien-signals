@@ -1,8 +1,9 @@
 import { Effect } from '../effect.js';
-import { endTrack, IDependency, link, startTrack, SubscriberFlags } from '../system.js';
+import { endTrack, isEffect, link, startTrack } from '../internal.js';
+import { Dependency, SubscriberFlags } from '../system.js';
 import { asyncCheckDirty } from './asyncSystem.js';
 
-export function asyncEffect<T>(fn: () => AsyncGenerator<IDependency, T>): AsyncEffect<T> {
+export function asyncEffect<T>(fn: () => AsyncGenerator<Dependency, T>): AsyncEffect<T> {
 	const e = new AsyncEffect(fn);
 	e.run();
 	return e;
@@ -29,7 +30,7 @@ export class AsyncEffect<T = any> extends Effect {
 			let link = this.deps!;
 			do {
 				const dep = link.dep;
-				if ('notify' in dep) {
+				if ('flags' in dep && isEffect(dep)) {
 					dep.notify();
 				}
 				link = link.nextDep!;
