@@ -39,8 +39,8 @@ for (let i = 0; i < w; i++) {
 	for (let j = 0; j < h; j++) {
 		const prev = last;
 		last = computed(() => prev.get() + 1);
+		effect(() => last.get());
 	}
-	effect(() => last.get());
 }
 
 src.set(src.get() + 1);
