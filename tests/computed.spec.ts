@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
-import { checkDirty, Computed, isDirty, shallowPropagate, SubscriberFlags } from '../src';
+import { Computed, SubscriberFlags } from '../src';
 import { computed, signal } from './api';
+import { isDirty, shallowPropagate } from '../src/internal';
 
 test('should correctly propagate changes through computed signals', () => {
 	const src = signal(0);

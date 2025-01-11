@@ -1,6 +1,7 @@
 import { batchDepth } from './batch.js';
 import { activeSub } from './effect.js';
-import { IDependency, ILink, drainQueuedEffects, link, propagate } from './system.js';
+import { drainQueuedEffects, link, propagate } from './internal.js';
+import { Dependency, Link } from './system.js';
 import type { IWritableSignal } from './types.js';
 
 export function signal<T>(): Signal<T | undefined>;
@@ -9,10 +10,10 @@ export function signal<T>(oldValue?: T): Signal<T | undefined> {
 	return new Signal(oldValue);
 }
 
-export class Signal<T = any> implements IDependency, IWritableSignal<T> {
+export class Signal<T = any> implements Dependency, IWritableSignal<T> {
 	// Dependency
-	subs: ILink | undefined = undefined;
-	subsTail: ILink | undefined = undefined;
+	subs: Link | undefined = undefined;
+	subsTail: Link | undefined = undefined;
 
 	constructor(
 		public currentValue: T

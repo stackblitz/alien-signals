@@ -1,8 +1,9 @@
 import { Computed } from '../computed.js';
-import { endTrack, IDependency, link, shallowPropagate, startTrack, SubscriberFlags } from '../system.js';
+import { endTrack, link, shallowPropagate, startTrack } from '../internal.js';
+import { Dependency, SubscriberFlags } from '../system.js';
 import { asyncCheckDirty } from './asyncSystem.js';
 
-export function asyncComputed<T>(getter: (cachedValue?: T) => AsyncGenerator<IDependency, T>): AsyncComputed<T> {
+export function asyncComputed<T>(getter: (cachedValue?: T) => AsyncGenerator<Dependency, T>): AsyncComputed<T> {
 	return new AsyncComputed<T>(getter);
 }
 

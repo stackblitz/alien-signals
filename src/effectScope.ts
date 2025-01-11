@@ -1,4 +1,5 @@
-import { endTrack, ILink, ISubscriber, runInnerEffects, startTrack, SubscriberFlags } from './system.js';
+import { endTrack, runInnerEffects, startTrack } from './internal.js';
+import { Link, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
 
@@ -20,10 +21,10 @@ export function effectScope(): EffectScope {
 	return new EffectScope();
 }
 
-export class EffectScope implements ISubscriber {
+export class EffectScope implements Subscriber {
 	// Subscriber
-	deps: ILink | undefined = undefined;
-	depsTail: ILink | undefined = undefined;
+	deps: Link | undefined = undefined;
+	depsTail: Link | undefined = undefined;
 	flags: SubscriberFlags = SubscriberFlags.None;
 
 	notify(): void {
