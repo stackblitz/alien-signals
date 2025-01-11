@@ -1,4 +1,4 @@
-import { activeEffectScope } from './effectScope.js';
+import { activeEffectScope, EffectScope } from './effectScope.js';
 import { endTrack, isDirty, link, runInnerEffects, startTrack } from './internal.js';
 import { Dependency, Link, Subscriber, SubscriberFlags } from './system.js';
 
@@ -24,6 +24,22 @@ export function effect<T>(fn: () => T): Effect<T> {
 	return e;
 }
 
+export function notifyEffect(effect: Effect | EffectScope): void {
+	const flags = effect.flags;
+	if (
+		flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
+		&& isDirty(effect, flags)
+		&& effect instanceof Effect
+	) {
+		effect.run();
+		return;
+	}
+	if (flags & SubscriberFlags.InnerEffectsPending) {
+		effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
+		runInnerEffects(effect.deps!);
+	}
+}
+
 export class Effect<T = any> implements Subscriber, Dependency {
 	// Dependency
 	subs: Link | undefined = undefined;
@@ -41,21 +57,6 @@ export class Effect<T = any> implements Subscriber, Dependency {
 			link(this, activeSub);
 		} else if (activeEffectScope !== undefined) {
 			link(this, activeEffectScope);
-		}
-	}
-
-	notify(): void {
-		const flags = this.flags;
-		if (
-			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
-			&& isDirty(this, flags)
-		) {
-			this.run();
-			return;
-		}
-		if (flags & SubscriberFlags.InnerEffectsPending) {
-			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-			runInnerEffects(this.deps!);
 		}
 	}
 

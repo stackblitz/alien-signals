@@ -1,6 +1,7 @@
 import { Computed } from '../computed';
 import { isComputed, shallowPropagate } from '../internal';
 import { Link, SubscriberFlags } from '../system';
+import { updateAsyncComputed } from './asyncComputed';
 
 export async function asyncCheckDirty(link: Link): Promise<boolean> {
 	let stack = 0;
@@ -13,7 +14,7 @@ export async function asyncCheckDirty(link: Link): Promise<boolean> {
 		if ('flags' in dep) {
 			const depFlags = dep.flags;
 			if (depFlags & SubscriberFlags.Dirty) {
-				if (isComputed(dep) && await dep.update()) {
+				if (isComputed(dep) && await updateAsyncComputed(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
@@ -40,7 +41,7 @@ export async function asyncCheckDirty(link: Link): Promise<boolean> {
 					if (prevLink !== undefined) {
 						subSubs.prevSub = undefined;
 						if (dirty) {
-							if (await sub.update()) {
+							if (await updateAsyncComputed(sub)) {
 								shallowPropagate(sub.subs!);
 								sub = prevLink.sub as Computed;
 								continue;
@@ -50,7 +51,7 @@ export async function asyncCheckDirty(link: Link): Promise<boolean> {
 						}
 					} else {
 						if (dirty) {
-							if (await sub.update()) {
+							if (await updateAsyncComputed(sub)) {
 								sub = subSubs.sub as Computed;
 								continue;
 							}
