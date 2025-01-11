@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
-import { Effect } from '../src';
-import { computed, effect, effectScope, endBatch, signal, startBatch } from './api';
+import { getDefaultSystem } from '../src';
+
+const { computed, effect, endBatch, signal, startBatch } = getDefaultSystem();
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
@@ -8,28 +9,28 @@ test('should clear subscriptions when untracked by all subscribers', () => {
 	const a = signal(1);
 	const b = computed(() => {
 		bRunTimes++;
-		return a.get() * 2;
+		return a() * 2;
 	});
-	const effect1 = effect(() => {
-		b.get();
+	const stopEffect = effect(() => {
+		b();
 	});
 
 	expect(bRunTimes).toBe(1);
-	a.set(2);
+	a(2);
 	expect(bRunTimes).toBe(2);
-	effect1.stop();
-	a.set(3);
+	stopEffect();
+	a(3);
 	expect(bRunTimes).toBe(2);
 });
 
 test('should not run untracked inner effect', () => {
 	const a = signal(3);
-	const b = computed(() => a.get() > 0);
+	const b = computed(() => a() > 0);
 
 	effect(() => {
-		if (b.get()) {
+		if (b()) {
 			effect(() => {
-				if (a.get() == 0) {
+				if (a() == 0) {
 					throw new Error("bad");
 				}
 			});
@@ -41,7 +42,7 @@ test('should not run untracked inner effect', () => {
 	decrement();
 
 	function decrement() {
-		a.set(a.get() - 1);
+		a(a() - 1);
 	}
 });
 
@@ -50,10 +51,10 @@ test('should run outer effect first', () => {
 	const b = signal(1);
 
 	effect(() => {
-		if (a.get()) {
+		if (a()) {
 			effect(() => {
-				b.get();
-				if (a.get() == 0) {
+				b();
+				if (a() == 0) {
 					throw new Error("bad");
 				}
 			});
@@ -62,20 +63,20 @@ test('should run outer effect first', () => {
 	});
 
 	startBatch();
-	b.set(0);
-	a.set(0);
+	b(0);
+	a(0);
 	endBatch();
 });
 
 test('should not trigger inner effect when resolve maybe dirty', () => {
 	const a = signal(0);
-	const b = computed(() => a.get() % 2);
+	const b = computed(() => a() % 2);
 
 	let innerTriggerTimes = 0;
 
 	effect(() => {
 		effect(() => {
-			b.get();
+			b();
 			innerTriggerTimes++;
 			if (innerTriggerTimes > 1) {
 				throw new Error("bad");
@@ -83,105 +84,36 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 		});
 	});
 
-	a.set(2);
+	a(2);
 });
 
 test('should trigger inner effects in sequence', () => {
 	const a = signal(0);
 	const b = signal(0);
-	const c = computed(() => a.get() - b.get());
+	const c = computed(() => a() - b());
 	const order: string[] = [];
 
 	effect(() => {
-		c.get();
+		c();
 
 		effect(() => {
 			order.push('first inner');
-			a.get();
+			a();
 		});
 
 		effect(() => {
 			order.push('last inner');
-			a.get();
-			b.get();
+			a();
+			b();
 		});
 	});
 
 	order.length = 0;
 
 	startBatch();
-	b.set(1);
-	a.set(1);
+	b(1);
+	a(1);
 	endBatch();
 
 	expect(order).toEqual(['first inner', 'last inner']);
-});
-
-test('should trigger inner effects in sequence in effect scope', () => {
-	const a = signal(0);
-	const b = signal(0);
-	const scope = effectScope();
-	const order: string[] = [];
-
-	scope.run(() => {
-
-		effect(() => {
-			order.push('first inner');
-			a.get();
-		});
-
-		effect(() => {
-			order.push('last inner');
-			a.get();
-			b.get();
-		});
-	});
-
-	order.length = 0;
-
-	startBatch();
-	b.set(1);
-	a.set(1);
-	endBatch();
-
-	expect(order).toEqual(['first inner', 'last inner']);
-});
-
-test('should custom effect support batch', () => {
-	class BatchEffect<T = any> extends Effect<T> {
-		run(): T {
-			startBatch();
-			try {
-				return super.run();
-			} finally {
-				endBatch();
-			}
-		}
-	}
-
-	const logs: string[] = [];
-	const a = signal(0);
-	const b = signal(0);
-
-	const aa = computed(() => {
-		logs.push('aa-0');
-		if (a.get() === 0) {
-			b.set(1);
-		}
-		logs.push('aa-1');
-	});
-
-	const bb = computed(() => {
-		logs.push('bb');
-		return b.get();
-	});
-
-	new BatchEffect(() => {
-		bb.get();
-	}).run();
-	new BatchEffect(() => {
-		aa.get();
-	}).run();
-
-	expect(logs).toEqual(['bb', 'aa-0', 'aa-1', 'bb']);
 });

@@ -10,12 +10,12 @@ boxplot(() => {
 			let last = src;
 			for (let j = 0; j < h; j++) {
 				const prev = last;
-				last = computed(() => ({ [`${i}-${j}`]: prev.get() }));
+				last = computed(() => ({ [`${i}-${j}`]: prev() }));
 			}
-			effect(() => last.get());
+			effect(() => last());
 		}
 
-		yield () => src.set({ upstream: src.get() });
+		yield () => src({ upstream: src() });
 	})
 		.args('h', [1, 10, 100])
 		.args('w', [1, 10, 100]);

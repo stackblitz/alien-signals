@@ -1,5 +1,7 @@
 import { run, bench, boxplot } from 'mitata';
-import { computed, effect, signal } from '../esm/index.mjs';
+import { getDefaultSystem } from '../esm/index.mjs';
+
+const { computed, effect, signal } = getDefaultSystem();
 
 boxplot(() => {
 	bench('propagate: $w * $h', function* (state) {
@@ -10,11 +12,11 @@ boxplot(() => {
 			let last = src;
 			for (let j = 0; j < h; j++) {
 				const prev = last;
-				last = computed(() => prev.get() + 1);
+				last = computed(() => prev() + 1);
 			}
-			effect(() => last.get());
+			effect(() => last());
 		}
-		yield () => src.set(src.get() + 1);
+		yield () => src(src() + 1);
 	})
 		.args('h', [1, 10, 100])
 		.args('w', [1, 10, 100]);
