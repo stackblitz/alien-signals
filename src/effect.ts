@@ -24,8 +24,6 @@ export function effect<T>(fn: () => T): Effect<T> {
 }
 
 export class Effect<T = any> implements IEffect, IDependency {
-	nextNotify: IEffect | undefined = undefined;
-
 	// Dependency
 	subs: ILink | undefined = undefined;
 	subsTail: ILink | undefined = undefined;
