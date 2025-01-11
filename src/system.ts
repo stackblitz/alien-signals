@@ -35,15 +35,23 @@ export function createSystem<
 	Computed extends Dependency & Subscriber,
 	Effect extends Subscriber
 >({
-	isComputed,
-	isEffect,
-	updateComputed,
-	notifyEffect,
+	computed: {
+		is: isComputed,
+		update: updateComputed,
+	},
+	effect: {
+		is: isEffect,
+		notify: notifyEffect,
+	},
 }: {
-	isComputed(sub: Subscriber): sub is Computed;
-	isEffect(sub: Subscriber): sub is Effect;
-	updateComputed(sub: Computed): boolean;
-	notifyEffect(sub: Effect): void;
+	computed: {
+		is(sub: Subscriber): sub is Computed;
+		update(sub: Computed): boolean;
+	},
+	effect: {
+		is(sub: Subscriber): sub is Effect;
+		notify(sub: Effect): void;
+	},
 }) {
 	let queuedEffects: Effect | undefined;
 	let queuedEffectsTail: Effect | undefined;
