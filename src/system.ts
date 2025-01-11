@@ -1,5 +1,4 @@
 export interface IEffect extends ISubscriber {
-	nextNotify: IEffect | undefined;
 	notify(): void;
 }
 
@@ -26,6 +25,7 @@ export interface ILink {
 	prevSub: ILink | undefined;
 	nextSub: ILink | undefined;
 	// Reuse to link next released link in linkPool
+	// Reuse to link notify effect in queuedEffects
 	nextDep: ILink | undefined;
 }
 
@@ -46,10 +46,11 @@ let linkPool: ILink | undefined;
 export function drainQueuedEffects(): void {
 	while (queuedEffects !== undefined) {
 		const effect = queuedEffects;
-		const queuedNext = effect.nextNotify;
+		const depsTail = effect.depsTail!;
+		const queuedNext = depsTail.nextDep;
 		if (queuedNext !== undefined) {
-			effect.nextNotify = undefined;
-			queuedEffects = queuedNext;
+			depsTail.nextDep = undefined;
+			queuedEffects = queuedNext.sub as IEffect;
 		} else {
 			queuedEffects = undefined;
 			queuedEffectsTail = undefined;
@@ -170,7 +171,7 @@ export function propagate(link: ILink): void {
 			}
 			if ('notify' in sub) {
 				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail.nextNotify = sub;
+					queuedEffectsTail.depsTail!.nextDep = sub.deps;
 				} else {
 					queuedEffects = sub;
 				}

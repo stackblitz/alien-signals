@@ -1,7 +1,34 @@
 import { computed, effect, signal } from '../esm/index.mjs';
 
 globalThis.gc();
-const start = process.memoryUsage().heapUsed;
+let start = process.memoryUsage().heapUsed;
+
+const signals = Array.from({ length: 10000 }, () => signal(0));
+
+globalThis.gc();
+let end = process.memoryUsage().heapUsed;
+
+console.log(`signal: ${((end - start) / 1024).toFixed(2)} KB`);
+
+start = end;
+
+const computeds = Array.from({ length: 10000 }, (_, i) => computed(() => signals[i].get() + 1));
+
+globalThis.gc();
+end = process.memoryUsage().heapUsed;
+
+console.log(`computed: ${((end - start) / 1024).toFixed(2)} KB`);
+
+start = end;
+
+Array.from({ length: 10000 }, (_, i) => effect(() => computeds[i].get()));
+
+globalThis.gc();
+end = process.memoryUsage().heapUsed;
+
+console.log(`effect: ${((end - start) / 1024).toFixed(2)} KB`);
+
+start = end;
 
 const w = 100;
 const h = 100;
@@ -12,12 +39,13 @@ for (let i = 0; i < w; i++) {
 	for (let j = 0; j < h; j++) {
 		const prev = last;
 		last = computed(() => prev.get() + 1);
+		effect(() => last.get());
 	}
-	effect(() => last.get());
 }
 
 src.set(src.get() + 1);
 
 globalThis.gc();
-const end = process.memoryUsage().heapUsed;
-console.log(`Memory Usage: ${((end - start) / 1024).toFixed(2)} KB`);
+end = process.memoryUsage().heapUsed;
+
+console.log(`tree: ${((end - start) / 1024).toFixed(2)} KB`);
