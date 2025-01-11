@@ -1,4 +1,4 @@
-import { Effect } from '../effect.js';
+import { Effect, notifyEffect } from '../effect.js';
 import { endTrack, isEffect, link, startTrack } from '../internal.js';
 import { Dependency, SubscriberFlags } from '../system.js';
 import { asyncCheckDirty } from './asyncSystem.js';
@@ -9,34 +9,34 @@ export function asyncEffect<T>(fn: () => AsyncGenerator<Dependency, T>): AsyncEf
 	return e;
 }
 
-export class AsyncEffect<T = any> extends Effect {
-
-	async notify(): Promise<void> {
-		let flags = this.flags;
-		if (flags & SubscriberFlags.Dirty) {
-			this.run();
+export async function notifyAsyncEffect(effect: AsyncEffect): Promise<void> {
+	let flags = effect.flags;
+	if (flags & SubscriberFlags.Dirty) {
+		effect.run();
+		return;
+	}
+	if (flags & SubscriberFlags.ToCheckDirty) {
+		if (await asyncCheckDirty(effect.deps!)) {
+			effect.run();
 			return;
-		}
-		if (flags & SubscriberFlags.ToCheckDirty) {
-			if (await asyncCheckDirty(this.deps!)) {
-				this.run();
-				return;
-			} else {
-				this.flags = flags &= ~SubscriberFlags.ToCheckDirty;
-			}
-		}
-		if (flags & SubscriberFlags.InnerEffectsPending) {
-			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-			let link = this.deps!;
-			do {
-				const dep = link.dep;
-				if ('flags' in dep && isEffect(dep)) {
-					dep.notify();
-				}
-				link = link.nextDep!;
-			} while (link !== undefined);
+		} else {
+			effect.flags = flags &= ~SubscriberFlags.ToCheckDirty;
 		}
 	}
+	if (flags & SubscriberFlags.InnerEffectsPending) {
+		effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
+		let link = effect.deps!;
+		do {
+			const dep = link.dep;
+			if ('flags' in dep && isEffect(dep)) {
+				notifyEffect(dep);
+			}
+			link = link.nextDep!;
+		} while (link !== undefined);
+	}
+}
+
+export class AsyncEffect<T = any> extends Effect {
 
 	async run(): Promise<T> {
 		try {

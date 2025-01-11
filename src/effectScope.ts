@@ -1,4 +1,4 @@
-import { endTrack, runInnerEffects, startTrack } from './internal.js';
+import { endTrack, startTrack } from './internal.js';
 import { Link, Subscriber, SubscriberFlags } from './system.js';
 
 export let activeEffectScope: EffectScope | undefined = undefined;
@@ -26,14 +26,6 @@ export class EffectScope implements Subscriber {
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
 	flags: SubscriberFlags = SubscriberFlags.None;
-
-	notify(): void {
-		const flags = this.flags;
-		if (flags & SubscriberFlags.InnerEffectsPending) {
-			this.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-			runInnerEffects(this.deps!);
-		}
-	}
 
 	run<T>(fn: () => T): T {
 		const prevSub = activeEffectScope;

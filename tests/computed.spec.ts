@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { Computed, SubscriberFlags } from '../src';
+import { Computed, SubscriberFlags, updateComputed } from '../src';
 import { computed, signal } from './api';
 import { isDirty, shallowPropagate } from '../src/internal';
 
@@ -25,7 +25,7 @@ test('should custom computed support recursion', () => {
 				flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
 				&& isDirty(this, flags)
 			) {
-				if (this.update()) {
+				if (updateComputed(this)) {
 					const subs = this.subs;
 					if (subs !== undefined) {
 						shallowPropagate(subs);

@@ -8,6 +8,24 @@ export function computed<T>(getter: (cachedValue?: T) => T): Computed<T> {
 	return new Computed<T>(getter);
 }
 
+export function updateComputed(computed: Computed): boolean {
+	const prevSub = activeSub;
+	setActiveSub(computed);
+	startTrack(computed);
+	try {
+		const oldValue = computed.currentValue;
+		const newValue = computed.getter(oldValue);
+		if (oldValue !== newValue) {
+			computed.currentValue = newValue;
+			return true;
+		}
+		return false;
+	} finally {
+		setActiveSub(prevSub);
+		endTrack(computed);
+	}
+}
+
 export class Computed<T = any> implements Dependency, Subscriber, ISignal<T> {
 	currentValue: T | undefined = undefined;
 
@@ -30,7 +48,7 @@ export class Computed<T = any> implements Dependency, Subscriber, ISignal<T> {
 			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
 			&& isDirty(this, flags)
 		) {
-			if (this.update()) {
+			if (updateComputed(this)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
 					shallowPropagate(subs);
@@ -43,23 +61,5 @@ export class Computed<T = any> implements Dependency, Subscriber, ISignal<T> {
 			link(this, activeEffectScope);
 		}
 		return this.currentValue!;
-	}
-
-	update(): boolean {
-		const prevSub = activeSub;
-		setActiveSub(this);
-		startTrack(this);
-		try {
-			const oldValue = this.currentValue;
-			const newValue = this.getter(oldValue);
-			if (oldValue !== newValue) {
-				this.currentValue = newValue;
-				return true;
-			}
-			return false;
-		} finally {
-			setActiveSub(prevSub);
-			endTrack(this);
-		}
 	}
 }
