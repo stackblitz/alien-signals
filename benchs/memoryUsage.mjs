@@ -12,7 +12,7 @@ console.log(`signal: ${((end - start) / 1024).toFixed(2)} KB`);
 
 start = end;
 
-const computeds = Array.from({ length: 10000 }, (_, i) => computed(() => signals[i].get() + 1));
+const computeds = Array.from({ length: 10000 }, (_, i) => computed(() => signals[i]() + 1));
 
 globalThis.gc();
 end = process.memoryUsage().heapUsed;
@@ -21,7 +21,7 @@ console.log(`computed: ${((end - start) / 1024).toFixed(2)} KB`);
 
 start = end;
 
-Array.from({ length: 10000 }, (_, i) => effect(() => computeds[i].get()));
+Array.from({ length: 10000 }, (_, i) => effect(() => computeds[i]()));
 
 globalThis.gc();
 end = process.memoryUsage().heapUsed;
@@ -38,12 +38,12 @@ for (let i = 0; i < w; i++) {
 	let last = src;
 	for (let j = 0; j < h; j++) {
 		const prev = last;
-		last = computed(() => prev.get() + 1);
-		effect(() => last.get());
+		last = computed(() => prev() + 1);
+		effect(() => last());
 	}
 }
 
-src.set(src.get() + 1);
+src(src() + 1);
 
 globalThis.gc();
 end = process.memoryUsage().heapUsed;
