@@ -19,38 +19,48 @@ type WriteableSignal<T> = {
 
 export function createDefaultSystem() {
 	const {
-		drainQueuedEffects,
 		endTrack,
 		isDirty,
+		processInnerEffects,
+		processQueuedEffects,
+		processComputedUpdate,
 		link,
 		propagate,
-		runInnerEffects,
-		shallowPropagate,
 		startTrack,
 	} = createSystem({
 		computed: {
-			is(sub: Subscriber & Dependency): sub is Computed {
+			is(sub): sub is Computed {
 				return 'getter' in sub;
 			},
-			update: updateComputed,
+			update(computed: Computed): boolean {
+				const prevSub = activeSub;
+				activeSub = computed;
+				startTrack(computed);
+				try {
+					const oldValue = computed.currentValue;
+					const newValue = computed.getter(oldValue);
+					if (oldValue !== newValue) {
+						computed.currentValue = newValue;
+						return true;
+					}
+					return false;
+				} finally {
+					activeSub = prevSub;
+					endTrack(computed);
+				}
+			},
 		},
 		effect: {
-			is(sub: Subscriber): sub is Effect {
+			is(sub): sub is Effect {
 				return !('getter' in sub);
 			},
-			notify(effect: Effect): void {
-				const flags = effect.flags;
-				if (
-					flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
-					&& isDirty(effect, flags)
-				) {
-					runEffect(effect);
-					return;
+			notify(e) {
+				if (isDirty(e, e.flags)) {
+					runEffect(e);
+				} else if (e.flags) {
+					processInnerEffects(e, e.flags);
 				}
-				if (flags & SubscriberFlags.InnerEffectsPending) {
-					effect.flags = flags & ~SubscriberFlags.InnerEffectsPending;
-					runInnerEffects(effect.deps!);
-				}
+				return true;
 			},
 		},
 	});
@@ -74,7 +84,7 @@ export function createDefaultSystem() {
 		},
 		endBatch() {
 			if (!--batchDepth) {
-				drainQueuedEffects();
+				processQueuedEffects();
 			}
 		},
 		pauseTracking() {
@@ -130,24 +140,6 @@ export function createDefaultSystem() {
 	//#endregion
 
 	//#region Internal functions
-	function updateComputed(computed: Computed): boolean {
-		const prevSub = activeSub;
-		activeSub = computed;
-		startTrack(computed);
-		try {
-			const oldValue = computed.currentValue;
-			const newValue = computed.getter(oldValue);
-			if (oldValue !== newValue) {
-				computed.currentValue = newValue;
-				return true;
-			}
-			return false;
-		} finally {
-			activeSub = prevSub;
-			endTrack(computed);
-		}
-	}
-
 	function runEffect(e: Effect): void {
 		const prevSub = activeSub;
 		activeSub = e;
@@ -164,16 +156,8 @@ export function createDefaultSystem() {
 	//#region Bound functions
 	function computedGet<T>(this: Computed<T>): T {
 		const flags = this.flags;
-		if (
-			flags & (SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty)
-			&& isDirty(this, flags)
-		) {
-			if (updateComputed(this)) {
-				const subs = this.subs;
-				if (subs !== undefined) {
-					shallowPropagate(subs);
-				}
-			}
+		if (flags) {
+			processComputedUpdate(this, flags);
 		}
 		if (activeSub !== undefined) {
 			link(this, activeSub);
@@ -188,7 +172,7 @@ export function createDefaultSystem() {
 				if (subs !== undefined) {
 					propagate(subs);
 					if (!batchDepth) {
-						drainQueuedEffects();
+						processQueuedEffects();
 					}
 				}
 			}
