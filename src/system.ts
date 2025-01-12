@@ -154,19 +154,14 @@ export function createSystem<
 		}
 	}
 
-	function processInnerEffects(effect: Effect, flags: SubscriberFlags): boolean {
-		if (flags & SubscriberFlags.PendingInnerEffects) {
-			effect.flags = flags & ~SubscriberFlags.PendingInnerEffects;
-			let link = effect.deps!;
-			do {
-				const dep = link.dep;
-				if ('flags' in dep && isEffect(dep)) {
-					notifyEffect(dep);
-				}
-				link = link.nextDep!;
-			} while (link !== undefined);
-		}
-		return false;
+	function processInnerEffects(link: Link): void {
+		do {
+			const dep = link.dep;
+			if ('flags' in dep && isEffect(dep)) {
+				notifyEffect(dep);
+			}
+			link = link.nextDep!;
+		} while (link !== undefined);
 	}
 
 	function isDirty(sub: Subscriber, flags: SubscriberFlags): boolean {
