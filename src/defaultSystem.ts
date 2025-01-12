@@ -55,10 +55,12 @@ export function createDefaultSystem() {
 				return !('getter' in sub);
 			},
 			notify(e) {
-				if (isDirty(e, e.flags)) {
+				const flags = e.flags;
+				if (isDirty(e, flags)) {
 					runEffect(e);
-				} else if (e.flags) {
-					processInnerEffects(e, e.flags);
+				} else if (flags & SubscriberFlags.PendingInnerEffects) {
+					e.flags &= ~SubscriberFlags.PendingInnerEffects;
+					processInnerEffects(e.deps!);
 				}
 				return true;
 			},
