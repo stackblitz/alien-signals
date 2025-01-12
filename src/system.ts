@@ -157,7 +157,7 @@ export function createSystem<
 	function processInnerEffects(link: Link): void {
 		do {
 			const dep = link.dep;
-			if ('flags' in dep && isEffect(dep)) {
+			if ('flags' in dep && dep.flags && isEffect(dep)) {
 				notifyEffect(dep);
 			}
 			link = link.nextDep!;
