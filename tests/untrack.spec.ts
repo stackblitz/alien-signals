@@ -1,7 +1,5 @@
-import { getDefaultSystem } from '../src';
 import { expect, test } from 'vitest';
-
-const { signal, pauseTracking, resumeTracking, computed } = getDefaultSystem();
+import { computed, pauseTracking, resumeTracking, signal } from '../src';
 
 test('should pause tracking', () => {
 	const src = signal(0);
