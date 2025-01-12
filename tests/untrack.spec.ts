@@ -3,7 +3,7 @@ import { expect, test } from 'vitest';
 
 const { signal, pauseTracking, resumeTracking, computed } = getDefaultSystem();
 
-test('should parse tracking', () => {
+test('should pause tracking', () => {
 	const src = signal(0);
 	const c = computed(() => {
 		pauseTracking();

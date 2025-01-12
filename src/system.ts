@@ -26,10 +26,10 @@ export const enum SubscriberFlags {
 	Tracking = 1 << 0,
 	Notified = 1 << 1,
 	Recursed = 1 << 2,
-	PendingInnerEffects = 1 << 3,
+	InnerEffectsPending = 1 << 3,
 	CheckRequired = 1 << 4,
 	Dirty = 1 << 5,
-	Propagated = PendingInnerEffects | CheckRequired | Dirty,
+	Propagated = InnerEffectsPending | CheckRequired | Dirty,
 }
 
 export function createSystem<
@@ -54,8 +54,8 @@ export function createSystem<
 		notify(effect: Effect): boolean;
 	},
 }) {
-	let queuedEffects: Effect | undefined;
-	let queuedEffectsTail: Effect | undefined;
+	let pendingEffects: Effect | undefined;
+	let pendingEffectsTail: Effect | undefined;
 	let linkPool: Link | undefined;
 
 	return {
@@ -65,10 +65,14 @@ export function createSystem<
 		endTrack,
 		isDirty,
 		processComputedUpdate,
-		processInnerEffects,
-		processQueuedEffects,
+		processPendingInnerEffects,
+		processEffectNotifications,
 	};
 
+	/**
+	 * Link a dependency to a subscriber.
+	 * @returns `true` if the link is new.
+	 */
 	function link(dep: Dependency, sub: Subscriber): boolean {
 		const currentDep = sub.depsTail;
 		if (
@@ -136,17 +140,17 @@ export function createSystem<
 		dep.subsTail = newLink;
 	}
 
-	function processQueuedEffects(): void {
-		while (queuedEffects !== undefined) {
-			const effect = queuedEffects;
+	function processEffectNotifications(): void {
+		while (pendingEffects !== undefined) {
+			const effect = pendingEffects;
 			const depsTail = effect.depsTail!;
 			const queuedNext = depsTail.nextDep;
 			if (queuedNext !== undefined) {
 				depsTail.nextDep = undefined;
-				queuedEffects = queuedNext.sub as Effect;
+				pendingEffects = queuedNext.sub as Effect;
 			} else {
-				queuedEffects = undefined;
-				queuedEffectsTail = undefined;
+				pendingEffects = undefined;
+				pendingEffectsTail = undefined;
 			}
 			if (!notifyEffect(effect)) {
 				effect.flags &= ~SubscriberFlags.Notified;
@@ -154,7 +158,10 @@ export function createSystem<
 		}
 	}
 
-	function processInnerEffects(link: Link): void {
+	/**
+	 * Process pending effects. This function should be called when subscriber flags include `InnerEffectsPending`.
+	 */
+	function processPendingInnerEffects(link: Link): void {
 		do {
 			const dep = link.dep;
 			if ('flags' in dep && dep.flags && isEffect(dep)) {
@@ -290,12 +297,12 @@ export function createSystem<
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
 				if (!(subFlags & SubscriberFlags.Notified)) {
 					if (isEffect(sub)) {
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.depsTail!.nextDep = sub.deps;
+						if (pendingEffectsTail !== undefined) {
+							pendingEffectsTail.depsTail!.nextDep = sub.deps;
 						} else {
-							queuedEffects = sub;
+							pendingEffects = sub;
 						}
-						queuedEffectsTail = sub;
+						pendingEffectsTail = sub;
 					}
 				}
 			}
@@ -342,29 +349,29 @@ export function createSystem<
 					} else {
 						link = subSubs;
 						targetFlag = isEffect(sub)
-							? SubscriberFlags.PendingInnerEffects
+							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.CheckRequired;
 					}
 					continue;
 				}
 				if (isEffect(sub)) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail.depsTail!.nextDep = sub.deps;
+					if (pendingEffectsTail !== undefined) {
+						pendingEffectsTail.depsTail!.nextDep = sub.deps;
 					} else {
-						queuedEffects = sub;
+						pendingEffects = sub;
 					}
-					queuedEffectsTail = sub;
+					pendingEffectsTail = sub;
 				}
 			} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 				if (!(subFlags & SubscriberFlags.Notified)) {
 					if (isEffect(sub)) {
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.depsTail!.nextDep = sub.deps;
+						if (pendingEffectsTail !== undefined) {
+							pendingEffectsTail.depsTail!.nextDep = sub.deps;
 						} else {
-							queuedEffects = sub;
+							pendingEffects = sub;
 						}
-						queuedEffectsTail = sub;
+						pendingEffectsTail = sub;
 					}
 				}
 			} else if (
@@ -402,12 +409,15 @@ export function createSystem<
 		} while (true);
 	}
 
-	function _isValidLink(subLink: Link, sub: Subscriber): boolean {
+	/**
+	 * Check if `sub.deps` include the given checkLink.
+	 */
+	function _isValidLink(checkLink: Link, sub: Subscriber): boolean {
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
 			let link = sub.deps!;
 			do {
-				if (link === subLink) {
+				if (link === checkLink) {
 					return true;
 				}
 				if (link === depsTail) {
