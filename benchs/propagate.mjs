@@ -1,7 +1,5 @@
-import { run, bench, boxplot } from 'mitata';
-import { getDefaultSystem } from '../esm/index.mjs';
-
-const { computed, effect, signal } = getDefaultSystem();
+import { bench, boxplot, run } from 'mitata';
+import { computed, effect, signal } from '../esm/index.mjs';
 
 boxplot(() => {
 	bench('propagate: $w * $h', function* (state) {
