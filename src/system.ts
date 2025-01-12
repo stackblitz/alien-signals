@@ -164,12 +164,35 @@ export function createSystem<
 		} while (link !== undefined);
 	}
 
+	function processComputedUpdate(computed: Computed, flags: SubscriberFlags): void {
+		if (flags & SubscriberFlags.Dirty) {
+			if (updateComputed(computed)) {
+				const subs = computed.subs;
+				if (subs !== undefined) {
+					_shallowPropagate(subs);
+				}
+			}
+		}
+		else if (flags & SubscriberFlags.CheckRequired) {
+			if (_checkDirty(computed.deps!)) {
+				if (updateComputed(computed)) {
+					const subs = computed.subs;
+					if (subs !== undefined) {
+						_shallowPropagate(subs);
+					}
+				}
+			} else {
+				computed.flags &= ~SubscriberFlags.CheckRequired;
+			}
+		}
+	}
+
 	function isDirty(sub: Subscriber, flags: SubscriberFlags): boolean {
 		if (flags & SubscriberFlags.Dirty) {
 			return true;
 		}
 		else if (flags & SubscriberFlags.CheckRequired) {
-			if (checkDirty(sub.deps!)) {
+			if (_checkDirty(sub.deps!)) {
 				sub.flags = flags | SubscriberFlags.Dirty;
 				return true;
 			} else {
@@ -179,31 +202,8 @@ export function createSystem<
 		return false;
 	}
 
-	function processComputedUpdate(computed: Computed, flags: SubscriberFlags): void {
-		if (flags & SubscriberFlags.Dirty) {
-			if (updateComputed(computed)) {
-				const subs = computed.subs;
-				if (subs !== undefined) {
-					shallowPropagate(subs);
-				}
-			}
-		}
-		else if (flags & SubscriberFlags.CheckRequired) {
-			if (checkDirty(computed.deps!)) {
-				if (updateComputed(computed)) {
-					const subs = computed.subs;
-					if (subs !== undefined) {
-						shallowPropagate(subs);
-					}
-				}
-			} else {
-				computed.flags &= ~SubscriberFlags.CheckRequired;
-			}
-		}
-	}
-
 	// See https://github.com/stackblitz/alien-signals#about-propagate-and-checkdirty-functions
-	function checkDirty(link: Link): boolean {
+	function _checkDirty(link: Link): boolean {
 		let stack = 0;
 		let dirty: boolean;
 
@@ -217,7 +217,7 @@ export function createSystem<
 					if (isComputed(dep) && updateComputed(dep)) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {
-							shallowPropagate(subs);
+							_shallowPropagate(subs);
 						}
 						dirty = true;
 					}
@@ -249,7 +249,7 @@ export function createSystem<
 						if (updateComputed(sub)) {
 							if ((link = subSubs.prevSub!) !== undefined) {
 								subSubs.prevSub = undefined;
-								shallowPropagate(sub.subs!);
+								_shallowPropagate(sub.subs!);
 								sub = link.sub as Computed;
 							} else {
 								sub = subSubs.sub as Computed;
@@ -282,7 +282,7 @@ export function createSystem<
 		} while (true);
 	}
 
-	function shallowPropagate(link: Link): void {
+	function _shallowPropagate(link: Link): void {
 		do {
 			const sub = link.sub;
 			const subFlags = sub.flags;
