@@ -23,39 +23,26 @@ export interface Link {
 
 export const enum SubscriberFlags {
 	None = 0,
-	Tracking = 1 << 0,
-	Notified = 1 << 1,
-	Recursed = 1 << 2,
-	InnerEffectsPending = 1 << 3,
-	CheckRequired = 1 << 4,
-	Dirty = 1 << 5,
+	IsComputed = 1 << 0,
+	IsEffect = 1 << 1,
+	Tracking = 1 << 2,
+	Notified = 1 << 3,
+	Recursed = 1 << 4,
+	InnerEffectsPending = 1 << 5,
+	CheckRequired = 1 << 6,
+	Dirty = 1 << 7,
 	Propagated = InnerEffectsPending | CheckRequired | Dirty,
 }
 
-export function createSystem<
-	Computed extends Dependency & Subscriber,
-	Effect extends Subscriber
->({
-	computed: {
-		is: isComputed,
-		update: updateComputed,
-	},
-	effect: {
-		is: isEffect,
-		notify: notifyEffect,
-	},
+export function createSystem({
+	updateComputed,
+	notifyEffect,
 }: {
-	computed: {
-		is(sub: Dependency & Subscriber): sub is Computed;
-		update(computed: Computed): boolean;
-	},
-	effect: {
-		is(sub: Subscriber): sub is Effect;
-		notify(effect: Effect): boolean;
-	},
+	updateComputed(computed: Dependency & Subscriber): boolean;
+	notifyEffect(effect: Subscriber): boolean;
 }) {
-	let pendingEffects: Effect | undefined;
-	let pendingEffectsTail: Effect | undefined;
+	let pendingEffects: Subscriber | undefined;
+	let pendingEffectsTail: Subscriber | undefined;
 	let linkPool: Link | undefined;
 
 	return {
@@ -147,7 +134,7 @@ export function createSystem<
 			const queuedNext = depsTail.nextDep;
 			if (queuedNext !== undefined) {
 				depsTail.nextDep = undefined;
-				pendingEffects = queuedNext.sub as Effect;
+				pendingEffects = queuedNext.sub;
 			} else {
 				pendingEffects = undefined;
 				pendingEffectsTail = undefined;
@@ -164,14 +151,18 @@ export function createSystem<
 	function processPendingInnerEffects(link: Link): void {
 		do {
 			const dep = link.dep;
-			if ('flags' in dep && dep.flags && isEffect(dep)) {
+			if (
+				'flags' in dep
+				&& dep.flags & SubscriberFlags.IsEffect
+				&& dep.flags & SubscriberFlags.Propagated
+			) {
 				notifyEffect(dep);
 			}
 			link = link.nextDep!;
 		} while (link !== undefined);
 	}
 
-	function processComputedUpdate(computed: Computed, flags: SubscriberFlags): void {
+	function processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
 		if (flags & SubscriberFlags.Dirty) {
 			if (updateComputed(computed)) {
 				const subs = computed.subs;
@@ -220,24 +211,22 @@ export function createSystem<
 
 			if ('flags' in dep) {
 				const depFlags = dep.flags;
-				if (depFlags & SubscriberFlags.Dirty) {
-					if (isComputed(dep) && updateComputed(dep)) {
+				if ((depFlags & (SubscriberFlags.IsComputed | SubscriberFlags.Dirty)) === (SubscriberFlags.IsComputed | SubscriberFlags.Dirty)) {
+					if (updateComputed(dep)) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {
 							_shallowPropagate(subs);
 						}
 						dirty = true;
 					}
-				} else if (depFlags & SubscriberFlags.CheckRequired) {
-					if (isComputed(dep)) {
-						const depSubs = dep.subs!;
-						if (depSubs.nextSub !== undefined) {
-							depSubs.prevSub = link;
-						}
-						link = dep.deps!;
-						++stack;
-						continue;
+				} else if ((depFlags & (SubscriberFlags.IsComputed | SubscriberFlags.CheckRequired)) === (SubscriberFlags.IsComputed | SubscriberFlags.CheckRequired)) {
+					const depSubs = dep.subs!;
+					if (depSubs.nextSub !== undefined) {
+						depSubs.prevSub = link;
 					}
+					link = dep.deps!;
+					++stack;
+					continue;
 				}
 			}
 
@@ -247,7 +236,7 @@ export function createSystem<
 			}
 
 			if (stack) {
-				let sub = link.sub as Computed;
+				let sub = link.sub as Dependency & Subscriber;
 				do {
 					--stack;
 					const subSubs = sub.subs!;
@@ -257,9 +246,9 @@ export function createSystem<
 							if ((link = subSubs.prevSub!) !== undefined) {
 								subSubs.prevSub = undefined;
 								_shallowPropagate(sub.subs!);
-								sub = link.sub as Computed;
+								sub = link.sub as Dependency & Subscriber;
 							} else {
-								sub = subSubs.sub as Computed;
+								sub = subSubs.sub as Dependency & Subscriber;
 							}
 							continue;
 						}
@@ -273,12 +262,12 @@ export function createSystem<
 							link = link.nextDep;
 							continue top;
 						}
-						sub = link.sub as Computed;
+						sub = link.sub as Dependency & Subscriber;
 					} else {
 						if ((link = subSubs.nextDep!) !== undefined) {
 							continue top;
 						}
-						sub = subSubs.sub as Computed;
+						sub = subSubs.sub as Dependency & Subscriber;
 					}
 
 					dirty = false;
@@ -295,15 +284,13 @@ export function createSystem<
 			const subFlags = sub.flags;
 			if ((subFlags & (SubscriberFlags.CheckRequired | SubscriberFlags.Dirty)) === SubscriberFlags.CheckRequired) {
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
-				if (!(subFlags & SubscriberFlags.Notified)) {
-					if (isEffect(sub)) {
-						if (pendingEffectsTail !== undefined) {
-							pendingEffectsTail.depsTail!.nextDep = sub.deps;
-						} else {
-							pendingEffects = sub;
-						}
-						pendingEffectsTail = sub;
+				if ((subFlags & (SubscriberFlags.IsEffect | SubscriberFlags.Notified)) === SubscriberFlags.IsEffect) {
+					if (pendingEffectsTail !== undefined) {
+						pendingEffectsTail.depsTail!.nextDep = sub.deps;
+					} else {
+						pendingEffects = sub;
 					}
+					pendingEffectsTail = sub;
 				}
 			}
 			link = link.nextSub!;
@@ -348,13 +335,13 @@ export function createSystem<
 						++stack;
 					} else {
 						link = subSubs;
-						targetFlag = isEffect(sub)
+						targetFlag = subFlags & SubscriberFlags.IsEffect
 							? SubscriberFlags.InnerEffectsPending
 							: SubscriberFlags.CheckRequired;
 					}
 					continue;
 				}
-				if (isEffect(sub)) {
+				if (subFlags & SubscriberFlags.IsEffect) {
 					if (pendingEffectsTail !== undefined) {
 						pendingEffectsTail.depsTail!.nextDep = sub.deps;
 					} else {
@@ -364,15 +351,13 @@ export function createSystem<
 				}
 			} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
-				if (!(subFlags & SubscriberFlags.Notified)) {
-					if (isEffect(sub)) {
-						if (pendingEffectsTail !== undefined) {
-							pendingEffectsTail.depsTail!.nextDep = sub.deps;
-						} else {
-							pendingEffects = sub;
-						}
-						pendingEffectsTail = sub;
+				if ((subFlags & (SubscriberFlags.IsEffect | SubscriberFlags.Notified)) === SubscriberFlags.IsEffect) {
+					if (pendingEffectsTail !== undefined) {
+						pendingEffectsTail.depsTail!.nextDep = sub.deps;
+					} else {
+						pendingEffects = sub;
 					}
+					pendingEffectsTail = sub;
 				}
 			} else if (
 				!(subFlags & targetFlag)

@@ -29,42 +29,32 @@ const {
 	propagate,
 	startTrack,
 } = createSystem({
-	computed: {
-		is(sub): sub is Computed {
-			return 'getter' in sub;
-		},
-		update(computed: Computed): boolean {
-			const prevSub = activeSub;
-			activeSub = computed;
-			startTrack(computed);
-			try {
-				const oldValue = computed.currentValue;
-				const newValue = computed.getter(oldValue);
-				if (oldValue !== newValue) {
-					computed.currentValue = newValue;
-					return true;
-				}
-				return false;
-			} finally {
-				activeSub = prevSub;
-				endTrack(computed);
+	updateComputed(computed: Computed): boolean {
+		const prevSub = activeSub;
+		activeSub = computed;
+		startTrack(computed);
+		try {
+			const oldValue = computed.currentValue;
+			const newValue = computed.getter(oldValue);
+			if (oldValue !== newValue) {
+				computed.currentValue = newValue;
+				return true;
 			}
-		},
+			return false;
+		} finally {
+			activeSub = prevSub;
+			endTrack(computed);
+		}
 	},
-	effect: {
-		is(sub): sub is Effect {
-			return !('getter' in sub);
-		},
-		notify(e) {
-			const flags = e.flags;
-			if (isDirty(e, flags)) {
-				runEffect(e);
-			} else if (flags & SubscriberFlags.InnerEffectsPending) {
-				e.flags &= ~SubscriberFlags.InnerEffectsPending;
-				processPendingInnerEffects(e.deps!);
-			}
-			return true;
-		},
+	notifyEffect(e: Effect) {
+		const flags = e.flags;
+		if (isDirty(e, flags)) {
+			runEffect(e);
+		} else if (flags & SubscriberFlags.InnerEffectsPending) {
+			e.flags &= ~SubscriberFlags.InnerEffectsPending;
+			processPendingInnerEffects(e.deps!);
+		}
+		return true;
 	},
 });
 const pauseStack: (Subscriber | undefined)[] = [];
@@ -109,7 +99,7 @@ export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Dirty,
+		flags: SubscriberFlags.IsComputed | SubscriberFlags.Dirty,
 		getter: getter as (cachedValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -121,7 +111,7 @@ export function effect<T>(fn: () => T): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.None,
+		flags: SubscriberFlags.IsEffect,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);

@@ -1,6 +1,4 @@
-import { getDefaultSystem } from '../esm/index.mjs';
-
-const { signal, computed, effect } = getDefaultSystem();
+import { computed, effect, signal } from '../esm/index.mjs';
 
 globalThis.gc();
 let start = process.memoryUsage().heapUsed;
