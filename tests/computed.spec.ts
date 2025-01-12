@@ -1,7 +1,5 @@
 import { expect, test } from 'vitest';
-import { getDefaultSystem } from '../src';
-
-const { signal, computed } = getDefaultSystem();
+import { computed, signal } from '../src';
 
 test('should correctly propagate changes through computed signals', () => {
 	const src = signal(0);

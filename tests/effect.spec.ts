@@ -1,7 +1,5 @@
 import { expect, test } from 'vitest';
-import { getDefaultSystem } from '../src';
-
-const { computed, effect, endBatch, signal, startBatch } = getDefaultSystem();
+import { computed, effect, endBatch, signal, startBatch } from '../src';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
