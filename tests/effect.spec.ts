@@ -78,7 +78,7 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 		effect(() => {
 			b();
 			innerTriggerTimes++;
-			if (innerTriggerTimes > 1) {
+			if (innerTriggerTimes >= 2) {
 				throw new Error("bad");
 			}
 		});
