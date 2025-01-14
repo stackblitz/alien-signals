@@ -3,6 +3,7 @@ export * from './system.js';
 import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
 
 interface Effect extends Subscriber, Dependency {
+	isScope?: true;
 	fn(): void;
 }
 
@@ -49,10 +50,13 @@ const {
 	notifyEffect(e: Effect) {
 		const flags = e.flags;
 		if (
-			flags & SubscriberFlags.Dirty
-			|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
+			!e.isScope
+			&& (
+				flags & SubscriberFlags.Dirty
+				|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
+			)
 		) {
-			executeEffect(e);
+			runEffect(e);
 		} else {
 			processPendingInnerEffects(e, e.flags);
 		}
@@ -63,6 +67,7 @@ const pauseStack: (Subscriber | undefined)[] = [];
 
 let batchDepth = 0;
 let activeSub: Subscriber | undefined;
+let activeScope: Subscriber | undefined;
 
 //#region Public functions
 export function startBatch() {
@@ -117,14 +122,33 @@ export function effect<T>(fn: () => T): () => void {
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
+	} else if (activeScope !== undefined) {
+		link(e, activeScope);
 	}
-	executeEffect(e);
+	runEffect(e);
+	return effectStop.bind(e);
+}
+
+export function effectScope<T>(fn: () => T): () => void {
+	const e: Effect = {
+		fn,
+		subs: undefined,
+		subsTail: undefined,
+		deps: undefined,
+		depsTail: undefined,
+		flags: SubscriberFlags.Effect,
+		isScope: true,
+	};
+	if (activeSub !== undefined) {
+		link(e, activeSub);
+	}
+	runEffectScope(e);
 	return effectStop.bind(e);
 }
 //#endregion
 
 //#region Internal functions
-function executeEffect(e: Effect): void {
+function runEffect(e: Effect): void {
 	const prevSub = activeSub;
 	activeSub = e;
 	startTracking(e);
@@ -132,6 +156,18 @@ function executeEffect(e: Effect): void {
 		e.fn();
 	} finally {
 		activeSub = prevSub;
+		endTracking(e);
+	}
+}
+
+function runEffectScope(e: Effect): void {
+	const prevSub = activeScope;
+	activeScope = e;
+	startTracking(e);
+	try {
+		e.fn();
+	} finally {
+		activeScope = prevSub;
 		endTracking(e);
 	}
 }
@@ -145,6 +181,8 @@ function computedGetter<T>(this: Computed<T>): T {
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
+	} else if (activeScope !== undefined) {
+		link(this, activeScope);
 	}
 	return this.currentValue!;
 }

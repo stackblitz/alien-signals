@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, endBatch, signal, startBatch } from '../src';
+import { computed, effect, effectScope, endBatch, signal, startBatch } from '../src';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
@@ -114,4 +114,72 @@ test('should trigger inner effects in sequence', () => {
 	endBatch();
 
 	expect(order).toEqual(['first inner', 'last inner']);
+});
+
+test('should trigger inner effects in sequence in effect scope', () => {
+	const a = signal(0);
+	const b = signal(0);
+	const order: string[] = [];
+
+	effectScope(() => {
+
+		effect(() => {
+			order.push('first inner');
+			a();
+		});
+
+		effect(() => {
+			order.push('last inner');
+			a();
+			b();
+		});
+	});
+
+	order.length = 0;
+
+	startBatch();
+	b(1);
+	a(1);
+	endBatch();
+
+	expect(order).toEqual(['first inner', 'last inner']);
+});
+
+test('should custom effect support batch', () => {
+	function batchEffect(fn: () => void) {
+		return effect(() => {
+			startBatch();
+			try {
+				return fn();
+			} finally {
+				endBatch();
+			}
+		});
+	}
+
+	const logs: string[] = [];
+	const a = signal(0);
+	const b = signal(0);
+
+	const aa = computed(() => {
+		logs.push('aa-0');
+		if (a() === 0) {
+			b(1);
+		}
+		logs.push('aa-1');
+	});
+
+	const bb = computed(() => {
+		logs.push('bb');
+		return b();
+	});
+
+	batchEffect(() => {
+		bb();
+	});
+	batchEffect(() => {
+		aa();
+	});
+
+	expect(logs).toEqual(['bb', 'aa-0', 'aa-1', 'bb']);
 });
