@@ -22,7 +22,6 @@ export interface Link {
 }
 
 export const enum SubscriberFlags {
-	None = 0,
 	Computed = 1 << 0,
 	Effect = 1 << 1,
 	Tracking = 1 << 2,
