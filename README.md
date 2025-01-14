@@ -6,82 +6,85 @@
 	<a href="https://npmjs.com/package/alien-signals"><img src="https://badgen.net/npm/v/alien-signals" alt="npm package"></a>
 </p>
 
-<h3 align="center">
-    <p>[<a href="https://github.com/YanqingXu/alien-signals-in-lua">Alien Signals in Lua</a>]</p>
-    <p>[<a href="https://github.com/medz/alien-signals-dart">Alien Signals in Dart</a>]</p>
-    <p>[<a href="https://github.com/Rajaniraiyn/react-alien-signals">React Binding</a>]</p>
-</h3>
+## Derived Projects
+
+- [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua): Lua implementation of alien-signals
+- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): alien-signals Dart implementation of alien-signals
+- [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
+- [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 
 # alien-signals
 
-The goal of `alien-signals` is to create a ~~push-pull~~ [push-pull-push model](https://github.com/stackblitz/alien-signals/pull/19) based signal library with the lowest overhead.
+This project explores a push-pull based signal algorithm. Its current implementation is similar to or related to certain other frontend projects:
 
-We have set the following constraints in scheduling logic:
+- Propagation algorithm of Vue 3
+- Preact’s double-linked-list approach (https://preactjs.com/blog/signal-boosting/)
+- Inner effects scheduling of Svelte
+- Graph-coloring approach of Reactively (https://milomg.dev/2022-12-01/reactivity)
 
-1. No dynamic object fields
-2. No use of Array/Set/Map
-3. No recursion calls
-4. Class properties must be fewer than 10 (https://v8.dev/blog/fast-properties)
+We impose some constraints (such as not using Array/Set/Map and disallowing function recursion) to ensure performance. We found that under these conditions, maintaining algorithmic simplicity offers more significant improvements than complex scheduling strategies.
 
-Experimental results have shown that with these constraints, it is possible to achieve excellent performance for a Signal library without using sophisticated scheduling strategies. The overall performance of `alien-signals` is approximately 400% that of Vue 3.4's reactivity system.
+Even though Vue 3.4 is already optimized, alien-signals is still noticeably faster. (I wrote code for both, and since they share similar algorithms, they’re quite comparable.)
 
-For more detailed performance comparisons, please visit: https://github.com/transitive-bullshit/js-reactivity-benchmark
+<img width="1210" alt="Image" src="https://github.com/user-attachments/assets/88448f6d-4034-4389-89aa-9edf3da77254" />
 
-## Motivation
+## Background
 
-To achieve high-performance code generation in https://github.com/vuejs/language-tools, I needed to write some on-demand computed logic using Signals, but I couldn't find a low-cost Signal library that satisfied me.
+I spent considerable time [optimizing Vue 3.4’s reactivity system](https://github.com/vuejs/core/pull/5912), gaining experience along the way. Since Vue 3.5 [switched to a pull-based algorithm similar to Preact](https://github.com/vuejs/core/pull/10397), I decided to continue researching a push-pull based implementation in a separate project. Our end goal is to implement fully incremental AST parsing and virtual code generation in Vue language tools, based on alien-signals.
 
-In the past, I accumulated some knowledge of reactivity systems in https://github.com/vuejs/core/pull/5912, so I attempted to develop `alien-signals` with the goal of creating a Signal library with minimal memory usage and excellent performance.
+## Adoption
 
-Since Vue 3.5 switched to a Pull reactivity system in https://github.com/vuejs/core/pull/10397, I continued to research the Push-Pull reactivity system here. It is worth mentioning that I was inspired by the doubly-linked concept, but `alien-signals` does not use a similar implementation.
-
-## Adoptions
-
-- Used in Vue language tools (https://github.com/vuejs/language-tools) for virtual code generation.
-
-- The core reactivity system code was ported to Vue 3.6 and later. (https://github.com/vuejs/core/pull/12349)
+- [vuejs/core](https://github.com/vuejs/core): The core algorithm has been ported to 3.6 or higher (PR：https://github.com/vuejs/core/pull/12349)
+- [vuejs/language-tools](https://github.com/vuejs/language-tools): Used in the language-core package for virtual code generation
 
 ## Usage
 
-### Basic
+#### Basic APIs
 
 ```ts
 import { signal, computed, effect } from 'alien-signals';
 
 const count = signal(1);
-const doubleCount = computed(() => count.get() * 2);
+const doubleCount = computed(() => count() * 2);
 
 effect(() => {
-  console.log(`Count is: ${count.get()}`);
+  console.log(`Count is: ${count()}`);
 }); // Console: Count is: 1
 
-console.log(doubleCount.get()); // 2
+console.log(doubleCount()); // 2
 
-count.set(2); // Console: Count is: 2
+count(2); // Console: Count is: 2
 
-console.log(doubleCount.get()); // 4
+console.log(doubleCount()); // 4
 ```
 
-### Effect Scope
+#### Effect Scope
 
 ```ts
 import { signal, effectScope } from 'alien-signals';
 
 const count = signal(1);
-const scope = effectScope();
 
-scope.run(() => {
+const stopScope = effectScope(() => {
   effect(() => {
-    console.log(`Count in scope: ${count.get()}`);
+    console.log(`Count in scope: ${count()}`);
   }); // Console: Count in scope: 1
 
-  count.set(2); // Console: Count in scope: 2
+  count(2); // Console: Count in scope: 2
 });
 
-scope.stop();
+stopScope();
 
-count.set(3); // No console output
+count(3); // No console output
 ```
+
+#### Creating Your Own Public API
+
+You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to build your own signal API. For implementation examples, see:
+
+- https://github.com/stackblitz/alien-signals/blob/master/src/index.ts
+- https://github.com/proposal-signals/signal-polyfill/pull/44
+
 
 ## About `propagate` and `checkDirty` functions
 
@@ -92,25 +95,26 @@ This results in code that is difficult to understand, and you don't necessarily 
 #### `propagate`
 
 ```ts
-export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFlags.Dirty): void {
+function propagate(link: Link, targetFlag = SubscriberFlags.Dirty): void {
 	do {
 		const sub = link.sub;
 		const subFlags = sub.flags;
 
 		if (
 			(
-				!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
-				&& (sub.flags = subFlags | targetFlag, true)
+				!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))
+				&& (sub.flags = subFlags | targetFlag | SubscriberFlags.Notified, true)
 			)
 			|| (
-				(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed)) === SubscriberFlags.Recursed
-				&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
+				(subFlags & SubscriberFlags.Recursed)
+				&& !(subFlags & SubscriberFlags.Tracking)
+				&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified, true)
 			)
 			|| (
-				!(subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
+				!(subFlags & SubscriberFlags.Propagated)
 				&& isValidLink(link, sub)
 				&& (
-					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag,
+					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified,
 					(sub as Dependency).subs !== undefined
 				)
 			)
@@ -119,57 +123,60 @@ export function propagate(link: Link, targetFlag: SubscriberFlags = SubscriberFl
 			if (subSubs !== undefined) {
 				propagate(
 					subSubs,
-					isEffect(sub)
-						? SubscriberFlags.InnerEffectsPending
-						: SubscriberFlags.ToCheckDirty
+					subFlags & SubscriberFlags.Effect
+						? SubscriberFlags.PendingEffect
+						: SubscriberFlags.PendingComputed
 				);
-			} else if (isEffect(sub)) {
+			} else if (subFlags & SubscriberFlags.Effect) {
 				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail.nextNotify = sub;
+					queuedEffectsTail.depsTail!.nextDep = sub.deps;
+				} else {
+					queuedEffects = sub;
+				}
+				queuedEffectsTail = sub;
+			}
+		} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
+			sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
+			if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
+				if (queuedEffectsTail !== undefined) {
+					queuedEffectsTail.depsTail!.nextDep = sub.deps;
 				} else {
 					queuedEffects = sub;
 				}
 				queuedEffectsTail = sub;
 			}
 		} else if (
-			!(subFlags & (SubscriberFlags.Tracking | targetFlag))
-			|| (
-				!(subFlags & targetFlag)
-				&& (subFlags & (SubscriberFlags.InnerEffectsPending | SubscriberFlags.ToCheckDirty | SubscriberFlags.Dirty))
-				&& isValidLink(link, sub)
-			)
+			!(subFlags & targetFlag)
+			&& (subFlags & SubscriberFlags.Propagated)
+			&& isValidLink(link, sub)
 		) {
 			sub.flags = subFlags | targetFlag;
 		}
 
 		link = link.nextSub!;
 	} while (link !== undefined);
-
-	if (targetFlag === SubscriberFlags.Dirty && !batchDepth) {
-		drainQueuedEffects();
-	}
 }
 ```
 
 #### `checkDirty`
 
 ```ts
-export function checkDirty(link: Link): boolean {
+function checkDirty(link: Link): boolean {
 	do {
 		const dep = link.dep;
 		if ('flags' in dep) {
 			const depFlags = dep.flags;
-			if (depFlags & SubscriberFlags.Dirty) {
-				if (isComputed(dep) && updateComputed(dep)) {
+			if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
+				if (updateComputed(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
 					}
 					return true;
 				}
-			} else if (depFlags & SubscriberFlags.ToCheckDirty) {
-				if (isComputed(dep) && checkDirty(dep.deps!)) {
-					if (dep.update()) {
+			} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
+				if (checkDirty(dep.deps!)) {
+					if (updateComputed(dep)) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {
 							shallowPropagate(subs);
@@ -177,7 +184,7 @@ export function checkDirty(link: Link): boolean {
 						return true;
 					}
 				} else {
-					dep.flags = depFlags & ~SubscriberFlags.ToCheckDirty;
+					dep.flags = depFlags & ~SubscriberFlags.PendingComputed;
 				}
 			}
 		}
@@ -187,12 +194,3 @@ export function checkDirty(link: Link): boolean {
 	return false;
 }
 ```
-
-## Roadmap
-
-| Version | Savings                                                                                       |
-|---------|-----------------------------------------------------------------------------------------------|
-| 0.3     | Satisfy all 4 constraints                                                                     |
-| 0.2     | Correctly schedule computed side effects                                                      |
-| 0.1     | Correctly schedule inner effect callbacks                                                     |
-| 0.0     | Add APIs: `signal()`, `computed()`, `effect()`, `effectScope()`, `startBatch()`, `endBatch()` |
