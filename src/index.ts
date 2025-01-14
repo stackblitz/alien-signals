@@ -1,6 +1,6 @@
 export * from './system.js';
 
-import { createSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
+import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
 
 interface Effect extends Subscriber, Dependency {
 	fn(): void;
@@ -20,19 +20,19 @@ type WriteableSignal<T> = {
 };
 
 const {
-	endTrack,
-	isDirty,
-	processPendingInnerEffects,
-	processEffectNotifications,
-	processComputedUpdate,
 	link,
 	propagate,
-	startTrack,
-} = createSystem({
+	updateDirtyFlag,
+	startTracking,
+	endTracking,
+	processEffectNotifications,
+	processComputedUpdate,
+	processPendingInnerEffects,
+} = createReactiveSystem({
 	updateComputed(computed: Computed): boolean {
 		const prevSub = activeSub;
 		activeSub = computed;
-		startTrack(computed);
+		startTracking(computed);
 		try {
 			const oldValue = computed.currentValue;
 			const newValue = computed.getter(oldValue);
@@ -43,16 +43,18 @@ const {
 			return false;
 		} finally {
 			activeSub = prevSub;
-			endTrack(computed);
+			endTracking(computed);
 		}
 	},
 	notifyEffect(e: Effect) {
 		const flags = e.flags;
-		if (isDirty(e, flags)) {
-			runEffect(e);
-		} else if (flags & SubscriberFlags.InnerEffectsPending) {
-			e.flags &= ~SubscriberFlags.InnerEffectsPending;
-			processPendingInnerEffects(e.deps!);
+		if (
+			flags & SubscriberFlags.Dirty
+			|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
+		) {
+			executeEffect(e);
+		} else {
+			processPendingInnerEffects(e, e.flags);
 		}
 		return true;
 	},
@@ -85,7 +87,7 @@ export function resumeTracking() {
 export function signal<T>(): WriteableSignal<T | undefined>;
 export function signal<T>(oldValue: T): WriteableSignal<T>;
 export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
-	return signalGetSet.bind({
+	return signalGetterSetter.bind({
 		currentValue: oldValue,
 		subs: undefined,
 		subsTail: undefined,
@@ -93,13 +95,13 @@ export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 }
 
 export function computed<T>(getter: (cachedValue?: T) => T): () => T {
-	return computedGet.bind({
+	return computedGetter.bind({
 		currentValue: undefined,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.IsComputed | SubscriberFlags.Dirty,
+		flags: SubscriberFlags.Computed | SubscriberFlags.Dirty,
 		getter: getter as (cachedValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -111,34 +113,34 @@ export function effect<T>(fn: () => T): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.IsEffect,
+		flags: SubscriberFlags.Effect,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
 	}
-	runEffect(e);
+	executeEffect(e);
 	return effectStop.bind(e);
 }
 //#endregion
 
 //#region Internal functions
-function runEffect(e: Effect): void {
+function executeEffect(e: Effect): void {
 	const prevSub = activeSub;
 	activeSub = e;
-	startTrack(e);
+	startTracking(e);
 	try {
 		e.fn();
 	} finally {
 		activeSub = prevSub;
-		endTrack(e);
+		endTracking(e);
 	}
 }
 //#endregion
 
 //#region Bound functions
-function computedGet<T>(this: Computed<T>): T {
+function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
-	if (flags) {
+	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.PendingComputed)) {
 		processComputedUpdate(this, flags);
 	}
 	if (activeSub !== undefined) {
@@ -147,7 +149,7 @@ function computedGet<T>(this: Computed<T>): T {
 	return this.currentValue!;
 }
 
-function signalGetSet<T>(this: Signal<T>, ...value: [T]): T | void {
+function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
 			const subs = this.subs;
@@ -167,7 +169,7 @@ function signalGetSet<T>(this: Signal<T>, ...value: [T]): T | void {
 }
 
 function effectStop(this: Subscriber): void {
-	startTrack(this);
-	endTrack(this);
+	startTracking(this);
+	endTracking(this);
 }
 //#endregion
