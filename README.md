@@ -6,13 +6,6 @@
 	<a href="https://npmjs.com/package/alien-signals"><img src="https://badgen.net/npm/v/alien-signals" alt="npm package"></a>
 </p>
 
-## Derived Projects
-
-- [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua): Lua implementation of alien-signals
-- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): alien-signals Dart implementation of alien-signals
-- [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
-- [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
-
 # alien-signals
 
 This project explores a push-pull based signal algorithm. Its current implementation is similar to or related to certain other frontend projects:
@@ -31,6 +24,13 @@ Even though Vue 3.4 is already optimized, alien-signals is still noticeably fast
 ## Background
 
 I spent considerable time [optimizing Vue 3.4’s reactivity system](https://github.com/vuejs/core/pull/5912), gaining experience along the way. Since Vue 3.5 [switched to a pull-based algorithm similar to Preact](https://github.com/vuejs/core/pull/10397), I decided to continue researching a push-pull based implementation in a separate project. Our end goal is to implement fully incremental AST parsing and virtual code generation in Vue language tools, based on alien-signals.
+
+## Derived Projects
+
+- [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua): Lua implementation of alien-signals
+- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): alien-signals Dart implementation of alien-signals
+- [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
+- [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 
 ## Adoption
 
