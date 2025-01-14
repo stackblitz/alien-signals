@@ -250,7 +250,7 @@ export function createReactiveSystem({
 		 * @returns `true` if the subscriber is marked as Dirty; otherwise `false`.
 		 */
 		updateDirtyFlag(sub: Subscriber, flags: SubscriberFlags): boolean {
-			if (checkPendingComputeds(sub.deps!)) {
+			if (checkDirty(sub.deps!)) {
 				sub.flags = flags | SubscriberFlags.Dirty;
 				return true;
 			} else {
@@ -277,7 +277,7 @@ export function createReactiveSystem({
 					}
 				}
 			} else if (flags & SubscriberFlags.PendingComputed) {
-				if (checkPendingComputeds(computed.deps!)) {
+				if (checkDirty(computed.deps!)) {
 					if (updateComputed(computed)) {
 						const subs = computed.subs;
 						if (subs !== undefined) {
@@ -404,7 +404,7 @@ export function createReactiveSystem({
 	 * @param link - The starting link representing a sequence of pending computeds.
 	 * @returns `true` if a computed was updated, otherwise `false`.
 	 */
-	function checkPendingComputeds(link: Link): boolean {
+	function checkDirty(link: Link): boolean {
 		let stack = 0;
 		let dirty: boolean;
 
