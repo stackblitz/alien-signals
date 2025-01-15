@@ -2,8 +2,11 @@ export * from './system.js';
 
 import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
 
+interface EffectScope extends Subscriber {
+	isScope: true;
+}
+
 interface Effect extends Subscriber, Dependency {
-	isScope?: true;
 	fn(): void;
 }
 
@@ -47,27 +50,19 @@ const {
 			endTracking(computed);
 		}
 	},
-	notifyEffect(e: Effect) {
-		const flags = e.flags;
-		if (
-			!e.isScope
-			&& (
-				flags & SubscriberFlags.Dirty
-				|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
-			)
-		) {
-			runEffect(e);
+	notifyEffect(e: Effect | EffectScope) {
+		if ('isScope' in e) {
+			return notifyEffectScope(e);
 		} else {
-			processPendingInnerEffects(e, e.flags);
+			return notifyEffect(e);
 		}
-		return true;
 	},
 });
 const pauseStack: (Subscriber | undefined)[] = [];
 
 let batchDepth = 0;
 let activeSub: Subscriber | undefined;
-let activeScope: Subscriber | undefined;
+let activeScope: EffectScope | undefined;
 
 //#region Public functions
 export function startBatch() {
@@ -130,19 +125,13 @@ export function effect<T>(fn: () => T): () => void {
 }
 
 export function effectScope<T>(fn: () => T): () => void {
-	const e: Effect = {
-		fn,
-		subs: undefined,
-		subsTail: undefined,
+	const e: EffectScope = {
 		deps: undefined,
 		depsTail: undefined,
 		flags: SubscriberFlags.Effect,
 		isScope: true,
 	};
-	if (activeSub !== undefined) {
-		link(e, activeSub);
-	}
-	runEffectScope(e);
+	runEffectScope(e, fn);
 	return effectStop.bind(e);
 }
 //#endregion
@@ -160,16 +149,38 @@ function runEffect(e: Effect): void {
 	}
 }
 
-function runEffectScope(e: Effect): void {
+function runEffectScope(e: EffectScope, fn: () => void): void {
 	const prevSub = activeScope;
 	activeScope = e;
 	startTracking(e);
 	try {
-		e.fn();
+		fn();
 	} finally {
 		activeScope = prevSub;
 		endTracking(e);
 	}
+}
+
+function notifyEffect(e: Effect): boolean {
+	const flags = e.flags;
+	if (
+		flags & SubscriberFlags.Dirty
+		|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
+	) {
+		runEffect(e);
+	} else {
+		processPendingInnerEffects(e, e.flags);
+	}
+	return true;
+}
+
+function notifyEffectScope(e: EffectScope): boolean {
+	const flags = e.flags;
+	if (flags & SubscriberFlags.PendingEffect) {
+		processPendingInnerEffects(e, e.flags);
+		return true;
+	}
+	return false;
 }
 //#endregion
 
