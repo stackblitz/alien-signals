@@ -45,6 +45,7 @@
 		"esbuild": "latest",
 		"mitata": "latest",
 		"typescript": "latest",
-		"vitest": "latest"
+		"vitest": "latest",
+		"jest-extended": "latest"
 	}
 }
