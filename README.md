@@ -85,7 +85,7 @@ count(3); // No console output
 
 You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to build your own signal API. For implementation examples, see:
 
-- [Starter template](https://github.com/johnsoncodehk/alien-signals-starter)
+- [Starter template](https://github.com/johnsoncodehk/alien-signals-starter) (implements  `.get()` & `.set()` methods like the [Signals proposal](https://github.com/tc39/proposal-signals))
 - [stackblitz/alien-signals/src/index.ts](https://github.com/stackblitz/alien-signals/blob/master/src/index.ts)
 - [proposal-signals/signal-polyfill#44](https://github.com/proposal-signals/signal-polyfill/pull/44)
 
