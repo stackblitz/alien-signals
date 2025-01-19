@@ -63,7 +63,6 @@ export function createReactiveSystem({
 }) {
 	let queuedEffects: Subscriber | undefined;
 	let queuedEffectsTail: Subscriber | undefined;
-	let linkPool: Link | undefined;
 
 	return {
 		/**
@@ -285,7 +284,7 @@ export function createReactiveSystem({
 						}
 					}
 				} else {
-					computed.flags = flags & ~SubscriberFlags.PendingComputed
+					computed.flags = flags & ~SubscriberFlags.PendingComputed;
 				}
 			}
 		},
@@ -356,23 +355,13 @@ export function createReactiveSystem({
 	 * @returns The newly created link object.
 	 */
 	function linkNewDep(dep: Dependency, sub: Subscriber, nextDep: Link | undefined, depsTail: Link | undefined): Link {
-		let newLink: Link;
-
-		if (linkPool !== undefined) {
-			newLink = linkPool;
-			linkPool = newLink.nextDep;
-			newLink.nextDep = nextDep;
-			newLink.dep = dep;
-			newLink.sub = sub;
-		} else {
-			newLink = {
-				dep,
-				sub,
-				nextDep,
-				prevSub: undefined,
-				nextSub: undefined,
-			};
-		}
+		const newLink: Link = {
+			dep,
+			sub,
+			nextDep,
+			prevSub: undefined,
+			nextSub: undefined,
+		};
 
 		if (depsTail === undefined) {
 			sub.deps = newLink;
@@ -552,24 +541,15 @@ export function createReactiveSystem({
 
 			if (nextSub !== undefined) {
 				nextSub.prevSub = prevSub;
-				link.nextSub = undefined;
 			} else {
 				dep.subsTail = prevSub;
 			}
 
 			if (prevSub !== undefined) {
 				prevSub.nextSub = nextSub;
-				link.prevSub = undefined;
 			} else {
 				dep.subs = nextSub;
 			}
-
-			// @ts-expect-error
-			link.dep = undefined;
-			// @ts-expect-error
-			link.sub = undefined;
-			link.nextDep = linkPool;
-			linkPool = link;
 
 			if (dep.subs === undefined && 'deps' in dep) {
 				const depFlags = dep.flags;
