@@ -37,82 +37,7 @@ export const enum SubscriberFlags {
 export function createReactiveSystem({
 	updateComputed,
 	notifyEffect,
-	checkDirty = function checkDirty(link: Link): boolean {
-		let stack = 0;
-		let dirty: boolean;
-
-		top: do {
-			dirty = false;
-			const dep = link.dep;
-
-			if ('flags' in dep) {
-				const depFlags = dep.flags;
-				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
-					if (updateComputed(dep)) {
-						const subs = dep.subs!;
-						if (subs.nextSub !== undefined) {
-							shallowPropagate(subs);
-						}
-						dirty = true;
-					}
-				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
-					const depSubs = dep.subs!;
-					if (depSubs.nextSub !== undefined) {
-						depSubs.prevSub = link;
-					}
-					link = dep.deps!;
-					++stack;
-					continue;
-				}
-			}
-
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
-			}
-
-			if (stack) {
-				let sub = link.sub as Dependency & Subscriber;
-				do {
-					--stack;
-					const subSubs = sub.subs!;
-
-					if (dirty) {
-						if (updateComputed(sub)) {
-							if ((link = subSubs.prevSub!) !== undefined) {
-								subSubs.prevSub = undefined;
-								shallowPropagate(sub.subs!);
-								sub = link.sub as Dependency & Subscriber;
-							} else {
-								sub = subSubs.sub as Dependency & Subscriber;
-							}
-							continue;
-						}
-					} else {
-						sub.flags &= ~SubscriberFlags.PendingComputed;
-					}
-
-					if ((link = subSubs.prevSub!) !== undefined) {
-						subSubs.prevSub = undefined;
-						if (link.nextDep !== undefined) {
-							link = link.nextDep;
-							continue top;
-						}
-						sub = link.sub as Dependency & Subscriber;
-					} else {
-						if ((link = subSubs.nextDep!) !== undefined) {
-							continue top;
-						}
-						sub = subSubs.sub as Dependency & Subscriber;
-					}
-
-					dirty = false;
-				} while (stack);
-			}
-
-			return dirty;
-		} while (true);
-	},
+	checkDirty,
 }: {
 	/**
 	 * Updates the computed subscriber's value and returns whether it changed.
@@ -137,20 +62,12 @@ export function createReactiveSystem({
 	 * until the method eventually returns `true`.
 	 */
 	notifyEffect(effect: Subscriber): boolean;
-	/**
-	 * Recursively checks and updates all computed subscribers marked as pending.
-	 * 
-	 * It traverses the linked structure using a stack mechanism. For each computed
-	 * subscriber in a pending state, updateComputed is called and shallowPropagate
-	 * is triggered if a value changes. Returns whether any updates occurred.
-	 * 
-	 * @param link - The starting link representing a sequence of pending computeds.
-	 * @returns `true` if a computed was updated, otherwise `false`.
-	 */
 	checkDirty?(link: Link): boolean;
 }) {
 	let queuedEffects: Subscriber | undefined;
 	let queuedEffectsTail: Subscriber | undefined;
+
+	checkDirty ??= _checkDirty;
 
 	return {
 		/**
@@ -473,6 +390,93 @@ export function createReactiveSystem({
 		dep.subsTail = newLink;
 
 		return newLink;
+	}
+
+	/**
+	 * Recursively checks and updates all computed subscribers marked as pending.
+	 * 
+	 * It traverses the linked structure using a stack mechanism. For each computed
+	 * subscriber in a pending state, updateComputed is called and shallowPropagate
+	 * is triggered if a value changes. Returns whether any updates occurred.
+	 * 
+	 * @param link - The starting link representing a sequence of pending computeds.
+	 * @returns `true` if a computed was updated, otherwise `false`.
+	 */
+	function _checkDirty(link: Link): boolean {
+		let stack = 0;
+		let dirty: boolean;
+
+		top: do {
+			dirty = false;
+			const dep = link.dep;
+
+			if ('flags' in dep) {
+				const depFlags = dep.flags;
+				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
+					if (updateComputed(dep)) {
+						const subs = dep.subs!;
+						if (subs.nextSub !== undefined) {
+							shallowPropagate(subs);
+						}
+						dirty = true;
+					}
+				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
+					const depSubs = dep.subs!;
+					if (depSubs.nextSub !== undefined) {
+						depSubs.prevSub = link;
+					}
+					link = dep.deps!;
+					++stack;
+					continue;
+				}
+			}
+
+			if (!dirty && link.nextDep !== undefined) {
+				link = link.nextDep;
+				continue;
+			}
+
+			if (stack) {
+				let sub = link.sub as Dependency & Subscriber;
+				do {
+					--stack;
+					const subSubs = sub.subs!;
+
+					if (dirty) {
+						if (updateComputed(sub)) {
+							if ((link = subSubs.prevSub!) !== undefined) {
+								subSubs.prevSub = undefined;
+								shallowPropagate(sub.subs!);
+								sub = link.sub as Dependency & Subscriber;
+							} else {
+								sub = subSubs.sub as Dependency & Subscriber;
+							}
+							continue;
+						}
+					} else {
+						sub.flags &= ~SubscriberFlags.PendingComputed;
+					}
+
+					if ((link = subSubs.prevSub!) !== undefined) {
+						subSubs.prevSub = undefined;
+						if (link.nextDep !== undefined) {
+							link = link.nextDep;
+							continue top;
+						}
+						sub = link.sub as Dependency & Subscriber;
+					} else {
+						if ((link = subSubs.nextDep!) !== undefined) {
+							continue top;
+						}
+						sub = subSubs.sub as Dependency & Subscriber;
+					}
+
+					dirty = false;
+				} while (stack);
+			}
+
+			return dirty;
+		} while (true);
 	}
 
 	/**
