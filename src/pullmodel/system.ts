@@ -180,12 +180,14 @@ export function createReactiveSystem({
 					oldTail.nextSub = newLink;
 				}
 				dep.subsTail = newLink;
-				if (
-					'flags' in dep
-					&& (dep as Dependency & Subscriber).flags & SubscriberFlags.Computed
-					&& dep.subs === dep.subsTail
-				) {
-					onWatch(dep as Dependency & Subscriber);
+				if (dep.subs === dep.subsTail) {
+					if ('flags' in dep) {
+						if ((dep as Dependency & Subscriber).flags & SubscriberFlags.Computed) {
+							onWatch(dep as Dependency & Subscriber);
+						}
+					} else {
+						onWatched(dep);
+					}
 				}
 			}
 		},
@@ -245,12 +247,18 @@ export function createReactiveSystem({
 				dep.subs = nextSub;
 			}
 
-			if (dep.subs === undefined && 'deps' in dep) {
-				const depLink = dep.deps;
-				if (depLink !== undefined) {
-					onUnwatch(depLink);
+			if (dep.subs === undefined) {
+				if ('flags' in dep) {
+					if ((dep as Dependency & Subscriber).flags & SubscriberFlags.Computed) {
+						const depLink = dep.deps;
+						if (depLink !== undefined) {
+							onUnwatch(depLink);
+						}
+						onUnwatched(dep);
+					}
+				} else {
+					onUnwatched(dep);
 				}
-				onUnwatched(dep);
 			}
 			link = link.nextDep!;
 		} while (link !== undefined);
@@ -269,12 +277,14 @@ export function createReactiveSystem({
 				oldTail.nextSub = link;
 			}
 			dep.subsTail = link;
-			if (
-				unwatched
-				&& 'flags' in dep
-				&& dep.flags & SubscriberFlags.Computed
-			) {
-				onWatch(dep);
+			if (unwatched) {
+				if ('flags' in dep) {
+					if ((dep as Dependency & Subscriber).flags & SubscriberFlags.Computed) {
+						onWatch(dep);
+					}
+				} else {
+					onWatched(dep);
+				}
 			}
 			link = link.nextDep;
 		}
