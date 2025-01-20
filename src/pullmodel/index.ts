@@ -1,7 +1,7 @@
-export * as pullmodel from './pullmodel/index.js';
-export * from './system.js';
+export * from '../system.js';
 
-import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
+import { Dependency, Subscriber, SubscriberFlags } from '../system.js';
+import { createReactiveSystem } from './system.js';
 
 interface EffectScope extends Subscriber {
 	isScope: true;
@@ -12,10 +12,13 @@ interface Effect extends Subscriber, Dependency {
 }
 
 interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
+	version: number;
+	globalVersion: number;
 	getter: (cachedValue?: T) => T;
 }
 
 interface Signal<T = any> extends Dependency {
+	version: number;
 	currentValue: T;
 }
 
@@ -33,24 +36,16 @@ const {
 	processEffectNotifications,
 	processComputedUpdate,
 	processPendingInnerEffects,
+	checkDirty,
 } = createReactiveSystem({
-	updateComputed(computed: Computed): boolean {
-		const prevSub = activeSub;
-		activeSub = computed;
-		startTracking(computed);
-		try {
-			const oldValue = computed.currentValue;
-			const newValue = computed.getter(oldValue);
-			if (oldValue !== newValue) {
-				computed.currentValue = newValue;
-				return true;
-			}
-			return false;
-		} finally {
-			activeSub = prevSub;
-			endTracking(computed);
+	shouldCheckDirty(computed: Computed): boolean {
+		if (computed.globalVersion !== globalVersion) {
+			computed.globalVersion = globalVersion;
+			return true;
 		}
+		return false;
 	},
+	updateComputed,
 	notifyEffect(e: Effect | EffectScope) {
 		if ('isScope' in e) {
 			return notifyEffectScope(e);
@@ -58,9 +53,12 @@ const {
 			return notifyEffect(e);
 		}
 	},
+	onWatched() { },
+	onUnwatched() { },
 });
 const pauseStack: (Subscriber | undefined)[] = [];
 
+let globalVersion = 0;
 let batchDepth = 0;
 let activeSub: Subscriber | undefined;
 let activeScope: EffectScope | undefined;
@@ -90,6 +88,7 @@ export function signal<T>(oldValue: T): WriteableSignal<T>;
 export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 	return signalGetterSetter.bind({
 		currentValue: oldValue,
+		version: 0,
 		subs: undefined,
 		subsTail: undefined,
 	}) as WriteableSignal<T | undefined>;
@@ -97,7 +96,9 @@ export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 
 export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 	return computedGetter.bind({
+		globalVersion: -1,
 		currentValue: undefined,
+		version: 0,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
@@ -138,6 +139,25 @@ export function effectScope<T>(fn: () => T): () => void {
 //#endregion
 
 //#region Internal functions
+function updateComputed(computed: Computed): boolean {
+	const prevSub = activeSub;
+	activeSub = computed;
+	startTracking(computed);
+	try {
+		const oldValue = computed.currentValue;
+		const newValue = computed.getter(oldValue);
+		if (oldValue !== newValue) {
+			computed.version++;
+			computed.currentValue = newValue;
+			return true;
+		}
+		return false;
+	} finally {
+		activeSub = prevSub;
+		endTracking(computed);
+	}
+}
+
 function runEffect(e: Effect): void {
 	const prevSub = activeSub;
 	activeSub = e;
@@ -188,7 +208,17 @@ function notifyEffectScope(e: EffectScope): boolean {
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.PendingComputed)) {
+	if (flags & SubscriberFlags.Dirty) {
+		processComputedUpdate(this, flags);
+	} else if (this.subs === undefined) {
+		if (this.globalVersion !== globalVersion) {
+			this.globalVersion = globalVersion;
+			const deps = this.deps;
+			if (deps !== undefined && checkDirty(deps)) {
+				updateComputed(this);
+			}
+		}
+	} else if (flags & SubscriberFlags.PendingComputed) {
 		processComputedUpdate(this, flags);
 	}
 	if (activeSub !== undefined) {
@@ -202,6 +232,8 @@ function computedGetter<T>(this: Computed<T>): T {
 function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
+			globalVersion++;
+			this.version++;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
