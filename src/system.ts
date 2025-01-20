@@ -16,7 +16,6 @@ export interface Link {
 	// Reused to link the previous stack in propagate
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Reused to link the next released link in linkPool
 	// Reused to link the notify effect in queuedEffects
 	nextDep: Link | undefined;
 }
