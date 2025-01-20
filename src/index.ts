@@ -18,7 +18,7 @@ interface Signal<T = any> extends Dependency {
 	currentValue: T;
 }
 
-type WriteableSignal<T> = {
+interface WriteableSignal<T> {
 	(): T;
 	(value: T): void;
 };
