@@ -1,4 +1,4 @@
-export * from '../system.js';
+export * from './system.js';
 
 import { Dependency, Subscriber, SubscriberFlags } from '../system.js';
 import { createReactiveSystem } from './system.js';
