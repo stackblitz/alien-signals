@@ -15,7 +15,6 @@ export function createReactiveSystem({
 		updateComputed,
 		notifyEffect,
 		checkDirty(link) {
-
 			let stack = 0;
 			let dirty: boolean;
 
@@ -129,7 +128,6 @@ export function createReactiveSystem({
 				currentDep !== undefined
 				&& currentDep.dep === dep
 			) {
-				currentDep.version = dep.version;
 				return;
 			}
 			const nextDep = currentDep !== undefined
