@@ -247,11 +247,11 @@ export function createReactiveSystem({
 
 			if (dep.subs === undefined) {
 				if ('flags' in dep) {
+					const depLink = dep.deps;
+					if (depLink !== undefined) {
+						onUnwatch(depLink);
+					}
 					if ((dep as Dependency & Subscriber).flags & SubscriberFlags.Computed) {
-						const depLink = dep.deps;
-						if (depLink !== undefined) {
-							onUnwatch(depLink);
-						}
 						onUnwatched(dep);
 					}
 				} else {
