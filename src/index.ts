@@ -21,7 +21,7 @@ interface Signal<T = any> extends Dependency {
 interface WriteableSignal<T> {
 	(): T;
 	(value: T): void;
-};
+}
 
 const {
 	link,
