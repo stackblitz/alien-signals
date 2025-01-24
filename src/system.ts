@@ -61,7 +61,7 @@ export function createReactiveSystem({
 	 * If not fully handled, future changes to these flags will trigger additional calls
 	 * until the method eventually returns `true`.
 	 */
-	notifyEffect(effect: Subscriber): boolean;
+	notifyEffect(effect: Subscriber): void;
 }) {
 	let queuedEffects: Subscriber | undefined;
 	let queuedEffectsTail: Subscriber | undefined;
@@ -324,9 +324,8 @@ export function createReactiveSystem({
 					queuedEffects = undefined;
 					queuedEffectsTail = undefined;
 				}
-				if (!notifyEffect(effect)) {
-					effect.flags &= ~SubscriberFlags.Notified;
-				}
+				notifyEffect(effect);
+				effect.flags &= ~SubscriberFlags.Notified;
 			}
 		},
 	};

@@ -34,7 +34,7 @@ const {
 	processComputedUpdate,
 	processPendingInnerEffects,
 } = createReactiveSystem({
-	updateComputed(computed: Computed): boolean {
+	updateComputed(computed: Computed) {
 		const prevSub = activeSub;
 		activeSub = computed;
 		startTracking(computed);
@@ -54,9 +54,9 @@ const {
 	},
 	notifyEffect(e: Effect | EffectScope) {
 		if ('isScope' in e) {
-			return notifyEffectScope(e);
+			notifyEffectScope(e);
 		} else {
-			return notifyEffect(e);
+			notifyEffect(e);
 		}
 	},
 });
@@ -171,7 +171,7 @@ function runEffectScope(e: EffectScope, fn: () => void): void {
 	}
 }
 
-function notifyEffect(e: Effect): boolean {
+function notifyEffect(e: Effect) {
 	const flags = e.flags;
 	if (flags & SubscriberFlags.Dirty) {
 		runEffect(e);
@@ -182,17 +182,14 @@ function notifyEffect(e: Effect): boolean {
 			processPendingInnerEffects(e);
 		}
 	}
-	return true;
 }
 
-function notifyEffectScope(e: EffectScope): boolean {
+function notifyEffectScope(e: EffectScope) {
 	const flags = e.flags;
 	if (flags & SubscriberFlags.Pending) {
 		e.flags = flags & ~SubscriberFlags.Pending;
 		processPendingInnerEffects(e);
-		return true;
 	}
-	return false;
 }
 //#endregion
 
