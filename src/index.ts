@@ -173,21 +173,23 @@ function runEffectScope(e: EffectScope, fn: () => void): void {
 
 function notifyEffect(e: Effect): boolean {
 	const flags = e.flags;
-	if (
-		flags & SubscriberFlags.Dirty
-		|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
-	) {
+	if (flags & SubscriberFlags.Dirty) {
 		runEffect(e);
-	} else {
-		processPendingInnerEffects(e, e.flags);
+	} else if (flags & SubscriberFlags.Pending) {
+		if (updateDirtyFlag(e, flags)) {
+			runEffect(e);
+		} else {
+			processPendingInnerEffects(e);
+		}
 	}
 	return true;
 }
 
 function notifyEffectScope(e: EffectScope): boolean {
 	const flags = e.flags;
-	if (flags & SubscriberFlags.PendingEffect) {
-		processPendingInnerEffects(e, e.flags);
+	if (flags & SubscriberFlags.Pending) {
+		e.flags = flags & ~SubscriberFlags.Pending;
+		processPendingInnerEffects(e);
 		return true;
 	}
 	return false;
@@ -197,7 +199,7 @@ function notifyEffectScope(e: EffectScope): boolean {
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.PendingComputed)) {
+	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
 		processComputedUpdate(this, flags);
 	}
 	if (activeSub !== undefined) {

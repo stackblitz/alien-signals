@@ -30,10 +30,9 @@ export const enum SubscriberFlags {
 	Notified = 1 << 3,
 	Recursed = 1 << 4,
 	Dirty = 1 << 5,
-	PendingComputed = 1 << 6,
-	PendingEffect = 1 << 7,
-	Cold = 1 << 8,
-	Propagated = Dirty | PendingComputed | PendingEffect,
+	Pending = 1 << 6,
+	Cold = 1 << 7,
+	Propagated = Dirty | Pending,
 }
 
 export function createReactiveSystem({
@@ -146,14 +145,11 @@ export function createReactiveSystem({
 						if (subSubs.nextSub !== undefined) {
 							subSubs.prevSub = subs;
 							link = subs = subSubs;
-							targetFlag = SubscriberFlags.PendingComputed;
 							++stack;
 						} else {
 							link = subSubs;
-							targetFlag = subFlags & SubscriberFlags.Effect
-								? SubscriberFlags.PendingEffect
-								: SubscriberFlags.PendingComputed;
 						}
+						targetFlag = SubscriberFlags.Pending;
 						continue;
 					}
 					if (subFlags & SubscriberFlags.Effect) {
@@ -185,7 +181,7 @@ export function createReactiveSystem({
 				if ((link = subs.nextSub!) !== undefined) {
 					subs = link;
 					targetFlag = stack
-						? SubscriberFlags.PendingComputed
+						? SubscriberFlags.Pending
 						: SubscriberFlags.Dirty;
 					continue;
 				}
@@ -199,7 +195,7 @@ export function createReactiveSystem({
 					if ((link = subs.nextSub!) !== undefined) {
 						subs = link;
 						targetFlag = stack
-							? SubscriberFlags.PendingComputed
+							? SubscriberFlags.Pending
 							: SubscriberFlags.Dirty;
 						continue top;
 					}
@@ -257,7 +253,7 @@ export function createReactiveSystem({
 				sub.flags = flags | SubscriberFlags.Dirty;
 				return true;
 			} else {
-				sub.flags = flags & ~SubscriberFlags.PendingComputed;
+				sub.flags = flags & ~SubscriberFlags.Pending;
 				return false;
 			}
 		},
@@ -281,7 +277,7 @@ export function createReactiveSystem({
 			} else if (checkDirty(computed.deps!)) {
 				updateComputed(computed);
 			} else {
-				computed.flags = flags & ~SubscriberFlags.PendingComputed;
+				computed.flags = flags & ~SubscriberFlags.Pending;
 			}
 		},
 		/**
@@ -295,22 +291,19 @@ export function createReactiveSystem({
 		 * @param sub - The subscriber which may have pending effects.
 		 * @param flags - The current flags on the subscriber to check.
 		 */
-		processPendingInnerEffects(sub: Subscriber, flags: SubscriberFlags): void {
-			if (flags & SubscriberFlags.PendingEffect) {
-				sub.flags = flags & ~SubscriberFlags.PendingEffect;
-				let link = sub.deps!;
-				do {
-					const dep = link.dep;
-					if (
-						'flags' in dep
-						&& dep.flags & SubscriberFlags.Effect
-						&& dep.flags & SubscriberFlags.Propagated
-					) {
-						notifyEffect(dep);
-					}
-					link = link.nextDep!;
-				} while (link !== undefined);
-			}
+		processPendingInnerEffects(sub: Subscriber): void {
+			let link = sub.deps!;
+			do {
+				const dep = link.dep;
+				if (
+					'flags' in dep
+					&& dep.flags & SubscriberFlags.Effect
+					&& dep.flags & SubscriberFlags.Propagated
+				) {
+					notifyEffect(dep);
+				}
+				link = link.nextDep!;
+			} while (link !== undefined);
 		},
 		/**
 		 * Processes queued effect notifications after a batch operation finishes.
@@ -406,7 +399,7 @@ export function createReactiveSystem({
 					if (updateComputed(dep)) {
 						dirty = true;
 					}
-				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
+				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Pending)) === (SubscriberFlags.Computed | SubscriberFlags.Pending)) {
 					const depSubs = dep.subs!;
 					if (depSubs.nextSub !== undefined) {
 						depSubs.prevSub = link;
@@ -439,7 +432,7 @@ export function createReactiveSystem({
 							continue;
 						}
 					} else {
-						sub.flags &= ~SubscriberFlags.PendingComputed;
+						sub.flags &= ~SubscriberFlags.Pending;
 					}
 
 					if ((link = subSubs.prevSub!) !== undefined) {
@@ -557,7 +550,7 @@ export function createReactiveSystem({
 	}
 
 	function cooling(sub: Subscriber & Dependency, flags: SubscriberFlags, link: Link) {
-		sub.flags = flags | SubscriberFlags.Cold | SubscriberFlags.PendingComputed;
+		sub.flags = flags | SubscriberFlags.Cold | SubscriberFlags.Pending;
 		do {
 			const dep = link.dep;
 			const nextSub = link.nextSub;
