@@ -247,25 +247,88 @@ export function createReactiveSystem({
 			}
 			sub.flags &= ~SubscriberFlags.Tracking;
 		},
-		checkDirty,
 		/**
-		 * Updates the computed subscriber if necessary before its value is accessed.
+		 * Recursively checks and updates all computed subscribers marked as pending.
 		 * 
-		 * If the subscriber is marked Dirty or PendingComputed, this function runs
-		 * the provided updateComputed logic and triggers a shallowPropagate for any
-		 * downstream subscribers if an actual update occurs.
+		 * It traverses the linked structure using a stack mechanism. For each computed
+		 * subscriber in a pending state, updateComputed is called and shallowPropagate
+		 * is triggered if a value changes. Returns whether any updates occurred.
 		 * 
-		 * @param computed - The computed subscriber to update.
-		 * @param flags - The current flag set for this subscriber.
+		 * @param link - The starting link representing a sequence of pending computeds.
+		 * @returns `true` if a computed was updated, otherwise `false`.
 		 */
-		processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-			if (flags & SubscriberFlags.Dirty) {
-				updateComputed(computed);
-			} else if (checkDirty(computed.deps!)) {
-				updateComputed(computed);
-			} else {
-				computed.flags = flags & ~SubscriberFlags.Pending;
-			}
+		checkDirty(link: Link): boolean {
+			let stack = 0;
+			let dirty: boolean;
+
+			top: do {
+				dirty = false;
+				const dep = link.dep;
+
+				if (dep.version !== link.version) {
+					dirty = true;
+				} else if ('flags' in dep) {
+					const depFlags = dep.flags;
+					if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
+						if (updateComputed(dep)) {
+							dirty = true;
+						}
+					} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Pending)) === (SubscriberFlags.Computed | SubscriberFlags.Pending)) {
+						const depSubs = dep.subs!;
+						if (depSubs.nextSub !== undefined) {
+							depSubs.prevSub = link;
+						}
+						link = dep.deps!;
+						++stack;
+						continue;
+					}
+				}
+
+				if (!dirty && link.nextDep !== undefined) {
+					link = link.nextDep;
+					continue;
+				}
+
+				if (stack) {
+					let sub = link.sub as Dependency & Subscriber;
+					do {
+						--stack;
+						const subSubs = sub.subs!;
+
+						if (dirty) {
+							if (updateComputed(sub)) {
+								if ((link = subSubs.prevSub!) !== undefined) {
+									subSubs.prevSub = undefined;
+									sub = link.sub as Dependency & Subscriber;
+								} else {
+									sub = subSubs.sub as Dependency & Subscriber;
+								}
+								continue;
+							}
+						} else {
+							sub.flags &= ~SubscriberFlags.Pending;
+						}
+
+						if ((link = subSubs.prevSub!) !== undefined) {
+							subSubs.prevSub = undefined;
+							if (link.nextDep !== undefined) {
+								link = link.nextDep;
+								continue top;
+							}
+							sub = link.sub as Dependency & Subscriber;
+						} else {
+							if ((link = subSubs.nextDep!) !== undefined) {
+								continue top;
+							}
+							sub = subSubs.sub as Dependency & Subscriber;
+						}
+
+						dirty = false;
+					} while (stack);
+				}
+
+				return dirty;
+			} while (true);
 		},
 		/**
 		 * Ensures all pending internal effects for the given subscriber are processed.
@@ -372,90 +435,6 @@ export function createReactiveSystem({
 	}
 
 	/**
-	 * Recursively checks and updates all computed subscribers marked as pending.
-	 * 
-	 * It traverses the linked structure using a stack mechanism. For each computed
-	 * subscriber in a pending state, updateComputed is called and shallowPropagate
-	 * is triggered if a value changes. Returns whether any updates occurred.
-	 * 
-	 * @param link - The starting link representing a sequence of pending computeds.
-	 * @returns `true` if a computed was updated, otherwise `false`.
-	 */
-	function checkDirty(link: Link): boolean {
-		let stack = 0;
-		let dirty: boolean;
-
-		top: do {
-			dirty = false;
-			const dep = link.dep;
-
-			if (dep.version !== link.version) {
-				dirty = true;
-			} else if ('flags' in dep) {
-				const depFlags = dep.flags;
-				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
-					if (updateComputed(dep)) {
-						dirty = true;
-					}
-				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Pending)) === (SubscriberFlags.Computed | SubscriberFlags.Pending)) {
-					const depSubs = dep.subs!;
-					if (depSubs.nextSub !== undefined) {
-						depSubs.prevSub = link;
-					}
-					link = dep.deps!;
-					++stack;
-					continue;
-				}
-			}
-
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
-			}
-
-			if (stack) {
-				let sub = link.sub as Dependency & Subscriber;
-				do {
-					--stack;
-					const subSubs = sub.subs!;
-
-					if (dirty) {
-						if (updateComputed(sub)) {
-							if ((link = subSubs.prevSub!) !== undefined) {
-								subSubs.prevSub = undefined;
-								sub = link.sub as Dependency & Subscriber;
-							} else {
-								sub = subSubs.sub as Dependency & Subscriber;
-							}
-							continue;
-						}
-					} else {
-						sub.flags &= ~SubscriberFlags.Pending;
-					}
-
-					if ((link = subSubs.prevSub!) !== undefined) {
-						subSubs.prevSub = undefined;
-						if (link.nextDep !== undefined) {
-							link = link.nextDep;
-							continue top;
-						}
-						sub = link.sub as Dependency & Subscriber;
-					} else {
-						if ((link = subSubs.nextDep!) !== undefined) {
-							continue top;
-						}
-						sub = subSubs.sub as Dependency & Subscriber;
-					}
-
-					dirty = false;
-				} while (stack);
-			}
-
-			return dirty;
-		} while (true);
-	}
-
-	/**
 	 * Verifies whether the given link is valid for the specified subscriber.
 	 * 
 	 * It iterates through the subscriber's link list (from sub.deps to sub.depsTail)
@@ -526,8 +505,8 @@ export function createReactiveSystem({
 
 	function warming(sub: Subscriber & Dependency) {
 		sub.flags &= ~SubscriberFlags.Cold;
-		let link = sub.deps;
-		while (link !== undefined) {
+		let link = sub.deps!;
+		do {
 			const dep = link.dep as Dependency | Dependency & Subscriber;
 			if (dep.subs === undefined) {
 				dep.subs = link;
@@ -545,14 +524,13 @@ export function createReactiveSystem({
 					warming(dep);
 				}
 			}
-			link = link.nextDep;
-		}
+		} while ((link = link.nextDep!) !== undefined);
 	}
 
 	function cooling(sub: Subscriber & Dependency) {
 		sub.flags |= SubscriberFlags.Cold;
-		let link = sub.deps;
-		while (link !== undefined) {
+		let link = sub.deps!;
+		do {
 			const dep = link.dep;
 			const nextSub = link.nextSub;
 			const prevSub = link.prevSub;
@@ -576,10 +554,10 @@ export function createReactiveSystem({
 				dep.subs === undefined
 				&& 'flags' in dep
 				&& dep.flags & SubscriberFlags.Computed
+				&& dep.deps !== undefined
 			) {
 				cooling(dep);
 			}
-			link = link.nextDep;
-		}
+		} while ((link = link.nextDep!) !== undefined);
 	}
 }

@@ -33,28 +33,10 @@ const {
 	endTracking,
 	startTracking,
 	processEffectNotifications,
-	processComputedUpdate,
 	processPendingInnerEffects,
 } = createReactiveSystem({
 	computed: {
-		update(computed: Computed) {
-			const prevSub = activeSub;
-			activeSub = computed;
-			startTracking(computed);
-			try {
-				const oldValue = computed.currentValue;
-				const newValue = computed.getter(oldValue);
-				if (oldValue !== newValue) {
-					computed.currentValue = newValue;
-					computed.version++;
-					return true;
-				}
-				return false;
-			} finally {
-				activeSub = prevSub;
-				endTracking(computed);
-			}
-		},
+		update: updateComputed,
 		onUnwatched(computed) {
 			cooling(computed);
 		},
@@ -156,6 +138,25 @@ export function effectScope<T>(fn: () => T): () => void {
 //#endregion
 
 //#region Internal functions
+function updateComputed(computed: Computed) {
+	const prevSub = activeSub;
+	activeSub = computed;
+	startTracking(computed);
+	try {
+		const oldValue = computed.currentValue;
+		const newValue = computed.getter(oldValue);
+		if (oldValue !== newValue) {
+			computed.currentValue = newValue;
+			computed.version++;
+			return true;
+		}
+		return false;
+	} finally {
+		activeSub = prevSub;
+		endTracking(computed);
+	}
+}
+
 function runEffect(e: Effect): void {
 	const prevSub = activeSub;
 	activeSub = e;
@@ -182,9 +183,7 @@ function runEffectScope(e: EffectScope, fn: () => void): void {
 
 function notifyEffect(e: Effect) {
 	const flags = e.flags;
-	if (flags & SubscriberFlags.Dirty) {
-		runEffect(e);
-	} else if (checkDirty(e.deps!)) {
+	if (flags & SubscriberFlags.Dirty || checkDirty(e.deps!)) {
 		runEffect(e);
 	} else {
 		e.flags = flags & ~SubscriberFlags.Pending;
@@ -204,11 +203,15 @@ function notifyEffectScope(e: EffectScope) {
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	let flags = this.flags;
-	if (flags & SubscriberFlags.Cold) {
-		warming(this);
-		processComputedUpdate(this, this.flags);
-	} else if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
-		processComputedUpdate(this, flags);
+	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending | SubscriberFlags.Cold)) {
+		if (flags & SubscriberFlags.Cold) {
+			warming(this);
+		}
+		if (flags & SubscriberFlags.Dirty || checkDirty(this.deps!)) {
+			updateComputed(this);
+		} else {
+			this.flags &= ~SubscriberFlags.Pending;
+		}
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
