@@ -202,11 +202,11 @@ function notifyEffectScope(e: EffectScope) {
 
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
-	let flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending | SubscriberFlags.Cold)) {
-		if (flags & SubscriberFlags.Cold) {
-			warming(this);
-		}
+	const flags = this.flags;
+	if (
+		(flags & SubscriberFlags.Cold && (warming(this), true))
+		|| flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)
+	) {
 		if (flags & SubscriberFlags.Dirty || checkDirty(this.deps!)) {
 			updateComputed(this);
 		} else {
