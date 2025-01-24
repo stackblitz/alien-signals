@@ -15,6 +15,7 @@ interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
 }
 
 interface Signal<T = any> extends Dependency {
+	version: number;
 	currentValue: T;
 }
 
@@ -42,6 +43,7 @@ const {
 			const newValue = computed.getter(oldValue);
 			if (oldValue !== newValue) {
 				computed.currentValue = newValue;
+				computed.version++;
 				return true;
 			}
 			return false;
@@ -59,10 +61,16 @@ const {
 	},
 });
 const pauseStack: (Subscriber | undefined)[] = [];
+const nursery: Subscriber = {
+	flags: SubscriberFlags.None,
+	deps: undefined,
+	depsTail: undefined,
+};
 
 let batchDepth = 0;
 let activeSub: Subscriber | undefined;
 let activeScope: EffectScope | undefined;
+let pendingTriggerCooling = false;
 
 //#region Public functions
 export function startBatch() {
@@ -89,6 +97,7 @@ export function signal<T>(oldValue: T): WriteableSignal<T>;
 export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 	return signalGetterSetter.bind({
 		currentValue: oldValue,
+		version: 0,
 		subs: undefined,
 		subsTail: undefined,
 	}) as WriteableSignal<T | undefined>;
@@ -97,6 +106,7 @@ export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 	return computedGetter.bind({
 		currentValue: undefined,
+		version: 0,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
@@ -194,13 +204,27 @@ function computedGetter<T>(this: Computed<T>): T {
 		link(this, activeSub);
 	} else if (activeScope !== undefined) {
 		link(this, activeScope);
+	} else if (this.subs === undefined) {
+		link(this, nursery);
+		if (!pendingTriggerCooling) {
+			pendingTriggerCooling = true;
+			triggerCooling();
+		}
 	}
 	return this.currentValue!;
+}
+
+async function triggerCooling() {
+	await Promise.resolve();
+	pendingTriggerCooling = false;
+	startTracking(nursery);
+	endTracking(nursery);
 }
 
 function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
+			this.version++;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
