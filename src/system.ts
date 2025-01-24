@@ -35,32 +35,42 @@ export const enum SubscriberFlags {
 }
 
 export function createReactiveSystem({
-	updateComputed,
-	notifyEffect,
+	computed: {
+		update: updateComputed,
+		onUnwatched: onUnwatchedComputed = () => { },
+	},
+	effect: {
+		notify: notifyEffect,
+	},
 }: {
-	/**
-	 * Updates the computed subscriber's value and returns whether it changed.
-	 * 
-	 * This function should be called when a computed subscriber is marked as Dirty.
-	 * The computed subscriber's getter function is invoked, and its value is updated.
-	 * If the value changes, the new value is stored, and the function returns `true`.
-	 * 
-	 * @param computed - The computed subscriber to update.
-	 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
-	 */
-	updateComputed(computed: Dependency & Subscriber): boolean;
-	/**
-	 * Handles effect notifications by processing the specified `effect`.
-	 * 
-	 * When an `effect` first receives any of the following flags:
-	 *   - `Dirty`
-	 *   - `PendingComputed`
-	 *   - `PendingEffect`
-	 * this method will process them and return `true` if the flags are successfully handled.
-	 * If not fully handled, future changes to these flags will trigger additional calls
-	 * until the method eventually returns `true`.
-	 */
-	notifyEffect(effect: Subscriber): void;
+	computed: {
+		/**
+		 * Updates the computed subscriber's value and returns whether it changed.
+		 * 
+		 * This function should be called when a computed subscriber is marked as Dirty.
+		 * The computed subscriber's getter function is invoked, and its value is updated.
+		 * If the value changes, the new value is stored, and the function returns `true`.
+		 * 
+		 * @param computed - The computed subscriber to update.
+		 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
+		 */
+		update(computed: Dependency & Subscriber): boolean;
+		onUnwatched?: (computed: Dependency & Subscriber) => void;
+	};
+	effect: {
+		/**
+		 * Handles effect notifications by processing the specified `effect`.
+		 * 
+		 * When an `effect` first receives any of the following flags:
+		 *   - `Dirty`
+		 *   - `PendingComputed`
+		 *   - `PendingEffect`
+		 * this method will process them and return `true` if the flags are successfully handled.
+		 * If not fully handled, future changes to these flags will trigger additional calls
+		 * until the method eventually returns `true`.
+		 */
+		notify(effect: Subscriber): void;
+	};
 }) {
 	let queuedEffects: Subscriber | undefined;
 	let queuedEffectsTail: Subscriber | undefined;
@@ -249,10 +259,6 @@ export function createReactiveSystem({
 		 * @param flags - The current flag set for this subscriber.
 		 */
 		processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-			if (flags & SubscriberFlags.Cold) {
-				warming(computed, flags, computed.deps!);
-				flags = computed.flags;
-			}
 			if (flags & SubscriberFlags.Dirty) {
 				updateComputed(computed);
 			} else if (checkDirty(computed.deps!)) {
@@ -308,6 +314,8 @@ export function createReactiveSystem({
 				notifyEffect(effect);
 			}
 		},
+		warming,
+		cooling,
 	};
 
 	function isQueued(effect: Subscriber) {
@@ -509,16 +517,17 @@ export function createReactiveSystem({
 						dep.deps = undefined;
 						dep.depsTail = undefined;
 					} else if (depFlags & SubscriberFlags.Computed) {
-						cooling(dep, depFlags, depDeps);
+						onUnwatchedComputed(dep);
 					}
 				}
 			}
 		} while ((link = link.nextDep!) !== undefined);
 	}
 
-	function warming(sub: Subscriber & Dependency, flags: SubscriberFlags, link: Link) {
-		sub.flags = flags & ~SubscriberFlags.Cold;
-		do {
+	function warming(sub: Subscriber & Dependency) {
+		sub.flags &= ~SubscriberFlags.Cold;
+		let link = sub.deps;
+		while (link !== undefined) {
 			const dep = link.dep as Dependency | Dependency & Subscriber;
 			if (dep.subs === undefined) {
 				dep.subs = link;
@@ -533,15 +542,17 @@ export function createReactiveSystem({
 			if ('flags' in dep) {
 				const depFlags = dep.flags;
 				if (depFlags & SubscriberFlags.Cold) {
-					warming(dep, depFlags, dep.deps!);
+					warming(dep);
 				}
 			}
-		} while ((link = link.nextDep!) !== undefined);
+			link = link.nextDep;
+		}
 	}
 
-	function cooling(sub: Subscriber & Dependency, flags: SubscriberFlags, link: Link) {
-		sub.flags = flags | SubscriberFlags.Cold | SubscriberFlags.Pending;
-		do {
+	function cooling(sub: Subscriber & Dependency) {
+		sub.flags |= SubscriberFlags.Cold;
+		let link = sub.deps;
+		while (link !== undefined) {
 			const dep = link.dep;
 			const nextSub = link.nextSub;
 			const prevSub = link.prevSub;
@@ -561,12 +572,14 @@ export function createReactiveSystem({
 				dep.subs = nextSub;
 			}
 
-			if (dep.subs === undefined && 'deps' in dep) {
-				const depDeps = dep.deps;
-				if (depDeps !== undefined) {
-					cooling(dep, dep.flags, depDeps);
-				}
+			if (
+				dep.subs === undefined
+				&& 'flags' in dep
+				&& dep.flags & SubscriberFlags.Computed
+			) {
+				cooling(dep);
 			}
-		} while ((link = link.nextDep!) !== undefined);
+			link = link.nextDep;
+		}
 	}
 }

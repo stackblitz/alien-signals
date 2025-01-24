@@ -26,38 +26,47 @@ interface WriteableSignal<T> {
 
 const {
 	link,
+	warming,
+	cooling,
 	propagate,
 	checkDirty,
-	startTracking,
 	endTracking,
+	startTracking,
 	processEffectNotifications,
 	processComputedUpdate,
 	processPendingInnerEffects,
 } = createReactiveSystem({
-	updateComputed(computed: Computed) {
-		const prevSub = activeSub;
-		activeSub = computed;
-		startTracking(computed);
-		try {
-			const oldValue = computed.currentValue;
-			const newValue = computed.getter(oldValue);
-			if (oldValue !== newValue) {
-				computed.currentValue = newValue;
-				computed.version++;
-				return true;
+	computed: {
+		update(computed: Computed) {
+			const prevSub = activeSub;
+			activeSub = computed;
+			startTracking(computed);
+			try {
+				const oldValue = computed.currentValue;
+				const newValue = computed.getter(oldValue);
+				if (oldValue !== newValue) {
+					computed.currentValue = newValue;
+					computed.version++;
+					return true;
+				}
+				return false;
+			} finally {
+				activeSub = prevSub;
+				endTracking(computed);
 			}
-			return false;
-		} finally {
-			activeSub = prevSub;
-			endTracking(computed);
-		}
+		},
+		onUnwatched(computed) {
+			cooling(computed);
+		},
 	},
-	notifyEffect(e: Effect | EffectScope) {
-		if ('isScope' in e) {
-			notifyEffectScope(e);
-		} else {
-			notifyEffect(e);
-		}
+	effect: {
+		notify(e: Effect | EffectScope) {
+			if ('isScope' in e) {
+				notifyEffectScope(e);
+			} else {
+				notifyEffect(e);
+			}
+		},
 	},
 });
 const pauseStack: (Subscriber | undefined)[] = [];
@@ -194,8 +203,11 @@ function notifyEffectScope(e: EffectScope) {
 
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
-	const flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
+	let flags = this.flags;
+	if (flags & SubscriberFlags.Cold) {
+		warming(this);
+		processComputedUpdate(this, this.flags);
+	} else if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
 		processComputedUpdate(this, flags);
 	}
 	if (activeSub !== undefined) {
