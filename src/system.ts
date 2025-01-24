@@ -27,11 +27,10 @@ export const enum SubscriberFlags {
 	Computed = 1 << 0,
 	Effect = 1 << 1,
 	Tracking = 1 << 2,
-	Notified = 1 << 3,
-	Recursed = 1 << 4,
-	Dirty = 1 << 5,
-	Pending = 1 << 6,
-	Cold = 1 << 7,
+	Recursed = 1 << 3,
+	Dirty = 1 << 4,
+	Pending = 1 << 5,
+	Cold = 1 << 6,
 	Propagated = Dirty | Pending,
 }
 
@@ -124,18 +123,18 @@ export function createReactiveSystem({
 				if (
 					(
 						!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))
-						&& (sub.flags = subFlags | targetFlag | SubscriberFlags.Notified, true)
+						&& (sub.flags = subFlags | targetFlag, true)
 					)
 					|| (
 						(subFlags & SubscriberFlags.Recursed)
 						&& !(subFlags & SubscriberFlags.Tracking)
-						&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified, true)
+						&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag, true)
 					)
 					|| (
 						!(subFlags & SubscriberFlags.Propagated)
 						&& isValidLink(link, sub)
 						&& (
-							sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified,
+							sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag,
 							(sub as Dependency).subs !== undefined
 						)
 					)
@@ -161,8 +160,8 @@ export function createReactiveSystem({
 						queuedEffectsTail = sub;
 					}
 				} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
-					sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
-					if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
+					sub.flags = subFlags | targetFlag;
+					if (subFlags & SubscriberFlags.Effect && !isQueued(sub)) {
 						if (queuedEffectsTail !== undefined) {
 							queuedEffectsTail.depsTail!.nextDep = sub.deps;
 						} else {
@@ -214,7 +213,7 @@ export function createReactiveSystem({
 		 */
 		startTracking(sub: Subscriber): void {
 			sub.depsTail = undefined;
-			sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Propagated)) | SubscriberFlags.Tracking;
+			sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Propagated)) | SubscriberFlags.Tracking;
 		},
 		/**
 		 * Concludes tracking of dependencies for the specified subscriber.
@@ -325,10 +324,20 @@ export function createReactiveSystem({
 					queuedEffectsTail = undefined;
 				}
 				notifyEffect(effect);
-				effect.flags &= ~SubscriberFlags.Notified;
 			}
 		},
 	};
+
+	function isQueued(effect: Subscriber) {
+		let queuedEffect = queuedEffects;
+		while (queuedEffect !== undefined) {
+			if (queuedEffect === effect) {
+				return true;
+			}
+			queuedEffect = queuedEffect.depsTail!.nextDep?.sub;
+		}
+		return false;
+	}
 
 	/**
 	 * Creates and attaches a new link between the given dependency and subscriber.
