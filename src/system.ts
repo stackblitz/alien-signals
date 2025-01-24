@@ -112,7 +112,7 @@ export function createReactiveSystem({
 		 * @param link - The starting link from which propagation begins.
 		 */
 		propagate(link: Link): void {
-			let targetFlag = SubscriberFlags.Dirty;
+			let targetFlag = SubscriberFlags.Dirty | SubscriberFlags.Pending;
 			let subs = link;
 			let stack = 0;
 
@@ -181,7 +181,7 @@ export function createReactiveSystem({
 					subs = link;
 					targetFlag = stack
 						? SubscriberFlags.Pending
-						: SubscriberFlags.Dirty;
+						: SubscriberFlags.Dirty | SubscriberFlags.Pending;
 					continue;
 				}
 
@@ -195,7 +195,7 @@ export function createReactiveSystem({
 						subs = link;
 						targetFlag = stack
 							? SubscriberFlags.Pending
-							: SubscriberFlags.Dirty;
+							: SubscriberFlags.Dirty | SubscriberFlags.Pending;
 						continue top;
 					}
 				}
