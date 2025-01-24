@@ -27,7 +27,7 @@ interface WriteableSignal<T> {
 const {
 	link,
 	propagate,
-	updateDirtyFlag,
+	checkDirty,
 	startTracking,
 	endTracking,
 	processEffectNotifications,
@@ -175,12 +175,11 @@ function notifyEffect(e: Effect) {
 	const flags = e.flags;
 	if (flags & SubscriberFlags.Dirty) {
 		runEffect(e);
-	} else if (flags & SubscriberFlags.Pending) {
-		if (updateDirtyFlag(e, flags)) {
-			runEffect(e);
-		} else {
-			processPendingInnerEffects(e);
-		}
+	} else if (checkDirty(e.deps!)) {
+		runEffect(e);
+	} else {
+		e.flags = flags & ~SubscriberFlags.Pending;
+		processPendingInnerEffects(e);
 	}
 }
 
