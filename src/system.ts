@@ -267,22 +267,20 @@ export function createReactiveSystem({
 		 * @param flags - The current flag set for this subscriber.
 		 */
 		processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-			if (flags & SubscriberFlags.Dirty) {
+			if (
+				flags & SubscriberFlags.Dirty
+				|| (
+					checkDirty(computed.deps!)
+						? true
+						: (computed.flags = flags & ~SubscriberFlags.PendingComputed, false)
+				)
+			) {
 				if (updateComputed(computed)) {
 					const subs = computed.subs;
 					if (subs !== undefined) {
 						shallowPropagate(subs);
 					}
 				}
-			} else if (checkDirty(computed.deps!)) {
-				if (updateComputed(computed)) {
-					const subs = computed.subs;
-					if (subs !== undefined) {
-						shallowPropagate(subs);
-					}
-				}
-			} else {
-				computed.flags = flags & ~SubscriberFlags.PendingComputed;
 			}
 		},
 		/**
