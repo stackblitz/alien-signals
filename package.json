@@ -24,9 +24,9 @@
 		}
 	},
 	"files": [
-		"**/*.cjs",
-		"**/*.mjs",
-		"**/*.d.ts"
+		"cjs/index.cjs",
+		"esm/index.mjs",
+		"types/*.d.ts"
 	],
 	"repository": {
 		"type": "git",
