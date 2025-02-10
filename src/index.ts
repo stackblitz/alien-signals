@@ -89,7 +89,6 @@ export function signal<T>(oldValue: T): WriteableSignal<T>;
 export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 	return signalGetterSetter.bind({
 		currentValue: oldValue,
-		subs: undefined,
 		subsTail: undefined,
 	}) as WriteableSignal<T | undefined>;
 }
@@ -97,7 +96,6 @@ export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
 export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 	return computedGetter.bind({
 		currentValue: undefined,
-		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
@@ -109,7 +107,6 @@ export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 export function effect<T>(fn: () => T): () => void {
 	const e: Effect = {
 		fn,
-		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
@@ -201,7 +198,7 @@ function computedGetter<T>(this: Computed<T>): T {
 function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
-			const subs = this.subs;
+			const subs = this.subsTail;
 			if (subs !== undefined) {
 				propagate(subs);
 				if (!batchDepth) {
