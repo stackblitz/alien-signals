@@ -73,19 +73,13 @@ export function createReactiveSystem({
 		 */
 		link(dep: Dependency, sub: Subscriber): Link | undefined {
 			const currentDep = sub.depsTail;
-			if (
-				currentDep !== undefined
-				&& currentDep.dep === dep
-			) {
+			if (currentDep !== undefined && currentDep.dep === dep) {
 				return;
 			}
 			const nextDep = currentDep !== undefined
 				? currentDep.nextDep
 				: sub.deps;
-			if (
-				nextDep !== undefined
-				&& nextDep.dep === dep
-			) {
+			if (nextDep !== undefined && nextDep.dep === dep) {
 				sub.depsTail = nextDep;
 				return;
 			}
