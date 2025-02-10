@@ -426,7 +426,7 @@ export function createReactiveSystem({
 						if (updateComputed(sub)) {
 							if ((link = subSubs.prevSub!) !== undefined) {
 								subSubs.prevSub = undefined;
-								shallowPropagate(sub.subs!);
+								shallowPropagate(subSubs);
 								sub = link.sub as Dependency & Subscriber;
 							} else {
 								sub = subSubs.sub as Dependency & Subscriber;
