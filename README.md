@@ -30,7 +30,8 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 ## Derived Projects
 
 - [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua): Lua implementation of alien-signals
-- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): alien-signals Dart implementation of alien-signals
+- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): Dart implementation of alien-signals
+- [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go): Go implementation of alien-signals
 - [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
 - [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 - [hunghg255/reactjs-signal](https://github.com/hunghg255/reactjs-signal): Share Store State with Signal Pattern
