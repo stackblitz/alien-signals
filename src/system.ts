@@ -130,15 +130,15 @@ export function createReactiveSystem({
 						)
 					)
 				) {
-					const subSubs = (sub as Dependency).subsTail;
-					if (subSubs !== undefined) {
-						if (subSubs.prevSub !== undefined) {
-							subSubs.nextSub = subs;
-							link = subs = subSubs;
+					const subsTail = (sub as Dependency).subsTail;
+					if (subsTail !== undefined) {
+						if (subsTail.prevSub !== undefined) {
+							subsTail.nextSub = subs;
+							link = subs = subsTail;
 							targetFlag = SubscriberFlags.PendingComputed;
 							++stack;
 						} else {
-							link = subSubs;
+							link = subsTail;
 							targetFlag = subFlags & SubscriberFlags.Effect
 								? SubscriberFlags.PendingEffect
 								: SubscriberFlags.PendingComputed;
@@ -178,9 +178,9 @@ export function createReactiveSystem({
 				while (stack) {
 					--stack;
 					const dep = subs.dep;
-					const depSubs = dep.subsTail!;
-					subs = depSubs.nextSub!;
-					depSubs.nextSub = undefined;
+					const subsTail = dep.subsTail!;
+					subs = subsTail.nextSub!;
+					subsTail.nextSub = undefined;
 					if ((link = subs.prevSub!) !== undefined) {
 						subs = link;
 						targetFlag = stack
@@ -275,9 +275,9 @@ export function createReactiveSystem({
 				)
 			) {
 				if (updateComputed(computed)) {
-					const subs = computed.subsTail;
-					if (subs !== undefined) {
-						shallowPropagate(subs);
+					const subsTail = computed.subsTail;
+					if (subsTail !== undefined) {
+						shallowPropagate(subsTail);
 					}
 				}
 			}
@@ -404,9 +404,9 @@ export function createReactiveSystem({
 						dirty = true;
 					}
 				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
-					const depSubs = dep.subsTail!;
-					if (depSubs.prevSub !== undefined) {
-						depSubs.nextSub = link;
+					const depSubsTail = dep.subsTail!;
+					if (depSubsTail.prevSub !== undefined) {
+						depSubsTail.nextSub = link;
 					}
 					link = dep.deps!;
 					++stack;
@@ -423,16 +423,16 @@ export function createReactiveSystem({
 				let sub = link.sub as Dependency & Subscriber;
 				do {
 					--stack;
-					const subSubs = sub.subsTail!;
+					const subSubsTail = sub.subsTail!;
 
 					if (dirty) {
 						if (updateComputed(sub)) {
-							if ((link = subSubs.nextSub!) !== undefined) {
-								subSubs.nextSub = undefined;
-								shallowPropagate(subSubs);
+							if ((link = subSubsTail.nextSub!) !== undefined) {
+								subSubsTail.nextSub = undefined;
+								shallowPropagate(subSubsTail);
 								sub = link.sub as Dependency & Subscriber;
 							} else {
-								sub = subSubs.sub as Dependency & Subscriber;
+								sub = subSubsTail.sub as Dependency & Subscriber;
 							}
 							continue;
 						}
@@ -440,18 +440,18 @@ export function createReactiveSystem({
 						sub.flags &= ~SubscriberFlags.PendingComputed;
 					}
 
-					if ((link = subSubs.nextSub!) !== undefined) {
-						subSubs.nextSub = undefined;
+					if ((link = subSubsTail.nextSub!) !== undefined) {
+						subSubsTail.nextSub = undefined;
 						if (link.nextDep !== undefined) {
 							link = link.nextDep;
 							continue top;
 						}
 						sub = link.sub as Dependency & Subscriber;
 					} else {
-						if ((link = subSubs.nextDep!) !== undefined) {
+						if ((link = subSubsTail.nextDep!) !== undefined) {
 							continue top;
 						}
-						sub = subSubs.sub as Dependency & Subscriber;
+						sub = subSubsTail.sub as Dependency & Subscriber;
 					}
 
 					dirty = false;
