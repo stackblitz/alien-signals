@@ -35,6 +35,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
 - [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 - [hunghg255/reactjs-signal](https://github.com/hunghg255/reactjs-signal): Share Store State with Signal Pattern
+- [gn8-ai/universe-alien-signals](https://github.com/gn8-ai/universe-alien-signals): Enables simple use of the Alien Signals state management system in modern frontend frameworks
 
 ## Adoption
 
@@ -82,7 +83,7 @@ stopScope();
 count(3); // No console output
 ```
 
-#### Creating Your Own Public API
+#### Creating Your Own Surface API
 
 You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to build your own signal API. For implementation examples, see:
 
