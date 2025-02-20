@@ -198,9 +198,9 @@ function computedGetter<T>(this: Computed<T>): T {
 function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
-			const subs = this.subsTail;
-			if (subs !== undefined) {
-				propagate(subs);
+			const subsTail = this.subsTail;
+			if (subsTail !== undefined) {
+				propagate(subsTail);
 				if (!batchDepth) {
 					processEffectNotifications();
 				}
