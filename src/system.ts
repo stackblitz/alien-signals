@@ -11,9 +11,9 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | (Dependency & Subscriber);
 	sub: Subscriber | (Dependency & Subscriber);
-	// Reused to link the previous stack in updateDirtyFlag
-	// Reused to link the previous stack in propagate
 	prevSub: Link | undefined;
+	// Reused to link the previous stack in checkDirty
+	// Reused to link the previous stack in propagate
 	nextSub: Link | undefined;
 	// Reused to link the notify effect in queuedEffects
 	nextDep: Link | undefined;
