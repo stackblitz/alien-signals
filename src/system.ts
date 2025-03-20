@@ -16,7 +16,6 @@ export interface Link {
 	// Reused to link the previous stack in propagate
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
-	// Reused to link the notify effect in queuedEffects
 	nextDep: Link | undefined;
 }
 
@@ -60,8 +59,7 @@ export function createReactiveSystem({
 	 */
 	notifyEffect(effect: Subscriber): boolean;
 }) {
-	let queuedEffects: Subscriber | undefined;
-	let queuedEffectsTail: Subscriber | undefined;
+	const queuedEffects: Subscriber[] = [];
 
 	return {
 		/**
@@ -146,22 +144,12 @@ export function createReactiveSystem({
 						continue;
 					}
 					if (subFlags & SubscriberFlags.Effect) {
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.depsTail!.nextDep = sub.deps;
-						} else {
-							queuedEffects = sub;
-						}
-						queuedEffectsTail = sub;
+						queuedEffects.push(sub);
 					}
 				} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 					sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 					if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail.depsTail!.nextDep = sub.deps;
-						} else {
-							queuedEffects = sub;
-						}
-						queuedEffectsTail = sub;
+						queuedEffects.push(sub);
 					}
 				} else if (
 					!(subFlags & targetFlag)
@@ -313,17 +301,8 @@ export function createReactiveSystem({
 		 * notifications may be triggered until fully handled.
 		 */
 		processEffectNotifications(): void {
-			while (queuedEffects !== undefined) {
-				const effect = queuedEffects;
-				const depsTail = effect.depsTail!;
-				const queuedNext = depsTail.nextDep;
-				if (queuedNext !== undefined) {
-					depsTail.nextDep = undefined;
-					queuedEffects = queuedNext.sub;
-				} else {
-					queuedEffects = undefined;
-					queuedEffectsTail = undefined;
-				}
+			while (queuedEffects.length) {
+				const effect = queuedEffects.shift()!;
 				if (!notifyEffect(effect)) {
 					effect.flags &= ~SubscriberFlags.Notified;
 				}
@@ -474,12 +453,7 @@ export function createReactiveSystem({
 			if ((subFlags & (SubscriberFlags.PendingComputed | SubscriberFlags.Dirty)) === SubscriberFlags.PendingComputed) {
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
 				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail.depsTail!.nextDep = sub.deps;
-					} else {
-						queuedEffects = sub;
-					}
-					queuedEffectsTail = sub;
+					queuedEffects.push(sub);
 				}
 			}
 			link = link.nextSub!;
