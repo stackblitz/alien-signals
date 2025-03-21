@@ -19,6 +19,11 @@ export interface Link {
 	nextDep: Link | undefined;
 }
 
+interface QueuedLink {
+	effect: Subscriber;
+	next: QueuedLink | undefined;
+}
+
 export const enum SubscriberFlags {
 	Computed = 1 << 0,
 	Effect = 1 << 1,
@@ -59,9 +64,8 @@ export function createReactiveSystem({
 	 */
 	notifyEffect(effect: Subscriber): boolean;
 }) {
-	const queuedEffects: Subscriber[] = [];
-	
-	let currentEffectIndex = 0;
+	let queuedEffects: QueuedLink | undefined;
+	let queuedEffectsTail: QueuedLink | undefined;
 
 	return {
 		/**
@@ -146,12 +150,20 @@ export function createReactiveSystem({
 						continue;
 					}
 					if (subFlags & SubscriberFlags.Effect) {
-						queuedEffects.push(sub);
+						if (queuedEffectsTail !== undefined) {
+							queuedEffectsTail = queuedEffectsTail.next = { effect: sub, next: undefined };
+						} else {
+							queuedEffectsTail = queuedEffects = { effect: sub, next: undefined };
+						}
 					}
 				} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 					sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 					if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-						queuedEffects.push(sub);
+						if (queuedEffectsTail !== undefined) {
+							queuedEffectsTail = queuedEffectsTail.next = { effect: sub, next: undefined };
+						} else {
+							queuedEffectsTail = queuedEffects = { effect: sub, next: undefined };
+						}
 					}
 				} else if (
 					!(subFlags & targetFlag)
@@ -303,14 +315,15 @@ export function createReactiveSystem({
 		 * notifications may be triggered until fully handled.
 		 */
 		processEffectNotifications(): void {
-			while (currentEffectIndex < queuedEffects.length) {
-				const effect = queuedEffects[currentEffectIndex++];
+			while (queuedEffects !== undefined) {
+				const effect = queuedEffects.effect;
+				if ((queuedEffects = queuedEffects.next) === undefined) {
+					queuedEffectsTail = undefined;
+				}
 				if (!notifyEffect(effect)) {
 					effect.flags &= ~SubscriberFlags.Notified;
 				}
 			}
-			currentEffectIndex = 0;
-			queuedEffects.length = 0;
 		},
 	};
 
@@ -457,7 +470,11 @@ export function createReactiveSystem({
 			if ((subFlags & (SubscriberFlags.PendingComputed | SubscriberFlags.Dirty)) === SubscriberFlags.PendingComputed) {
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
 				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					queuedEffects.push(sub);
+					if (queuedEffectsTail !== undefined) {
+						queuedEffectsTail = queuedEffectsTail.next = { effect: sub, next: undefined };
+					} else {
+						queuedEffectsTail = queuedEffects = { effect: sub, next: undefined };
+					}
 				}
 			}
 			link = link.nextSub!;
