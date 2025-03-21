@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { computed, effect, pauseTracking, resumeTracking, signal } from '../src';
 
-test('#43', () => {
+test('#48', () => {
 	const source = signal(0);
 	let disposeInner: () => void;
 
