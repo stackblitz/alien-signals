@@ -60,6 +60,8 @@ export function createReactiveSystem({
 	notifyEffect(effect: Subscriber): boolean;
 }) {
 	const queuedEffects: Subscriber[] = [];
+	
+	let currentEffectIndex = 0;
 
 	return {
 		/**
@@ -301,12 +303,14 @@ export function createReactiveSystem({
 		 * notifications may be triggered until fully handled.
 		 */
 		processEffectNotifications(): void {
-			while (queuedEffects.length) {
-				const effect = queuedEffects.shift()!;
+			while (currentEffectIndex < queuedEffects.length) {
+				const effect = queuedEffects[currentEffectIndex++];
 				if (!notifyEffect(effect)) {
 					effect.flags &= ~SubscriberFlags.Notified;
 				}
 			}
+			currentEffectIndex = 0;
+			queuedEffects.length = 0;
 		},
 	};
 
