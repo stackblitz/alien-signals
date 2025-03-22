@@ -2,7 +2,7 @@ export * from './system.js';
 
 import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
 
-interface EffectScope extends Subscriber {
+export interface EffectScope extends Subscriber {
 	isScope: true;
 }
 
@@ -10,15 +10,15 @@ interface Effect extends Subscriber, Dependency {
 	fn(): void;
 }
 
-interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
+export interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
 	getter: (cachedValue?: T) => T;
 }
 
-interface Signal<T = any> extends Dependency {
+export interface Signal<T = any> extends Dependency {
 	currentValue: T;
 }
 
-interface WriteableSignal<T> {
+export interface WriteableSignal<T> {
 	(): T;
 	(value: T): void;
 }
