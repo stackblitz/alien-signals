@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { test } from 'vitest';
 import { computed, effect, pauseTracking, resumeTracking, signal } from '../src';
 
 test('#48', () => {
