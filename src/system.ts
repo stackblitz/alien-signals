@@ -20,7 +20,7 @@ export interface Link {
 
 interface OneWayLink<T> {
 	target: T;
-	next: OneWayLink<T> | undefined;
+	linked: OneWayLink<T> | undefined;
 }
 
 export const enum SubscriberFlags {
@@ -138,7 +138,7 @@ export function createReactiveSystem({
 					if (subSubs !== undefined) {
 						current = subSubs;
 						if (subSubs.nextSub !== undefined) {
-							branchs = { target: next, next: branchs };
+							branchs = { target: next, linked: branchs };
 							++branchDepth;
 							next = current.nextSub;
 							targetFlag = SubscriberFlags.PendingComputed;
@@ -151,18 +151,18 @@ export function createReactiveSystem({
 					}
 					if (subFlags & SubscriberFlags.Effect) {
 						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail = queuedEffectsTail.next = { target: sub, next: undefined };
+							queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 						} else {
-							queuedEffectsTail = queuedEffects = { target: sub, next: undefined };
+							queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 						}
 					}
 				} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 					sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 					if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
 						if (queuedEffectsTail !== undefined) {
-							queuedEffectsTail = queuedEffectsTail.next = { target: sub, next: undefined };
+							queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 						} else {
-							queuedEffectsTail = queuedEffects = { target: sub, next: undefined };
+							queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 						}
 					}
 				} else if (
@@ -183,7 +183,7 @@ export function createReactiveSystem({
 
 				while (branchDepth--) {
 					current = branchs!.target!;
-					branchs = branchs!.next;
+					branchs = branchs!.linked;
 					if (current !== undefined) {
 						next = current.nextSub;
 						targetFlag = branchDepth
@@ -314,7 +314,7 @@ export function createReactiveSystem({
 		processEffectNotifications(): void {
 			while (queuedEffects !== undefined) {
 				const effect = queuedEffects.target;
-				if ((queuedEffects = queuedEffects.next) === undefined) {
+				if ((queuedEffects = queuedEffects.linked) === undefined) {
 					queuedEffectsTail = undefined;
 				}
 				if (!notifyEffect(effect)) {
@@ -468,9 +468,9 @@ export function createReactiveSystem({
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
 				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
 					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.next = { target: sub, next: undefined };
+						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, next: undefined };
+						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 					}
 				}
 			}
