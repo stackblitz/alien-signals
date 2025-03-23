@@ -12,7 +12,6 @@ export interface Subscriber {
 export interface Link {
 	dep: Dependency | (Dependency & Subscriber);
 	sub: Subscriber | (Dependency & Subscriber);
-	// Reused to link the previous stack in updateDirtyFlag
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
 	nextDep: Link | undefined;
@@ -372,83 +371,67 @@ export function createReactiveSystem({
 	 * subscriber in a pending state, updateComputed is called and shallowPropagate
 	 * is triggered if a value changes. Returns whether any updates occurred.
 	 * 
-	 * @param link - The starting link representing a sequence of pending computeds.
+	 * @param current - The starting link representing a sequence of pending computeds.
 	 * @returns `true` if a computed was updated, otherwise `false`.
 	 */
-	function checkDirty(link: Link): boolean {
-		let stack = 0;
-		let dirty: boolean;
+	function checkDirty(current: Link): boolean {
+		let prevLinks: OneWayLink<Link> | undefined;
+		let checkDepth = 0;
 
 		top: do {
-			dirty = false;
-			const dep = link.dep;
+			const dep = current.dep;
 
 			if ('flags' in dep) {
 				const depFlags = dep.flags;
 				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
 					if (updateComputed(dep)) {
-						const subs = dep.subs!;
-						if (subs.nextSub !== undefined) {
-							shallowPropagate(subs);
+						if (current.nextSub !== undefined || current.prevSub !== undefined) {
+							shallowPropagate(dep.subs!);
 						}
-						dirty = true;
+						while (checkDepth--) {
+							const computed = current.sub as Dependency & Subscriber;
+							const firstSub = computed.subs!;
+
+							if (updateComputed(computed)) {
+								if (firstSub.nextSub !== undefined) {
+									shallowPropagate(firstSub);
+									current = prevLinks!.target;
+									prevLinks = prevLinks!.linked;
+								} else {
+									current = firstSub;
+								}
+								continue;
+							}
+
+							if (firstSub.nextSub !== undefined) {
+								current = prevLinks!.target;
+								prevLinks = prevLinks!.linked;
+							} else {
+								current = firstSub;
+							}
+
+							if ((current = current.nextDep!) === undefined) {
+								return false;
+							}
+
+							continue top;
+						}
+						return true;
 					}
 				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
-					const depSubs = dep.subs!;
-					if (depSubs.nextSub !== undefined) {
-						depSubs.prevSub = link;
+					dep.flags = depFlags & ~SubscriberFlags.PendingComputed;
+					if (current.nextSub !== undefined || current.prevSub !== undefined) {
+						prevLinks = { target: current, linked: prevLinks };
 					}
-					link = dep.deps!;
-					++stack;
+					++checkDepth;
+					current = dep.deps!;
 					continue;
 				}
 			}
 
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
+			if ((current = current.nextDep!) === undefined) {
+				return false;
 			}
-
-			if (stack) {
-				let sub = link.sub as Dependency & Subscriber;
-				do {
-					--stack;
-					const subSubs = sub.subs!;
-
-					if (dirty) {
-						if (updateComputed(sub)) {
-							if ((link = subSubs.prevSub!) !== undefined) {
-								subSubs.prevSub = undefined;
-								shallowPropagate(subSubs);
-								sub = link.sub as Dependency & Subscriber;
-							} else {
-								sub = subSubs.sub as Dependency & Subscriber;
-							}
-							continue;
-						}
-					} else {
-						sub.flags &= ~SubscriberFlags.PendingComputed;
-					}
-
-					if ((link = subSubs.prevSub!) !== undefined) {
-						subSubs.prevSub = undefined;
-						if (link.nextDep !== undefined) {
-							link = link.nextDep;
-							continue top;
-						}
-						sub = link.sub as Dependency & Subscriber;
-					} else {
-						if ((link = subSubs.nextDep!) !== undefined) {
-							continue top;
-						}
-						sub = subSubs.sub as Dependency & Subscriber;
-					}
-
-					dirty = false;
-				} while (stack);
-			}
-
-			return dirty;
 		} while (true);
 	}
 
