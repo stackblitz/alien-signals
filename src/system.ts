@@ -404,17 +404,14 @@ export function createReactiveSystem({
 							}
 
 							if (firstSub.nextSub !== undefined) {
-								current = prevLinks!.target;
+								if ((current = prevLinks!.target.nextDep!) === undefined) {
+									return false;
+								}
 								prevLinks = prevLinks!.linked;
-							} else {
-								current = firstSub;
+								continue top;
 							}
 
-							if ((current = current.nextDep!) === undefined) {
-								return false;
-							}
-
-							continue top;
+							return false;
 						}
 						return true;
 					}
