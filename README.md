@@ -106,25 +106,20 @@ function propagate(link: Link, targetFlag = SubscriberFlags.Dirty): void {
 		const sub = link.sub;
 		const subFlags = sub.flags;
 
-		if (
-			(
-				!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))
-				&& (sub.flags = subFlags | targetFlag | SubscriberFlags.Notified, true)
-			)
-			|| (
-				(subFlags & SubscriberFlags.Recursed)
-				&& !(subFlags & SubscriberFlags.Tracking)
-				&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified, true)
-			)
-			|| (
-				!(subFlags & SubscriberFlags.Propagated)
-				&& isValidLink(link, sub)
-				&& (
-					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified,
-					(sub as Dependency).subs !== undefined
-				)
-			)
-		) {
+		let shouldNotify = false;
+
+		if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))) {
+			sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
+			shouldNotify = true;
+		} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
+			sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified;
+			shouldNotify = true;
+		} else if (!(subFlags & SubscriberFlags.Propagated) && isValidLink(current, sub)) {
+			sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified;
+			shouldNotify = (sub as Dependency).subs !== undefined;
+		}
+
+		if (shouldNotify) {
 			const subSubs = (sub as Dependency).subs;
 			if (subSubs !== undefined) {
 				propagate(
@@ -133,23 +128,22 @@ function propagate(link: Link, targetFlag = SubscriberFlags.Dirty): void {
 						? SubscriberFlags.PendingEffect
 						: SubscriberFlags.PendingComputed
 				);
-			} else if (subFlags & SubscriberFlags.Effect) {
+			}
+			if (subFlags & SubscriberFlags.Effect) {
 				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail.depsTail!.nextDep = sub.deps;
+					queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 				} else {
-					queuedEffects = sub;
+					queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 				}
-				queuedEffectsTail = sub;
 			}
 		} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 			sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 			if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
 				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail.depsTail!.nextDep = sub.deps;
+					queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 				} else {
-					queuedEffects = sub;
+					queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 				}
-				queuedEffectsTail = sub;
 			}
 		} else if (
 			!(subFlags & targetFlag)

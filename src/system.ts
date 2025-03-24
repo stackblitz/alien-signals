@@ -114,25 +114,20 @@ export function createReactiveSystem({
 				const sub = current.sub;
 				const subFlags = sub.flags;
 
-				if (
-					(
-						!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))
-						&& (sub.flags = subFlags | targetFlag | SubscriberFlags.Notified, true)
-					)
-					|| (
-						(subFlags & SubscriberFlags.Recursed)
-						&& !(subFlags & SubscriberFlags.Tracking)
-						&& (sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified, true)
-					)
-					|| (
-						!(subFlags & SubscriberFlags.Propagated)
-						&& isValidLink(current, sub)
-						&& (
-							sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified,
-							(sub as Dependency).subs !== undefined
-						)
-					)
-				) {
+				let shouldNotify = false;
+
+				if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))) {
+					sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
+					shouldNotify = true;
+				} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
+					sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified;
+					shouldNotify = true;
+				} else if (!(subFlags & SubscriberFlags.Propagated) && isValidLink(current, sub)) {
+					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified;
+					shouldNotify = (sub as Dependency).subs !== undefined;
+				}
+
+				if (shouldNotify) {
 					const subSubs = (sub as Dependency).subs;
 					if (subSubs !== undefined) {
 						current = subSubs;
@@ -259,20 +254,15 @@ export function createReactiveSystem({
 		 * @param flags - The current flag set for this subscriber.
 		 */
 		processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-			if (
-				flags & SubscriberFlags.Dirty
-				|| (
-					checkDirty(computed.deps!)
-						? true
-						: (computed.flags = flags & ~SubscriberFlags.PendingComputed, false)
-				)
-			) {
+			if (flags & SubscriberFlags.Dirty || checkDirty(computed.deps!)) {
 				if (updateComputed(computed)) {
 					const subs = computed.subs;
 					if (subs !== undefined) {
 						shallowPropagate(subs);
 					}
 				}
+			} else {
+				computed.flags = flags & ~SubscriberFlags.PendingComputed;
 			}
 		},
 		/**
