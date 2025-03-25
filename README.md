@@ -66,7 +66,7 @@ console.log(doubleCount()); // 4
 #### Effect Scope
 
 ```ts
-import { signal, effectScope } from 'alien-signals';
+import { signal, effect, effectScope } from 'alien-signals';
 
 const count = signal(1);
 
@@ -74,9 +74,9 @@ const stopScope = effectScope(() => {
   effect(() => {
     console.log(`Count in scope: ${count()}`);
   }); // Console: Count in scope: 1
-
-  count(2); // Console: Count in scope: 2
 });
+
+count(2); // Console: Count in scope: 2
 
 stopScope();
 
