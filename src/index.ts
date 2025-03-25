@@ -10,11 +10,11 @@ interface Effect extends Subscriber, Dependency {
 	fn(): void;
 }
 
-interface Computed<T = any> extends SignalBase<T | undefined>, Subscriber {
+interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
 	getter: (previousValue?: T) => T;
 }
 
-interface SignalBase<T = any> extends Dependency {
+interface Signal<T = any> extends Dependency {
 	currentValue: T;
 }
 
@@ -202,7 +202,7 @@ function computedGetter<T>(this: Computed<T>): T {
 	return this.currentValue!;
 }
 
-function signalGetterSetter<T>(this: SignalBase<T>, ...value: [T]): T | void {
+function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
 			const subs = this.subs;
