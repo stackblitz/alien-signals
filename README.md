@@ -74,9 +74,9 @@ const stopScope = effectScope(() => {
   effect(() => {
     console.log(`Count in scope: ${count()}`);
   }); // Console: Count in scope: 1
-
-  count(2); // Console: Count in scope: 2
 });
+
+count(2); // Console: Count in scope: 2
 
 stopScope();
 
