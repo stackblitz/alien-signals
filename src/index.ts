@@ -2,7 +2,7 @@ export * from './system.js';
 
 import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
 
-export interface EffectScope extends Subscriber {
+interface EffectScope extends Subscriber {
 	isScope: true;
 }
 
@@ -10,17 +10,12 @@ interface Effect extends Subscriber, Dependency {
 	fn(): void;
 }
 
-export interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
-	getter: (cachedValue?: T) => T;
+interface Computed<T = any> extends SignalBase<T | undefined>, Subscriber {
+	getter: (previousValue?: T) => T;
 }
 
-export interface Signal<T = any> extends Dependency {
+interface SignalBase<T = any> extends Dependency {
 	currentValue: T;
-}
-
-export interface WriteableSignal<T> {
-	(): T;
-	(value: T): void;
 }
 
 const {
@@ -84,17 +79,26 @@ export function resumeTracking() {
 	activeSub = pauseStack.pop();
 }
 
-export function signal<T>(): WriteableSignal<T | undefined>;
-export function signal<T>(oldValue: T): WriteableSignal<T>;
-export function signal<T>(oldValue?: T): WriteableSignal<T | undefined> {
+export function signal<T>(): {
+	(): T | undefined;
+	(value: T | undefined): void;
+};
+export function signal<T>(initialValue: T): {
+	(): T;
+	(value: T): void;
+};
+export function signal<T>(initialValue?: T): {
+	(): T | undefined;
+	(value: T | undefined): void;
+} {
 	return signalGetterSetter.bind({
-		currentValue: oldValue,
+		currentValue: initialValue,
 		subs: undefined,
 		subsTail: undefined,
-	}) as WriteableSignal<T | undefined>;
+	}) as () => T | undefined;
 }
 
-export function computed<T>(getter: (cachedValue?: T) => T): () => T {
+export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	return computedGetter.bind({
 		currentValue: undefined,
 		subs: undefined,
@@ -102,7 +106,7 @@ export function computed<T>(getter: (cachedValue?: T) => T): () => T {
 		deps: undefined,
 		depsTail: undefined,
 		flags: SubscriberFlags.Computed | SubscriberFlags.Dirty,
-		getter: getter as (cachedValue?: unknown) => unknown,
+		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
 
@@ -198,7 +202,7 @@ function computedGetter<T>(this: Computed<T>): T {
 	return this.currentValue!;
 }
 
-function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
+function signalGetterSetter<T>(this: SignalBase<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.currentValue !== (this.currentValue = value[0])) {
 			const subs = this.subs;
