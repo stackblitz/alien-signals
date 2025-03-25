@@ -15,9 +15,9 @@ test('should not trigger after stop', () => {
 		expect(triggers).toBe(1);
 
 		count(2);
-		expect(triggers).toBe(2);
 	});
 
+	expect(triggers).toBe(2);
 	count(3);
 	expect(triggers).toBe(3);
 	stopScope();
