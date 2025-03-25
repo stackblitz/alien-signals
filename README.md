@@ -66,7 +66,7 @@ console.log(doubleCount()); // 4
 #### Effect Scope
 
 ```ts
-import { signal, effectScope } from 'alien-signals';
+import { signal, effect, effectScope } from 'alien-signals';
 
 const count = signal(1);
 
