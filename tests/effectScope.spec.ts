@@ -13,7 +13,8 @@ test('should not trigger after stop', () => {
 			count();
 		});
 
-		count(2)
+		count(2);
+		expect(triggers).toBe(1);
 	});
 
 	expect(triggers).toBe(2);
