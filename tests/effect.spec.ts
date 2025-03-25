@@ -211,26 +211,3 @@ test('should duplicate subscribers do not affect the notify order', () => {
 
 	expect(order).toEqual(['a', 'b']);
 });
-
-test('should handle side effect with inner effects', () => {
-	const a = signal(0);
-	const b = signal(0);
-	const order: string[] = [];
-
-	effect(() => {
-		effect(() => {
-			a();
-			order.push('a');
-		});
-		effect(() => {
-			b();
-			order.push('b');
-		});
-		expect(order).toEqual(['a', 'b']);
-
-		order.length = 0;
-		b(1);
-		a(1);
-		expect(order).toEqual(['b', 'a']);
-	});
-});

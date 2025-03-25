@@ -130,24 +130,18 @@ export function createReactiveSystem({
 				if (shouldNotify) {
 					const subSubs = (sub as Dependency).subs;
 					if (subSubs !== undefined) {
+						current = subSubs;
 						if (subSubs.nextSub !== undefined) {
 							branchs = { target: next, linked: branchs };
 							++branchDepth;
-							current = subSubs;
 							next = current.nextSub;
 							targetFlag = SubscriberFlags.PendingComputed;
-							continue;
+						} else {
+							targetFlag = subFlags & SubscriberFlags.Effect
+								? SubscriberFlags.PendingEffect
+								: SubscriberFlags.PendingComputed;
 						}
-						if (subFlags & SubscriberFlags.Computed) {
-							current = subSubs;
-							targetFlag = SubscriberFlags.PendingComputed;
-							continue;
-						}
-						if (!(subSubs.sub.flags & SubscriberFlags.Tracking)) {
-							current = subSubs;
-							targetFlag = SubscriberFlags.PendingEffect;
-							continue;
-						}
+						continue;
 					}
 					if (subFlags & SubscriberFlags.Effect) {
 						if (queuedEffectsTail !== undefined) {
