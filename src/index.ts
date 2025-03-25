@@ -120,7 +120,13 @@ export function effect<T>(fn: () => T): () => void {
 	} else if (activeScope !== undefined) {
 		link(e, activeScope);
 	}
-	runEffect(e);
+	const prevSub = activeSub;
+	activeSub = e;
+	try {
+		e.fn();
+	} finally {
+		activeSub = prevSub;
+	}
 	return effectStop.bind(e);
 }
 
@@ -131,43 +137,33 @@ export function effectScope<T>(fn: () => T): () => void {
 		flags: SubscriberFlags.Effect,
 		isScope: true,
 	};
-	runEffectScope(e, fn);
+	const prevSub = activeScope;
+	activeScope = e;
+	try {
+		fn();
+	} finally {
+		activeScope = prevSub;
+	}
 	return effectStop.bind(e);
 }
 //#endregion
 
 //#region Internal functions
-function runEffect(e: Effect): void {
-	const prevSub = activeSub;
-	activeSub = e;
-	startTracking(e);
-	try {
-		e.fn();
-	} finally {
-		activeSub = prevSub;
-		endTracking(e);
-	}
-}
-
-function runEffectScope(e: EffectScope, fn: () => void): void {
-	const prevSub = activeScope;
-	activeScope = e;
-	startTracking(e);
-	try {
-		fn();
-	} finally {
-		activeScope = prevSub;
-		endTracking(e);
-	}
-}
-
 function notifyEffect(e: Effect): boolean {
 	const flags = e.flags;
 	if (
 		flags & SubscriberFlags.Dirty
 		|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
 	) {
-		runEffect(e);
+		const prevSub = activeSub;
+		activeSub = e;
+		startTracking(e);
+		try {
+			e.fn();
+		} finally {
+			activeSub = prevSub;
+			endTracking(e);
+		}
 	} else {
 		processPendingInnerEffects(e, e.flags);
 	}
