@@ -62,8 +62,10 @@ export function createReactiveSystem({
 	 */
 	notifyEffect(effect: Subscriber): boolean;
 }) {
-	let queuedEffects: OneWayLink<Subscriber> | undefined;
-	let queuedEffectsTail: OneWayLink<Subscriber> | undefined;
+	const notifyBuffer: (Subscriber | undefined)[] = [];
+
+	let notifyIndex = 0;
+	let notifyBufferLength = 0;
 
 	return {
 		link,
@@ -149,20 +151,12 @@ export function createReactiveSystem({
 					continue;
 				}
 				if (subFlags & SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+					notifyBuffer[notifyBufferLength++] = sub;
 				}
 			} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
 				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+					notifyBuffer[notifyBufferLength++] = sub;
 				}
 			} else if (
 				!(subFlags & targetFlag)
@@ -312,15 +306,15 @@ export function createReactiveSystem({
 	 * notifications may be triggered until fully handled.
 	 */
 	function processEffectNotifications(): void {
-		while (queuedEffects !== undefined) {
-			const effect = queuedEffects.target;
-			if ((queuedEffects = queuedEffects.linked) === undefined) {
-				queuedEffectsTail = undefined;
-			}
+		while (notifyIndex < notifyBufferLength) {
+			const effect = notifyBuffer[notifyIndex]!;
+			notifyBuffer[notifyIndex++] = undefined;
 			if (!notifyEffect(effect)) {
 				effect.flags &= ~SubscriberFlags.Notified;
 			}
 		}
+		notifyIndex = 0;
+		notifyBufferLength = 0;
 	}
 
 	/**
@@ -440,11 +434,7 @@ export function createReactiveSystem({
 			if ((subFlags & (SubscriberFlags.PendingComputed | SubscriberFlags.Dirty)) === SubscriberFlags.PendingComputed) {
 				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
 				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+					notifyBuffer[notifyBufferLength++] = sub;
 				}
 			}
 			link = link.nextSub!;
