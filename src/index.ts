@@ -21,28 +21,12 @@ interface Signal<T = any> extends Dependency {
 const {
 	link,
 	propagate,
+	shallowPropagate,
 	checkDirty,
 	startTracking,
 	endTracking,
-	processComputedUpdate,
 } = createReactiveSystem({
-	updateComputed(computed: Computed): boolean {
-		const prevSub = activeSub;
-		activeSub = computed;
-		startTracking(computed);
-		try {
-			const oldValue = computed.currentValue;
-			const newValue = computed.getter(oldValue);
-			if (oldValue !== newValue) {
-				computed.currentValue = newValue;
-				return true;
-			}
-			return false;
-		} finally {
-			activeSub = prevSub;
-			endTracking(computed);
-		}
-	},
+	updateComputed,
 	notifyFlagsSet(sub: Effect | EffectScope) {
 		if (queuedEffectsTail !== undefined) {
 			queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
@@ -154,6 +138,24 @@ export function effectScope<T>(fn: () => T): () => void {
 //#endregion
 
 //#region Internal functions
+function updateComputed(computed: Computed): boolean {
+	const prevSub = activeSub;
+	activeSub = computed;
+	startTracking(computed);
+	try {
+		const oldValue = computed.currentValue;
+		const newValue = computed.getter(oldValue);
+		if (oldValue !== newValue) {
+			computed.currentValue = newValue;
+			return true;
+		}
+		return false;
+	} finally {
+		activeSub = prevSub;
+		endTracking(computed);
+	}
+}
+
 function notifyEffect(e: Effect): void {
 	const flags = e.flags;
 	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
@@ -215,7 +217,16 @@ function processPendingInnerEffects(link: Link): void {
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
-		processComputedUpdate(this, flags);
+		if (flags & SubscriberFlags.Dirty || checkDirty(this.deps!)) {
+			if (updateComputed(this)) {
+				const subs = this.subs;
+				if (subs !== undefined) {
+					shallowPropagate(subs);
+				}
+			}
+		} else {
+			this.flags = flags & ~SubscriberFlags.Pending;
+		}
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);

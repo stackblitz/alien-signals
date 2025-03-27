@@ -53,10 +53,10 @@ export function createReactiveSystem({
 	return {
 		link,
 		propagate,
+		shallowPropagate,
 		checkDirty,
 		startTracking,
 		endTracking,
-		processComputedUpdate,
 	};
 
 	/**
@@ -198,28 +198,6 @@ export function createReactiveSystem({
 			sub.deps = undefined;
 		}
 		sub.flags &= ~SubscriberFlags.Tracking;
-	}
-	/**
-	 * Updates the computed subscriber if necessary before its value is accessed.
-	 * 
-	 * If the subscriber is marked Dirty or PendingComputed, this function runs
-	 * the provided updateComputed logic and triggers a shallowPropagate for any
-	 * downstream subscribers if an actual update occurs.
-	 * 
-	 * @param computed - The computed subscriber to update.
-	 * @param flags - The current flag set for this subscriber.
-	 */
-	function processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-		if (flags & SubscriberFlags.Dirty || checkDirty(computed.deps!)) {
-			if (updateComputed(computed)) {
-				const subs = computed.subs;
-				if (subs !== undefined) {
-					shallowPropagate(subs);
-				}
-			}
-		} else {
-			computed.flags = flags & ~SubscriberFlags.Pending;
-		}
 	}
 
 	/**
