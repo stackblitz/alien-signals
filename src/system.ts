@@ -78,19 +78,13 @@ export function createReactiveSystem({
 			if (currentDep !== undefined && currentDep.dep === dep) {
 				return;
 			}
-			const nextDep = currentDep !== undefined
-				? currentDep.nextDep
-				: sub.deps;
+			const nextDep = currentDep !== undefined ? currentDep.nextDep : sub.deps;
 			if (nextDep !== undefined && nextDep.dep === dep) {
 				sub.depsTail = nextDep;
 				return;
 			}
 			const depLastSub = dep.subsTail;
-			if (
-				depLastSub !== undefined
-				&& depLastSub.sub === sub
-				&& isValidLink(depLastSub, sub)
-			) {
+			if (depLastSub !== undefined && depLastSub.sub === sub && isValidLink(depLastSub, sub)) {
 				return;
 			}
 			return linkNewDep(dep, sub, nextDep, currentDep);
@@ -333,13 +327,11 @@ export function createReactiveSystem({
 			prevSub: undefined,
 			nextSub: undefined,
 		};
-
 		if (depsTail === undefined) {
 			sub.deps = newLink;
 		} else {
 			depsTail.nextDep = newLink;
 		}
-
 		if (dep.subs === undefined) {
 			dep.subs = newLink;
 		} else {
@@ -347,10 +339,8 @@ export function createReactiveSystem({
 			newLink.prevSub = oldTail;
 			oldTail.nextSub = newLink;
 		}
-
 		sub.depsTail = newLink;
 		dep.subsTail = newLink;
-
 		return newLink;
 	}
 
@@ -381,7 +371,6 @@ export function createReactiveSystem({
 						while (checkDepth--) {
 							const computed = current.sub as Dependency & Subscriber;
 							const firstSub = computed.subs!;
-
 							if (updateComputed(computed)) {
 								if (firstSub.nextSub !== undefined) {
 									shallowPropagate(firstSub);
@@ -392,7 +381,6 @@ export function createReactiveSystem({
 								}
 								continue;
 							}
-
 							if (firstSub.nextSub !== undefined) {
 								if ((current = prevLinks!.target.nextDep!) === undefined) {
 									return false;
@@ -400,7 +388,6 @@ export function createReactiveSystem({
 								prevLinks = prevLinks!.linked;
 								continue top;
 							}
-
 							return false;
 						}
 						return true;
