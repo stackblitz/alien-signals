@@ -67,7 +67,7 @@ export function createReactiveSystem({
 	return {
 		link,
 		propagate,
-		updateDirtyFlag,
+		checkDirty,
 		startTracking,
 		endTracking,
 		processEffectNotifications,
@@ -222,25 +222,6 @@ export function createReactiveSystem({
 			sub.deps = undefined;
 		}
 		sub.flags &= ~SubscriberFlags.Tracking;
-	}
-	/**
-	 * Updates the dirty flag for the given subscriber based on its dependencies.
-	 * 
-	 * If the subscriber has any pending computeds, this function sets the Dirty flag
-	 * and returns `true`. Otherwise, it clears the PendingComputed flag and returns `false`.
-	 * 
-	 * @param sub - The subscriber to update.
-	 * @param flags - The current flag set for this subscriber.
-	 * @returns `true` if the subscriber is marked as Dirty; otherwise `false`.
-	 */
-	function updateDirtyFlag(sub: Subscriber, flags: SubscriberFlags): boolean {
-		if (checkDirty(sub.deps!)) {
-			sub.flags = flags | SubscriberFlags.Dirty;
-			return true;
-		} else {
-			sub.flags = flags & ~SubscriberFlags.Pending;
-			return false;
-		}
 	}
 	/**
 	 * Updates the computed subscriber if necessary before its value is accessed.

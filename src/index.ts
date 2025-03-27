@@ -21,7 +21,7 @@ interface Signal<T = any> extends Dependency {
 const {
 	link,
 	propagate,
-	updateDirtyFlag,
+	checkDirty,
 	startTracking,
 	endTracking,
 	processEffectNotifications,
@@ -155,21 +155,20 @@ export function effectScope<T>(fn: () => T): () => void {
 //#region Internal functions
 function notifyEffect(e: Effect): boolean {
 	const flags = e.flags;
-	if (
-		flags & SubscriberFlags.Dirty
-		|| (flags & SubscriberFlags.Pending && updateDirtyFlag(e, flags))
-	) {
-		const prevSub = activeSub;
-		activeSub = e;
-		startTracking(e);
-		try {
-			e.fn();
-		} finally {
-			activeSub = prevSub;
-			endTracking(e);
+	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
+		if (flags & SubscriberFlags.Dirty || checkDirty(e.deps!)) {
+			const prevSub = activeSub;
+			activeSub = e;
+			startTracking(e);
+			try {
+				e.fn();
+			} finally {
+				activeSub = prevSub;
+				endTracking(e);
+			}
+		} else {
+			processPendingInnerEffects(e, flags);
 		}
-	} else if (flags & SubscriberFlags.Pending) {
-		processPendingInnerEffects(e, flags);
 	}
 	return true;
 }
