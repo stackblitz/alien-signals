@@ -157,7 +157,7 @@ function notifyEffect(e: Effect): boolean {
 	const flags = e.flags;
 	if (
 		flags & SubscriberFlags.Dirty
-		|| (flags & SubscriberFlags.PendingComputed && updateDirtyFlag(e, flags))
+		|| (flags & SubscriberFlags.Pending && updateDirtyFlag(e, flags))
 	) {
 		const prevSub = activeSub;
 		activeSub = e;
@@ -168,15 +168,15 @@ function notifyEffect(e: Effect): boolean {
 			activeSub = prevSub;
 			endTracking(e);
 		}
-	} else {
-		processPendingInnerEffects(e, e.flags);
+	} else if (flags & SubscriberFlags.Pending) {
+		processPendingInnerEffects(e, flags);
 	}
 	return true;
 }
 
 function notifyEffectScope(e: EffectScope): boolean {
 	const flags = e.flags;
-	if (flags & SubscriberFlags.PendingEffect) {
+	if (flags & SubscriberFlags.Pending) {
 		processPendingInnerEffects(e, e.flags);
 		return true;
 	}
@@ -187,7 +187,7 @@ function notifyEffectScope(e: EffectScope): boolean {
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.PendingComputed)) {
+	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
 		processComputedUpdate(this, flags);
 	}
 	if (activeSub !== undefined) {
