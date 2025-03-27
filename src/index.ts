@@ -1,6 +1,6 @@
 export * from './system.js';
 
-import { createReactiveSystem, Dependency, Subscriber, SubscriberFlags } from './system.js';
+import { createReactiveSystem, Dependency, Link, OneWayLink, Subscriber, SubscriberFlags } from './system.js';
 
 interface EffectScope extends Subscriber {
 	isScope: true;
@@ -24,9 +24,7 @@ const {
 	checkDirty,
 	startTracking,
 	endTracking,
-	processEffectNotifications,
 	processComputedUpdate,
-	processPendingInnerEffects,
 } = createReactiveSystem({
 	updateComputed(computed: Computed): boolean {
 		const prevSub = activeSub;
@@ -45,19 +43,22 @@ const {
 			endTracking(computed);
 		}
 	},
-	notifyEffect(e: Effect | EffectScope) {
-		if ('isScope' in e) {
-			return notifyEffectScope(e);
+	notifyFlagsSet(sub: Effect | EffectScope) {
+		if (queuedEffectsTail !== undefined) {
+			queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
 		} else {
-			return notifyEffect(e);
+			queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
 		}
 	},
+	notifyFlagsUpdate() { },
 });
 const pauseStack: (Subscriber | undefined)[] = [];
 
 export let batchDepth = 0;
 let activeSub: Subscriber | undefined;
 let activeScope: EffectScope | undefined;
+let queuedEffects: OneWayLink<Effect | EffectScope> | undefined;
+let queuedEffectsTail: OneWayLink<Effect | EffectScope> | undefined;
 
 //#region Public functions
 export function startBatch() {
@@ -153,7 +154,7 @@ export function effectScope<T>(fn: () => T): () => void {
 //#endregion
 
 //#region Internal functions
-function notifyEffect(e: Effect): boolean {
+function notifyEffect(e: Effect): void {
 	const flags = e.flags;
 	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
 		if (flags & SubscriberFlags.Dirty || checkDirty(e.deps!)) {
@@ -171,17 +172,42 @@ function notifyEffect(e: Effect): boolean {
 			processPendingInnerEffects(e.deps!);
 		}
 	}
-	return true;
 }
 
-function notifyEffectScope(e: EffectScope): boolean {
+function notifyEffectScope(e: EffectScope): void {
 	const flags = e.flags;
 	if (flags & SubscriberFlags.Pending) {
 		e.flags = flags & ~SubscriberFlags.Pending;
 		processPendingInnerEffects(e.deps!);
-		return true;
 	}
-	return false;
+}
+
+function processEffectNotifications(): void {
+	while (queuedEffects !== undefined) {
+		const effect = queuedEffects.target;
+		if ((queuedEffects = queuedEffects.linked) === undefined) {
+			queuedEffectsTail = undefined;
+		}
+		if ('isScope' in effect) {
+			notifyEffectScope(effect);
+		} else {
+			notifyEffect(effect);
+		}
+	}
+}
+
+function processPendingInnerEffects(link: Link): void {
+	do {
+		const dep = link.dep;
+		if (
+			'flags' in dep
+			&& dep.flags & SubscriberFlags.Effect
+			&& dep.flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)
+		) {
+			notifyEffect(dep as Effect);
+		}
+		link = link.nextDep!;
+	} while (link !== undefined);
 }
 //#endregion
 

@@ -17,7 +17,7 @@ export interface Link {
 	nextDep: Link | undefined;
 }
 
-interface OneWayLink<T> {
+export interface OneWayLink<T> {
 	target: T;
 	linked: OneWayLink<T> | undefined;
 }
@@ -26,15 +26,15 @@ export const enum SubscriberFlags {
 	Computed = 1 << 0,
 	Effect = 1 << 1,
 	Tracking = 1 << 2,
-	Notified = 1 << 3,
-	Recursed = 1 << 4,
-	Dirty = 1 << 5,
-	Pending = 1 << 6,
+	Recursed = 1 << 3,
+	Dirty = 1 << 4,
+	Pending = 1 << 5,
 }
 
 export function createReactiveSystem({
 	updateComputed,
-	notifyEffect,
+	notifyFlagsSet,
+	notifyFlagsUpdate,
 }: {
 	/**
 	 * Updates the computed subscriber's value and returns whether it changed.
@@ -47,31 +47,16 @@ export function createReactiveSystem({
 	 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
 	 */
 	updateComputed(computed: Dependency & Subscriber): boolean;
-	/**
-	 * Handles effect notifications by processing the specified `effect`.
-	 * 
-	 * When an `effect` first receives any of the following flags:
-	 *   - `Dirty`
-	 *   - `PendingComputed`
-	 *   - `PendingEffect`
-	 * this method will process them and return `true` if the flags are successfully handled.
-	 * If not fully handled, future changes to these flags will trigger additional calls
-	 * until the method eventually returns `true`.
-	 */
-	notifyEffect(effect: Subscriber): boolean;
+	notifyFlagsSet(effect: Subscriber): void;
+	notifyFlagsUpdate(effect: Subscriber): void;
 }) {
-	let queuedEffects: OneWayLink<Subscriber> | undefined;
-	let queuedEffectsTail: OneWayLink<Subscriber> | undefined;
-
 	return {
 		link,
 		propagate,
 		checkDirty,
 		startTracking,
 		endTracking,
-		processEffectNotifications,
 		processComputedUpdate,
-		processPendingInnerEffects,
 	};
 
 	/**
@@ -119,13 +104,13 @@ export function createReactiveSystem({
 			let shouldNotify = false;
 
 			if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
+				sub.flags = subFlags | targetFlag;
 				shouldNotify = true;
 			} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
-				sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified;
+				sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag;
 				shouldNotify = true;
 			} else if (!(subFlags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) && isValidLink(current, sub)) {
-				sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified;
+				sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag;
 				shouldNotify = (sub as Dependency).subs !== undefined;
 			}
 
@@ -142,20 +127,12 @@ export function createReactiveSystem({
 					continue;
 				}
 				if (subFlags & SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+					notifyFlagsSet(sub);
 				}
 			} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
-				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
-				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+				sub.flags = subFlags | targetFlag;
+				if (subFlags & SubscriberFlags.Effect) {
+					notifyFlagsUpdate(sub);
 				}
 			} else if (
 				!(subFlags & targetFlag)
@@ -198,7 +175,7 @@ export function createReactiveSystem({
 	 */
 	function startTracking(sub: Subscriber): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.Tracking;
+		sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.Tracking;
 	}
 	/**
 	 * Concludes tracking of dependencies for the specified subscriber.
@@ -242,48 +219,6 @@ export function createReactiveSystem({
 			}
 		} else {
 			computed.flags = flags & ~SubscriberFlags.Pending;
-		}
-	}
-	/**
-	 * Ensures all pending internal effects for the given subscriber are processed.
-	 * 
-	 * This should be called after an effect decides not to re-run itself but may still
-	 * have dependencies flagged with PendingEffect. If the subscriber is flagged with
-	 * PendingEffect, this function clears that flag and invokes `notifyEffect` on any
-	 * related dependencies marked as Effect and Propagated, processing pending effects.
-	 * 
-	 * @param sub - The subscriber which may have pending effects.
-	 * @param flags - The current flags on the subscriber to check.
-	 */
-	function processPendingInnerEffects(link: Link): void {
-		do {
-			const dep = link.dep;
-			if (
-				'flags' in dep
-				&& dep.flags & SubscriberFlags.Effect
-				&& dep.flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)
-			) {
-				notifyEffect(dep);
-			}
-			link = link.nextDep!;
-		} while (link !== undefined);
-	}
-	/**
-	 * Processes queued effect notifications after a batch operation finishes.
-	 * 
-	 * Iterates through all queued effects, calling notifyEffect on each.
-	 * If an effect remains partially handled, its flags are updated, and future
-	 * notifications may be triggered until fully handled.
-	 */
-	function processEffectNotifications(): void {
-		while (queuedEffects !== undefined) {
-			const effect = queuedEffects.target;
-			if ((queuedEffects = queuedEffects.linked) === undefined) {
-				queuedEffectsTail = undefined;
-			}
-			if (!notifyEffect(effect)) {
-				effect.flags &= ~SubscriberFlags.Notified;
-			}
 		}
 	}
 
@@ -402,13 +337,9 @@ export function createReactiveSystem({
 			const sub = link.sub;
 			const subFlags = sub.flags;
 			if ((subFlags & (SubscriberFlags.Pending | SubscriberFlags.Dirty)) === SubscriberFlags.Pending) {
-				sub.flags = subFlags | SubscriberFlags.Dirty | SubscriberFlags.Notified;
-				if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-					if (queuedEffectsTail !== undefined) {
-						queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-					} else {
-						queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-					}
+				sub.flags = subFlags | SubscriberFlags.Dirty;
+				if (subFlags & SubscriberFlags.Effect) {
+					notifyFlagsUpdate(sub);
 				}
 			}
 			link = link.nextSub!;
