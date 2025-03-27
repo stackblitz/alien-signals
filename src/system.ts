@@ -30,7 +30,6 @@ export const enum SubscriberFlags {
 	Recursed = 1 << 4,
 	Dirty = 1 << 5,
 	Pending = 1 << 6,
-	Propagated = Dirty | Pending,
 }
 
 export function createReactiveSystem({
@@ -119,13 +118,13 @@ export function createReactiveSystem({
 
 			let shouldNotify = false;
 
-			if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))) {
+			if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
 				sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
 				shouldNotify = true;
 			} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
 				sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified;
 				shouldNotify = true;
-			} else if (!(subFlags & SubscriberFlags.Propagated) && isValidLink(current, sub)) {
+			} else if (!(subFlags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) && isValidLink(current, sub)) {
 				sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified;
 				shouldNotify = (sub as Dependency).subs !== undefined;
 			}
@@ -160,7 +159,7 @@ export function createReactiveSystem({
 				}
 			} else if (
 				!(subFlags & targetFlag)
-				&& (subFlags & SubscriberFlags.Propagated)
+				&& (subFlags & (SubscriberFlags.Dirty | SubscriberFlags.Pending))
 				&& isValidLink(current, sub)
 			) {
 				sub.flags = subFlags | targetFlag;
@@ -199,7 +198,7 @@ export function createReactiveSystem({
 	 */
 	function startTracking(sub: Subscriber): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Propagated)) | SubscriberFlags.Tracking;
+		sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.Tracking;
 	}
 	/**
 	 * Concludes tracking of dependencies for the specified subscriber.
@@ -262,7 +261,7 @@ export function createReactiveSystem({
 			if (
 				'flags' in dep
 				&& dep.flags & SubscriberFlags.Effect
-				&& dep.flags & SubscriberFlags.Propagated
+				&& dep.flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)
 			) {
 				notifyEffect(dep);
 			}
