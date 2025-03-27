@@ -99,6 +99,7 @@ export function createReactiveSystem({
 		}
 		return linkNewDep(dep, sub, nextDep, currentDep);
 	}
+
 	/**
 	 * Traverses and marks subscribers starting from the provided link.
 	 * 
@@ -194,6 +195,7 @@ export function createReactiveSystem({
 			break;
 		} while (true);
 	}
+
 	/**
 	 * Prepares the given subscriber to track new dependencies.
 	 * 
@@ -206,6 +208,7 @@ export function createReactiveSystem({
 		sub.depsTail = undefined;
 		sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Propagated)) | SubscriberFlags.Tracking;
 	}
+
 	/**
 	 * Concludes tracking of dependencies for the specified subscriber.
 	 * 
@@ -228,6 +231,7 @@ export function createReactiveSystem({
 		}
 		sub.flags &= ~SubscriberFlags.Tracking;
 	}
+
 	/**
 	 * Updates the dirty flag for the given subscriber based on its dependencies.
 	 * 
@@ -247,6 +251,7 @@ export function createReactiveSystem({
 			return false;
 		}
 	}
+
 	/**
 	 * Updates the computed subscriber if necessary before its value is accessed.
 	 * 
@@ -269,6 +274,7 @@ export function createReactiveSystem({
 			computed.flags = flags & ~SubscriberFlags.PendingComputed;
 		}
 	}
+
 	/**
 	 * Ensures all pending internal effects for the given subscriber are processed.
 	 * 
@@ -297,6 +303,7 @@ export function createReactiveSystem({
 			} while (link !== undefined);
 		}
 	}
+
 	/**
 	 * Processes queued effect notifications after a batch operation finishes.
 	 * 
