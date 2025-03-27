@@ -167,7 +167,8 @@ function notifyEffect(e: Effect): boolean {
 				endTracking(e);
 			}
 		} else {
-			processPendingInnerEffects(e, flags);
+			e.flags = flags & ~SubscriberFlags.Pending;
+			processPendingInnerEffects(e.deps!);
 		}
 	}
 	return true;
@@ -176,7 +177,8 @@ function notifyEffect(e: Effect): boolean {
 function notifyEffectScope(e: EffectScope): boolean {
 	const flags = e.flags;
 	if (flags & SubscriberFlags.Pending) {
-		processPendingInnerEffects(e, e.flags);
+		e.flags = flags & ~SubscriberFlags.Pending;
+		processPendingInnerEffects(e.deps!);
 		return true;
 	}
 	return false;

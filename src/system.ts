@@ -256,22 +256,18 @@ export function createReactiveSystem({
 	 * @param sub - The subscriber which may have pending effects.
 	 * @param flags - The current flags on the subscriber to check.
 	 */
-	function processPendingInnerEffects(sub: Subscriber, flags: SubscriberFlags): void {
-		if (flags & SubscriberFlags.Pending) {
-			sub.flags = flags & ~SubscriberFlags.Pending;
-			let link = sub.deps!;
-			do {
-				const dep = link.dep;
-				if (
-					'flags' in dep
-					&& dep.flags & SubscriberFlags.Effect
-					&& dep.flags & SubscriberFlags.Propagated
-				) {
-					notifyEffect(dep);
-				}
-				link = link.nextDep!;
-			} while (link !== undefined);
-		}
+	function processPendingInnerEffects(link: Link): void {
+		do {
+			const dep = link.dep;
+			if (
+				'flags' in dep
+				&& dep.flags & SubscriberFlags.Effect
+				&& dep.flags & SubscriberFlags.Propagated
+			) {
+				notifyEffect(dep);
+			}
+			link = link.nextDep!;
+		} while (link !== undefined);
 	}
 	/**
 	 * Processes queued effect notifications after a batch operation finishes.
