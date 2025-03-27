@@ -55,7 +55,7 @@ const {
 });
 const pauseStack: (Subscriber | undefined)[] = [];
 
-let batchDepth = 0;
+export let batchDepth = 0;
 let activeSub: Subscriber | undefined;
 let activeScope: EffectScope | undefined;
 
