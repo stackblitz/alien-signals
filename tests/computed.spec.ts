@@ -14,3 +14,15 @@ test('should correctly propagate changes through computed signals', () => {
 
 	expect(c3()).toBe(1);
 });
+
+test('should propagate updated source value through chained computations', () => {
+	const src = signal(0);
+	const a = computed(() => src());
+	const b = computed(() => a() % 2);
+	const c = computed(() => src());
+	const d = computed(() => b() + c());
+
+	expect(d()).toBe(0);
+	src(2);
+	expect(d()).toBe(2);
+});

@@ -367,55 +367,69 @@ export function createReactiveSystem({
 	function checkDirty(current: Link): boolean {
 		let prevLinks: OneWayLink<Link> | undefined;
 		let checkDepth = 0;
+		let dirty: boolean;
 
 		top: do {
+			dirty = false;
 			const dep = current.dep;
 
 			if ('flags' in dep) {
 				const depFlags = dep.flags;
 				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
 					if (updateComputed(dep)) {
-						if (current.nextSub !== undefined || current.prevSub !== undefined) {
-							shallowPropagate(dep.subs!);
+						const subs = dep.subs!;
+						if (subs.nextSub !== undefined) {
+							shallowPropagate(subs);
 						}
-						while (checkDepth--) {
-							const computed = current.sub as Dependency & Subscriber;
-							const firstSub = computed.subs!;
-							if (updateComputed(computed)) {
-								if (firstSub.nextSub !== undefined) {
-									shallowPropagate(firstSub);
-									current = prevLinks!.target;
-									prevLinks = prevLinks!.linked;
-								} else {
-									current = firstSub;
-								}
-								continue;
-							}
-							if (firstSub.nextSub !== undefined) {
-								if ((current = prevLinks!.target.nextDep!) === undefined) {
-									return false;
-								}
-								prevLinks = prevLinks!.linked;
-								continue top;
-							}
-							return false;
-						}
-						return true;
+						dirty = true;
 					}
 				} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
-					dep.flags = depFlags & ~SubscriberFlags.PendingComputed;
 					if (current.nextSub !== undefined || current.prevSub !== undefined) {
 						prevLinks = { target: current, linked: prevLinks };
 					}
-					++checkDepth;
 					current = dep.deps!;
+					++checkDepth;
 					continue;
 				}
 			}
 
-			if ((current = current.nextDep!) === undefined) {
-				return false;
+			if (!dirty && current.nextDep !== undefined) {
+				current = current.nextDep;
+				continue;
 			}
+
+			while (checkDepth) {
+				--checkDepth;
+				const sub = current.sub as Dependency & Subscriber;
+				const firstSub = sub.subs!;
+				if (dirty) {
+					if (updateComputed(sub)) {
+						if (firstSub.nextSub !== undefined) {
+							current = prevLinks!.target;
+							prevLinks = prevLinks!.linked;
+							shallowPropagate(firstSub);
+						} else {
+							current = firstSub;
+						}
+						continue;
+					}
+				} else {
+					sub.flags &= ~SubscriberFlags.PendingComputed;
+				}
+				if (firstSub.nextSub !== undefined) {
+					current = prevLinks!.target;
+					prevLinks = prevLinks!.linked;
+				} else {
+					current = firstSub;
+				}
+				if (current.nextDep !== undefined) {
+					current = current.nextDep;
+					continue top;
+				}
+				dirty = false;
+			}
+
+			return dirty;
 		} while (true);
 	}
 
