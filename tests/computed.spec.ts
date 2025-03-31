@@ -26,3 +26,20 @@ test('should propagate updated source value through chained computations', () =>
 	src(2);
 	expect(d()).toBe(2);
 });
+
+test('should handle flags are indirectly updated during checkDirty', () => {
+	const a = signal(false);
+	const b = computed(() => a());
+	const c = computed(() => {
+		b();
+		return 0;
+	});
+	const d = computed(() => {
+		c();
+		return b();
+	});
+
+	expect(d()).toBe(false);
+	a(true);
+	expect(d()).toBe(true);
+});
