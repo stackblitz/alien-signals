@@ -234,3 +234,26 @@ test('should handle side effect with inner effects', () => {
 		expect(order).toEqual(['b', 'a']);
 	});
 });
+
+test('should handle flags are indirectly updated during checkDirty', () => {
+	const a = signal(false);
+	const b = computed(() => a());
+	const c = computed(() => {
+		b();
+		return 0;
+	});
+	const d = computed(() => {
+		c();
+		return b();
+	});
+
+	let triggers = 0;
+
+	effect(() => {
+		d();
+		triggers++;
+	});
+	expect(triggers).toBe(1);
+	a(true);
+	expect(triggers).toBe(2);
+});

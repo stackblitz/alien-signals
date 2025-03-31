@@ -373,7 +373,9 @@ export function createReactiveSystem({
 			dirty = false;
 			const dep = current.dep;
 
-			if ('flags' in dep) {
+			if (current.sub.flags & SubscriberFlags.Dirty) {
+				dirty = true;
+			} else if ('flags' in dep) {
 				const depFlags = dep.flags;
 				if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
 					if (updateComputed(dep)) {
