@@ -240,8 +240,6 @@ export function createReactiveSystem({
 		if (checkDirty(sub.deps!)) {
 			sub.flags = flags | SubscriberFlags.Dirty;
 			return true;
-		} else if (sub.flags & SubscriberFlags.Dirty) {
-			return true;
 		} else {
 			sub.flags = flags & ~SubscriberFlags.PendingComputed;
 			return false;
@@ -259,11 +257,7 @@ export function createReactiveSystem({
 	 * @param flags - The current flag set for this subscriber.
 	 */
 	function processComputedUpdate(computed: Dependency & Subscriber, flags: SubscriberFlags): void {
-		if (
-			flags & SubscriberFlags.Dirty
-			|| checkDirty(computed.deps!)
-			|| computed.flags & SubscriberFlags.Dirty
-		) {
+		if (flags & SubscriberFlags.Dirty || checkDirty(computed.deps!)) {
 			if (updateComputed(computed)) {
 				const subs = computed.subs;
 				if (subs !== undefined) {
@@ -432,10 +426,10 @@ export function createReactiveSystem({
 					current = current.nextDep;
 					continue top;
 				}
-				dirty = false;
+				dirty = !!(sub.flags & SubscriberFlags.Dirty);
 			}
 
-			return dirty;
+			return dirty || !!(current.sub.flags & SubscriberFlags.Dirty);
 		} while (true);
 	}
 
