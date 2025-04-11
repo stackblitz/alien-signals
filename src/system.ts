@@ -200,7 +200,7 @@ export function createReactiveSystem({
 	 */
 	function startTracking(sub: Subscriber): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(SubscriberFlags.Notified | SubscriberFlags.Recursed | SubscriberFlags.Propagated)) | SubscriberFlags.Tracking;
+		sub.flags = (sub.flags & (SubscriberFlags.Computed | SubscriberFlags.Effect)) | SubscriberFlags.Tracking;
 	}
 
 	/**
