@@ -36,6 +36,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 - [hunghg255/reactjs-signal](https://github.com/hunghg255/reactjs-signal): Share Store State with Signal Pattern
 - [gn8-ai/universe-alien-signals](https://github.com/gn8-ai/universe-alien-signals): Enables simple use of the Alien Signals state management system in modern frontend frameworks
+- [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau): Luau implementation of alien-signals
 
 ## Adoption
 
