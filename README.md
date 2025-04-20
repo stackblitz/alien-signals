@@ -168,7 +168,7 @@ function checkDirty(link: Link): boolean {
 		if ('flags' in dep) {
 			const depFlags = dep.flags;
 			if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
-				if (updateComputed(dep)) {
+				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
@@ -177,7 +177,7 @@ function checkDirty(link: Link): boolean {
 				}
 			} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
 				if (checkDirty(dep.deps!)) {
-					if (updateComputed(dep)) {
+					if (update(dep)) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {
 							shallowPropagate(subs);
