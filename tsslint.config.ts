@@ -57,7 +57,7 @@ export default defineConfig({
 				) {
 					const type = checker.getTypeAtLocation(node.operand);
 					for (const checkFlag of checkFlags) {
-						if (isObjectOrNullableUnion(type, checkFlag)) {
+						if (isObjectOrNullableUnion(ts, type, checkFlag)) {
 							const flagText =
 								checkFlag === ts.TypeFlags.Undefined ? 'undefined' : 'null';
 							if (
@@ -108,26 +108,27 @@ export default defineConfig({
 				}
 				ts.forEachChild(node, visit);
 			});
-
-			function isObjectOrNullableUnion(
-				type: ts.Type,
-				nullableFlag: ts.TypeFlags,
-			) {
-				if (!(type.flags & ts.TypeFlags.Union)) return false;
-				const unionType = type;
-				let hasObject = false;
-				let hasNullable = false;
-				for (const sub of (unionType as ts.UnionType).types) {
-					if (sub.flags & nullableFlag) {
-						hasNullable = true;
-					} else if (sub.flags & ts.TypeFlags.Object) {
-						hasObject = true;
-					} else {
-						return false;
-					}
-				}
-				return hasObject && hasNullable;
-			}
 		},
 	},
 });
+
+function isObjectOrNullableUnion(
+	ts: typeof import('typescript'),
+	type: ts.Type,
+	nullableFlag: ts.TypeFlags,
+) {
+	if (!(type.flags & ts.TypeFlags.Union)) return false;
+	const unionType = type;
+	let hasObject = false;
+	let hasNullable = false;
+	for (const sub of (unionType as ts.UnionType).types) {
+		if (sub.flags & nullableFlag) {
+			hasNullable = true;
+		} else if (sub.flags & ts.TypeFlags.Object) {
+			hasObject = true;
+		} else {
+			return false;
+		}
+	}
+	return hasObject && hasNullable;
+}
