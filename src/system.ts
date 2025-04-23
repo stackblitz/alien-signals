@@ -146,7 +146,7 @@ export function createReactiveSystem({
 	/**
 	 * Traverses and marks subscribers starting from the provided link.
 	 * 
-	 * It sets flags (e.g., Dirty, PendingComputed, PendingEffect) on each subscriber
+	 * It sets flags (e.g., Dirty, Pending) on each subscriber
 	 * to indicate which ones require re-computation or effect processing. 
 	 * This function should be called after a signal's value changes.
 	 * 
@@ -338,7 +338,7 @@ export function createReactiveSystem({
 	}
 
 	/**
-	 * Quickly propagates PendingComputed status to Dirty for each subscriber in the chain.
+	 * Quickly propagates Pending status to Dirty for each subscriber in the chain.
 	 * 
 	 * If the subscriber is also marked as an effect, it is added to the queuedEffects list
 	 * for later processing.
