@@ -153,14 +153,14 @@ export function createReactiveSystem({
 	 * @param current - The starting link from which propagation begins.
 	 */
 	function propagate(current: Link): void {
+		const initLink = current;
 		let next = current.nextSub;
 		let branchs: OneWayLink<Link | undefined> | undefined;
-		let branchDepth = 0;
-		let targetFlag = SubscriberFlags.Dirty;
 
 		top: do {
 			const sub = current.sub;
 			const subFlags = sub.flags;
+			const targetFlag = initLink.dep === current.dep ? SubscriberFlags.Dirty : SubscriberFlags.Pending;
 
 			let shouldNotify = false;
 
@@ -181,10 +181,8 @@ export function createReactiveSystem({
 					current = subSubs;
 					if (subSubs.nextSub !== undefined) {
 						branchs = { target: next, linked: branchs };
-						++branchDepth;
 						next = current.nextSub;
 					}
-					targetFlag = SubscriberFlags.Pending;
 					continue;
 				}
 				if (subFlags & SubscriberFlags.Notifiable) {
@@ -205,20 +203,14 @@ export function createReactiveSystem({
 
 			if ((current = next!) !== undefined) {
 				next = current.nextSub;
-				if (!branchDepth) {
-					targetFlag = SubscriberFlags.Dirty;
-				}
 				continue;
 			}
 
-			while (branchDepth--) {
+			while (branchs !== undefined) {
 				current = branchs!.target!;
 				branchs = branchs!.linked;
 				if (current !== undefined) {
 					next = current.nextSub;
-					if (!branchDepth) {
-						targetFlag = SubscriberFlags.Dirty;
-					}
 					continue top;
 				}
 			}
@@ -372,16 +364,12 @@ export function createReactiveSystem({
 	function isValidLink(checkLink: Link, sub: Subscriber): boolean {
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
-			let link = sub.deps!;
-			do {
+			for (let link = sub.deps; link !== undefined && link !== depsTail; link = link.nextDep) {
 				if (link === checkLink) {
 					return true;
 				}
-				if (link === depsTail) {
-					break;
-				}
-				link = link.nextDep!;
-			} while (link !== undefined);
+			}
+			return depsTail === checkLink;
 		}
 		return false;
 	}
