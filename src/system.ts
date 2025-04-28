@@ -96,16 +96,15 @@ export function createReactiveSystem({
 		if (nextDep !== undefined) {
 			nextDep.prevDep = newLink;
 		}
-		if (prevDep === undefined) {
-			sub.deps = newLink;
-		} else {
+		if (prevDep !== undefined) {
 			prevDep.nextDep = newLink;
-		}
-		if (prevSub === undefined) {
-			dep.subs = newLink;
 		} else {
-			newLink.prevSub = prevSub;
+			sub.deps = newLink;
+		}
+		if (prevSub !== undefined) {
 			prevSub.nextSub = newLink;
+		} else {
+			dep.subs = newLink;
 		}
 		return newLink;
 	}
