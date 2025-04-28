@@ -244,17 +244,18 @@ function notifyInnerEffects(link: Link): void {
 //#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
-		if (flags & SubscriberFlags.Dirty || checkDirty(this.deps!)) {
-			if (update(this)) {
-				const subs = this.subs;
-				if (subs !== undefined) {
-					shallowPropagate(subs);
-				}
+	if (
+		flags & SubscriberFlags.Dirty
+		|| (flags & SubscriberFlags.Pending && checkDirty(this.deps!))
+	) {
+		if (update(this)) {
+			const subs = this.subs;
+			if (subs !== undefined) {
+				shallowPropagate(subs);
 			}
-		} else {
-			this.flags = flags & ~SubscriberFlags.Pending;
 		}
+	} else if (flags & SubscriberFlags.Pending) {
+		this.flags = flags & ~SubscriberFlags.Pending;
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
