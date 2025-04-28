@@ -48,7 +48,7 @@ export function createReactiveSystem({
 	 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
 	 */
 	update(sub: Dependency & Subscriber): boolean;
-	notify(sub: Subscriber, nextSub: Link | undefined): void;
+	notify(sub: Subscriber): void;
 	unwatched(sub: Dependency): void;
 }) {
 	return {
@@ -213,7 +213,7 @@ export function createReactiveSystem({
 			}
 
 			if (subFlags & SubscriberFlags.Watching) {
-				notify(sub, next);
+				notify(sub);
 			}
 
 			if (subFlags & SubscriberFlags.Mutable) {
@@ -380,7 +380,7 @@ export function createReactiveSystem({
 			if ((subFlags & (SubscriberFlags.Pending | SubscriberFlags.Dirty)) === SubscriberFlags.Pending) {
 				sub.flags = subFlags | SubscriberFlags.Dirty;
 				if (subFlags & SubscriberFlags.Watching) {
-					notify(sub, nextSub);
+					notify(sub);
 				}
 			}
 			link = nextSub!;
