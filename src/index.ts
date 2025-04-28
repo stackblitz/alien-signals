@@ -163,7 +163,7 @@ function update(computed: Computed): boolean {
 	}
 }
 
-function queueEffect(e: Effect | EffectScope) {
+function queueEffect(e: Effect | EffectScope, next: Link | undefined) {
 	e.flags &= ~SubscriberFlags.Watching;
 	const subs = (e as Effect).subs;
 	if (subs !== undefined) {
@@ -171,7 +171,13 @@ function queueEffect(e: Effect | EffectScope) {
 		const parentFlags = parent.flags;
 		if (parentFlags & SubscriberFlags.Watching) {
 			parent.flags = parentFlags | SubscriberFlags.Pending;
-			queueEffect(parent as Effect | EffectScope);
+			queueEffect(parent as Effect | EffectScope, next);
+		}
+	} else if (!batchDepth && !queuedEffectsLength && next === undefined) {
+		if ('isScope' in e) {
+			notifyEffectScope(e);
+		} else {
+			notifyEffect(e);
 		}
 	} else {
 		queuedEffects[queuedEffectsLength++] = e;

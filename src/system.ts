@@ -44,11 +44,11 @@ export function createReactiveSystem({
 	 * The computed subscriber's getter function is invoked, and its value is updated.
 	 * If the value changes, the new value is stored, and the function returns `true`.
 	 * 
-	 * @param computed - The computed subscriber to update.
+	 * @param sub - The computed subscriber to update.
 	 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
 	 */
-	update(computed: Dependency & Subscriber): boolean;
-	notify(sub: Subscriber): void;
+	update(sub: Dependency & Subscriber): boolean;
+	notify(sub: Subscriber, nextSub: Link | undefined): void;
 	unwatched(sub: Dependency): void;
 }) {
 	return {
@@ -177,7 +177,7 @@ export function createReactiveSystem({
 
 			if (canPropagate) {
 				if (subFlags & SubscriberFlags.Watching) {
-					notify(sub);
+					notify(sub, next);
 				}
 				if (subFlags & SubscriberFlags.Mutable) {
 					const subSubs = (sub as Dependency).subs;
@@ -195,7 +195,7 @@ export function createReactiveSystem({
 			} else if (!(subFlags & (SubscriberFlags.BlockPropagation | targetFlag))) {
 				sub.flags = subFlags | targetFlag;
 				if (subFlags & SubscriberFlags.Watching) {
-					notify(sub);
+					notify(sub, next);
 				}
 			} else if (
 				!(subFlags & targetFlag)
@@ -350,14 +350,15 @@ export function createReactiveSystem({
 	function shallowPropagate(link: Link): void {
 		do {
 			const sub = link.sub;
+			const nextSub = link.nextSub;
 			const subFlags = sub.flags;
 			if ((subFlags & (SubscriberFlags.Pending | SubscriberFlags.Dirty)) === SubscriberFlags.Pending) {
 				sub.flags = subFlags | SubscriberFlags.Dirty;
 				if (subFlags & SubscriberFlags.Watching) {
-					notify(sub);
+					notify(sub, nextSub);
 				}
 			}
-			link = link.nextSub!;
+			link = nextSub!;
 		} while (link !== undefined);
 	}
 
