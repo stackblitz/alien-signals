@@ -24,13 +24,12 @@ interface OneWayLink<T> {
 }
 
 export const enum SubscriberFlags {
-	Updatable = 1 << 0,
-	Notifiable = 1 << 1,
-	Notifiable2 = 1 << 2,
-	Tracking = 1 << 3,
-	Recursed = 1 << 4,
-	Dirty = 1 << 5,
-	Pending = 1 << 6,
+	Mutable = 1 << 0,
+	Watching = 1 << 1,
+	BlockPropagation = 1 << 2,
+	IsPropagationBlocked = 1 << 3,
+	Dirty = 1 << 4,
+	Pending = 1 << 5,
 }
 
 export function createReactiveSystem({
@@ -79,35 +78,35 @@ export function createReactiveSystem({
 			sub.depsTail = nextDep;
 			return;
 		}
-		const depLastSub = dep.subsTail;
-		if (depLastSub !== undefined && depLastSub.sub === sub && isValidLink(depLastSub, sub)) {
+		const prevSub = dep.subsTail;
+		if (prevSub !== undefined && prevSub.sub === sub && isValidLink(prevSub, sub)) {
 			return;
 		}
-		const newLink: Link = {
-			dep,
-			sub,
-			prevDep,
-			nextDep,
-			prevSub: undefined,
-			nextSub: undefined,
-		};
+		const newLink
+			= sub.depsTail
+			= dep.subsTail
+			= {
+				dep,
+				sub,
+				prevDep,
+				nextDep,
+				prevSub,
+				nextSub: undefined,
+			};
+		if (nextDep !== undefined) {
+			nextDep.prevDep = newLink;
+		}
 		if (prevDep === undefined) {
 			sub.deps = newLink;
 		} else {
 			prevDep.nextDep = newLink;
 		}
-		if (dep.subs === undefined) {
+		if (prevSub === undefined) {
 			dep.subs = newLink;
 		} else {
-			const oldTail = dep.subsTail!;
-			newLink.prevSub = oldTail;
-			oldTail.nextSub = newLink;
+			newLink.prevSub = prevSub;
+			prevSub.nextSub = newLink;
 		}
-		if (nextDep !== undefined) {
-			nextDep.prevDep = newLink;
-		}
-		sub.depsTail = newLink;
-		dep.subsTail = newLink;
 		return newLink;
 	}
 
@@ -160,39 +159,42 @@ export function createReactiveSystem({
 
 		top: do {
 			const sub = current.sub;
-			const subFlags = sub.flags;
 
-			let shouldNotify = false;
+			let subFlags = sub.flags;
+			let canPropagate = false;
 
-			if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
+			if (!(subFlags & (SubscriberFlags.BlockPropagation | SubscriberFlags.IsPropagationBlocked | SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
 				sub.flags = subFlags | targetFlag;
-				shouldNotify = true;
-			} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
-				sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag;
-				shouldNotify = true;
+				canPropagate = true;
+			} else if ((subFlags & SubscriberFlags.IsPropagationBlocked) && !(subFlags & SubscriberFlags.BlockPropagation)) {
+				sub.flags = (subFlags & ~SubscriberFlags.IsPropagationBlocked) | targetFlag;
+				canPropagate = true;
 			} else if (!(subFlags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) && isValidLink(current, sub)) {
-				sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag;
-				shouldNotify = (sub as Dependency).subs !== undefined;
+				sub.flags = subFlags | SubscriberFlags.IsPropagationBlocked | targetFlag;
+				canPropagate = true;
+				subFlags &= ~SubscriberFlags.Watching;
 			}
 
-			if (shouldNotify) {
-				const subSubs = (sub as Dependency).subs;
-				if (subSubs !== undefined) {
-					current = subSubs;
-					if (subSubs.nextSub !== undefined) {
-						branchs = { target: next, linked: branchs };
-						++branchDepth;
-						next = current.nextSub;
-					}
-					targetFlag = SubscriberFlags.Pending;
-					continue;
-				}
-				if (subFlags & SubscriberFlags.Notifiable) {
+			if (canPropagate) {
+				if (subFlags & SubscriberFlags.Watching) {
 					notify(sub);
 				}
-			} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
+				if (subFlags & SubscriberFlags.Mutable) {
+					const subSubs = (sub as Dependency).subs;
+					if (subSubs !== undefined) {
+						current = subSubs;
+						if (subSubs.nextSub !== undefined) {
+							branchs = { target: next, linked: branchs };
+							++branchDepth;
+							next = current.nextSub;
+						}
+						targetFlag = SubscriberFlags.Pending;
+						continue;
+					}
+				}
+			} else if (!(subFlags & (SubscriberFlags.BlockPropagation | targetFlag))) {
 				sub.flags = subFlags | targetFlag;
-				if (subFlags & SubscriberFlags.Notifiable2) {
+				if (subFlags & SubscriberFlags.Watching) {
 					notify(sub);
 				}
 			} else if (
@@ -236,7 +238,7 @@ export function createReactiveSystem({
 	 */
 	function startTracking(sub: Subscriber): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.Tracking;
+		sub.flags = (sub.flags & ~(SubscriberFlags.IsPropagationBlocked | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.BlockPropagation;
 	}
 
 	/**
@@ -253,7 +255,7 @@ export function createReactiveSystem({
 		while (toRemove !== undefined) {
 			toRemove = unlink(toRemove, sub);
 		}
-		sub.flags &= ~SubscriberFlags.Tracking;
+		sub.flags &= ~SubscriberFlags.BlockPropagation;
 	}
 
 	/**
@@ -279,7 +281,7 @@ export function createReactiveSystem({
 				dirty = true;
 			} else if ('flags' in dep) {
 				const depFlags = dep.flags;
-				if ((depFlags & (SubscriberFlags.Updatable | SubscriberFlags.Dirty)) === (SubscriberFlags.Updatable | SubscriberFlags.Dirty)) {
+				if ((depFlags & (SubscriberFlags.Mutable | SubscriberFlags.Dirty)) === (SubscriberFlags.Mutable | SubscriberFlags.Dirty)) {
 					if (update(dep)) {
 						const subs = dep.subs!;
 						if (subs.nextSub !== undefined) {
@@ -287,7 +289,7 @@ export function createReactiveSystem({
 						}
 						dirty = true;
 					}
-				} else if ((depFlags & (SubscriberFlags.Updatable | SubscriberFlags.Pending)) === (SubscriberFlags.Updatable | SubscriberFlags.Pending)) {
+				} else if ((depFlags & (SubscriberFlags.Mutable | SubscriberFlags.Pending)) === (SubscriberFlags.Mutable | SubscriberFlags.Pending)) {
 					if (current.nextSub !== undefined || current.prevSub !== undefined) {
 						prevLinks = { target: current, linked: prevLinks };
 					}
@@ -351,7 +353,7 @@ export function createReactiveSystem({
 			const subFlags = sub.flags;
 			if ((subFlags & (SubscriberFlags.Pending | SubscriberFlags.Dirty)) === SubscriberFlags.Pending) {
 				sub.flags = subFlags | SubscriberFlags.Dirty;
-				if (subFlags & SubscriberFlags.Notifiable2) {
+				if (subFlags & SubscriberFlags.Watching) {
 					notify(sub);
 				}
 			}

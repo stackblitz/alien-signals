@@ -30,9 +30,7 @@ const {
 	endTracking,
 } = createReactiveSystem({
 	update,
-	notify(e: Effect | EffectScope) {
-		queuedEffects[queuedEffectsLength++] = e;
-	},
+	notify: queueEffect,
 	unwatched(sub: Signal | Effect | Computed) {
 		if ('deps' in sub) {
 			let toRemove = sub.deps;
@@ -60,7 +58,7 @@ export function startBatch() {
 
 export function endBatch() {
 	if (!--batchDepth) {
-		processEffectNotifications();
+		notifyPendingEffects();
 	}
 }
 
@@ -99,7 +97,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Updatable | SubscriberFlags.Dirty,
+		flags: SubscriberFlags.Mutable | SubscriberFlags.Dirty,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -111,7 +109,7 @@ export function effect<T>(fn: () => T): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Notifiable,
+		flags: SubscriberFlags.Watching,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
@@ -132,7 +130,7 @@ export function effectScope<T>(fn: () => T): () => void {
 	const e: EffectScope = {
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Notifiable,
+		flags: SubscriberFlags.Watching,
 		isScope: true,
 	};
 	const prevSub = activeScope;
@@ -165,35 +163,51 @@ function update(computed: Computed): boolean {
 	}
 }
 
-function notifyEffect(e: Effect): void {
-	const flags = e.flags;
-	if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
-		if (flags & SubscriberFlags.Dirty || checkDirty(e.deps!)) {
-			const prevSub = activeSub;
-			activeSub = e;
-			startTracking(e);
-			try {
-				e.fn();
-			} finally {
-				activeSub = prevSub;
-				endTracking(e);
-			}
-		} else {
-			e.flags = flags & ~SubscriberFlags.Pending;
-			processPendingInnerEffects(e.deps!);
+function queueEffect(e: Effect | EffectScope) {
+	e.flags &= ~SubscriberFlags.Watching;
+	const subs = (e as Effect).subs;
+	if (subs !== undefined) {
+		const parent = subs.sub;
+		const parentFlags = parent.flags;
+		if (parentFlags & SubscriberFlags.Watching) {
+			parent.flags = parentFlags | SubscriberFlags.Pending;
+			queueEffect(parent as Effect | EffectScope);
 		}
+	} else {
+		queuedEffects[queuedEffectsLength++] = e;
+	}
+}
+
+function notifyEffect(e: Effect): void {
+	const flags = e.flags |= SubscriberFlags.Watching;
+	if (
+		flags & SubscriberFlags.Dirty
+		|| (flags & SubscriberFlags.Pending && checkDirty(e.deps!))
+	) {
+		const prevSub = activeSub;
+		activeSub = e;
+		startTracking(e);
+		try {
+			e.fn();
+		} finally {
+			activeSub = prevSub;
+			endTracking(e);
+		}
+	} else if (flags & SubscriberFlags.Pending) {
+		e.flags = flags & ~SubscriberFlags.Pending;
+		notifyInnerEffects(e.deps!);
 	}
 }
 
 function notifyEffectScope(e: EffectScope): void {
-	const flags = e.flags;
+	const flags = e.flags |= SubscriberFlags.Watching;
 	if (flags & SubscriberFlags.Pending) {
 		e.flags = flags & ~SubscriberFlags.Pending;
-		processPendingInnerEffects(e.deps!);
+		notifyInnerEffects(e.deps!);
 	}
 }
 
-function processEffectNotifications(): void {
+function notifyPendingEffects(): void {
 	++batchDepth;
 	for (let i = 0; i < queuedEffectsLength; i++) {
 		const effect = queuedEffects[i];
@@ -209,15 +223,18 @@ function processEffectNotifications(): void {
 	--batchDepth;
 }
 
-function processPendingInnerEffects(link: Link): void {
+function notifyInnerEffects(link: Link): void {
 	do {
 		const dep = link.dep;
-		if (
-			'flags' in dep
-			&& dep.flags & SubscriberFlags.Notifiable
-			&& dep.flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)
-		) {
-			notifyEffect(dep as Effect);
+		if ('flags' in dep) {
+			const flags = dep.flags;
+			if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
+				if ('fn' in dep) {
+					notifyEffect(dep as Effect);
+				} else if ('isScope' in dep) {
+					notifyEffectScope(dep as EffectScope);
+				}
+			}
 		}
 		link = link.nextDep!;
 	} while (link !== undefined);
@@ -254,7 +271,7 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 			if (subs !== undefined) {
 				propagate(subs);
 				if (!batchDepth) {
-					processEffectNotifications();
+					notifyPendingEffects();
 				}
 			}
 		}
