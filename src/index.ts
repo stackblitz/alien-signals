@@ -2,7 +2,7 @@ export * from './system.js';
 
 import { createReactiveSystem, Dependency, Link, Subscriber, SubscriberFlags } from './system.js';
 
-interface EffectScope extends Subscriber {
+interface EffectScope extends Subscriber, Dependency {
 	isScope: true;
 }
 
@@ -130,9 +130,14 @@ export function effectScope<T>(fn: () => T): () => void {
 	const e: EffectScope = {
 		deps: undefined,
 		depsTail: undefined,
+		subs: undefined,
+		subsTail: undefined,
 		flags: SubscriberFlags.Watching,
 		isScope: true,
 	};
+	if (activeScope !== undefined) {
+		link(e, activeScope);
+	}
 	const prevSub = activeScope;
 	activeScope = e;
 	try {
@@ -165,7 +170,7 @@ function update(computed: Computed): boolean {
 
 function queueEffect(e: Effect | EffectScope, next: Link | undefined) {
 	e.flags &= ~SubscriberFlags.Watching;
-	const subs = (e as Effect).subs;
+	const subs = e.subs;
 	if (subs !== undefined) {
 		const parent = subs.sub;
 		const parentFlags = parent.flags;
