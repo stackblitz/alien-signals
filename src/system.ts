@@ -96,16 +96,6 @@ export function createReactiveSystem({
 		const nextDep = link.nextDep;
 		const nextSub = link.nextSub;
 		const prevSub = link.prevSub;
-		if (nextSub !== undefined) {
-			nextSub.prevSub = prevSub;
-		} else {
-			dep.subsTail = prevSub;
-		}
-		if (prevSub !== undefined) {
-			prevSub.nextSub = nextSub;
-		} else {
-			dep.subs = nextSub;
-		}
 		if (nextDep !== undefined) {
 			nextDep.prevDep = prevDep;
 		} else {
@@ -116,7 +106,14 @@ export function createReactiveSystem({
 		} else {
 			sub.deps = nextDep;
 		}
-		if (dep.subs === undefined) {
+		if (nextSub !== undefined) {
+			nextSub.prevSub = prevSub;
+		} else {
+			dep.subsTail = prevSub;
+		}
+		if (prevSub !== undefined) {
+			prevSub.nextSub = nextSub;
+		} else if ((dep.subs = nextSub) === undefined) {
 			unwatched(dep);
 		}
 		return nextDep;
