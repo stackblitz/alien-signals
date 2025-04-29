@@ -98,7 +98,7 @@ You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to bu
 - [proposal-signals/signal-polyfill#44](https://github.com/proposal-signals/signal-polyfill/pull/44)
 
 
-## About `propagate` and `checkDirty` functions
+<!-- ## About `propagate` and `checkDirty` functions
 
 In order to eliminate recursive calls and improve performance, we record the last link node of the previous loop in `propagate` and `checkDirty` functions, and implement the rollback logic to return to this node.
 
@@ -199,4 +199,4 @@ function checkDirty(link: Link): boolean {
 
 	return false;
 }
-```
+``` -->

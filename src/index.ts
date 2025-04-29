@@ -1,45 +1,55 @@
 export * from './system.js';
 
-import { createReactiveSystem, Dependency, Link, Subscriber, SubscriberFlags } from './system.js';
+import { createReactiveSystem, Node, Flags } from './system.js';
 
-interface EffectScope extends Subscriber, Dependency {
-	isScope: true;
+const enum EffectFlags {
+	Queued = 1 << 6,
 }
 
-interface Effect extends Subscriber, Dependency {
+interface EffectScope extends Node { }
+
+interface Effect extends Node {
 	fn(): void;
 }
 
-interface Computed<T = any> extends Signal<T | undefined>, Subscriber {
+interface Computed<T = any> extends Node {
+	value: T | undefined;
 	getter: (previousValue?: T) => T;
 }
 
-interface Signal<T = any> extends Dependency {
-	currentValue: T;
+interface Signal<T = any> extends Node {
+	previousValue: T;
+	value: T;
 }
 
-const pauseStack: (Subscriber | undefined)[] = [];
+const pauseStack: (Computed | Effect | undefined)[] = [];
 const queuedEffects: (Effect | EffectScope)[] = [];
 const {
 	link,
 	unlink,
 	propagate,
-	shallowPropagate,
 	checkDirty,
-	startTracking,
 	endTracking,
+	startTracking,
+	shallowPropagate,
 } = createReactiveSystem({
-	update,
+	update(signal: Signal | Computed): boolean {
+		if ('getter' in signal) {
+			return updateComputed(signal);
+		} else {
+			return signal.previousValue !== (signal.previousValue = signal.value);
+		}
+	},
 	notify: queueEffect,
-	unwatched(sub: Signal | Effect | Computed) {
-		if ('deps' in sub) {
-			let toRemove = sub.deps;
-			while (toRemove !== undefined) {
-				toRemove = unlink(toRemove, sub);
-			}
-			const depFlags = sub.flags;
-			if (!(depFlags & SubscriberFlags.Dirty)) {
-				sub.flags = depFlags | SubscriberFlags.Dirty;
+	unwatched(signal: Signal | Effect | Computed) {
+		let toRemove = signal.deps;
+		if (toRemove !== undefined) {
+			do {
+				toRemove = unlink(toRemove, signal);
+			} while (toRemove !== undefined);
+			const flags = signal.flags;
+			if (!(flags & Flags.Dirty)) {
+				signal.flags = flags | Flags.Dirty;
 			}
 		}
 	},
@@ -47,8 +57,9 @@ const {
 
 export let batchDepth = 0;
 
+let notifyIndex = 0;
 let queuedEffectsLength = 0;
-let activeSub: Subscriber | undefined;
+let activeSub: Computed | Effect | undefined;
 let activeScope: EffectScope | undefined;
 
 //#region Public functions
@@ -58,7 +69,7 @@ export function startBatch() {
 
 export function endBatch() {
 	if (!--batchDepth) {
-		notifyPendingEffects();
+		runQueuedEffects();
 	}
 }
 
@@ -84,20 +95,22 @@ export function signal<T>(initialValue?: T): {
 	(value: T | undefined): void;
 } {
 	return signalGetterSetter.bind({
-		currentValue: initialValue,
+		previousValue: initialValue,
+		value: initialValue,
 		subs: undefined,
 		subsTail: undefined,
+		flags: Flags.Mutable,
 	}) as () => T | undefined;
 }
 
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	return computedGetter.bind({
-		currentValue: undefined,
+		value: undefined,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Mutable | SubscriberFlags.Dirty,
+		flags: Flags.Mutable | Flags.Dirty,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -109,7 +122,7 @@ export function effect<T>(fn: () => T): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: SubscriberFlags.Watching,
+		flags: Flags.Watching,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
@@ -132,8 +145,7 @@ export function effectScope<T>(fn: () => T): () => void {
 		depsTail: undefined,
 		subs: undefined,
 		subsTail: undefined,
-		flags: SubscriberFlags.Watching,
-		isScope: true,
+		flags: Flags.None,
 	};
 	if (activeScope !== undefined) {
 		link(e, activeScope);
@@ -150,99 +162,69 @@ export function effectScope<T>(fn: () => T): () => void {
 //#endregion
 
 //#region Internal functions
-function update(computed: Computed): boolean {
+function updateComputed(signal: Computed): boolean {
 	const prevSub = activeSub;
-	activeSub = computed;
-	startTracking(computed);
+	activeSub = signal;
+	startTracking(signal);
 	try {
-		const oldValue = computed.currentValue;
-		const newValue = computed.getter(oldValue);
-		if (oldValue !== newValue) {
-			computed.currentValue = newValue;
-			return true;
-		}
-		return false;
+		const oldValue = signal.value;
+		return oldValue !== (signal.value = signal.getter(oldValue));
 	} finally {
 		activeSub = prevSub;
-		endTracking(computed);
+		endTracking(signal);
 	}
 }
 
 function queueEffect(e: Effect | EffectScope) {
-	e.flags &= ~SubscriberFlags.Watching;
-	const subs = e.subs;
-	if (subs !== undefined) {
-		const parent = subs.sub;
-		const parentFlags = parent.flags;
-		if (parentFlags & SubscriberFlags.Watching) {
-			parent.flags = parentFlags | SubscriberFlags.Pending;
-			queueEffect(parent as Effect | EffectScope);
+	const flags = e.flags;
+	if (!(flags & EffectFlags.Queued)) {
+		e.flags = flags | EffectFlags.Queued;
+		const subs = e.subs;
+		if (subs !== undefined) {
+			queueEffect(subs.sub as Effect | EffectScope);
+		} else {
+			queuedEffects[queuedEffectsLength++] = e;
 		}
-	} else {
-		queuedEffects[queuedEffectsLength++] = e;
 	}
 }
 
-function notifyEffect(e: Effect): void {
-	const flags = e.flags |= SubscriberFlags.Watching;
+function runEffect(e: Effect | EffectScope, flags: Flags): void {
+	e.flags = flags & ~EffectFlags.Queued;
 	if (
-		flags & SubscriberFlags.Dirty
-		|| (flags & SubscriberFlags.Pending && checkDirty(e.deps!))
+		flags & Flags.Dirty
+		|| (flags & Flags.Pending && checkDirty(e.deps!))
 	) {
 		const prevSub = activeSub;
-		activeSub = e;
+		activeSub = e as Effect;
 		startTracking(e);
 		try {
-			e.fn();
+			(e as Effect).fn();
 		} finally {
 			activeSub = prevSub;
 			endTracking(e);
 		}
-	} else if (flags & SubscriberFlags.Pending) {
-		e.flags = flags & ~SubscriberFlags.Pending;
-		notifyInnerEffects(e.deps!);
-	}
-}
-
-function notifyEffectScope(e: EffectScope): void {
-	const flags = e.flags |= SubscriberFlags.Watching;
-	if (flags & SubscriberFlags.Pending) {
-		e.flags = flags & ~SubscriberFlags.Pending;
-		notifyInnerEffects(e.deps!);
-	}
-}
-
-function notifyPendingEffects(): void {
-	++batchDepth;
-	for (let i = 0; i < queuedEffectsLength; i++) {
-		const effect = queuedEffects[i];
-		// @ts-expect-error
-		queuedEffects[i] = undefined;
-		if ('isScope' in effect) {
-			notifyEffectScope(effect);
-		} else {
-			notifyEffect(effect);
-		}
-	}
-	queuedEffectsLength = 0;
-	--batchDepth;
-}
-
-function notifyInnerEffects(link: Link): void {
-	do {
-		const dep = link.dep;
-		if ('flags' in dep) {
-			const flags = dep.flags;
-			if (flags & (SubscriberFlags.Dirty | SubscriberFlags.Pending)) {
-				if ('fn' in dep) {
-					notifyEffect(dep as Effect);
-				} else if ('isScope' in dep) {
-					notifyEffectScope(dep as EffectScope);
-				}
+	} else {
+		let link = e.deps;
+		while (link !== undefined) {
+			const dep = link.dep;
+			const depFlags = dep.flags;
+			if (depFlags & EffectFlags.Queued) {
+				runEffect(dep, depFlags);
 			}
+			link = link.nextDep;
 		}
-		link = link.nextDep!;
-	} while (link !== undefined);
+	}
+}
+
+function runQueuedEffects(): void {
+	while (notifyIndex < queuedEffectsLength) {
+		const effect = queuedEffects[notifyIndex];
+		// @ts-expect-error
+		queuedEffects[notifyIndex++] = undefined;
+		runEffect(effect, effect.flags);
+	}
+	notifyIndex = 0;
+	queuedEffectsLength = 0;
 }
 //#endregion
 
@@ -250,46 +232,58 @@ function notifyInnerEffects(link: Link): void {
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
-		flags & SubscriberFlags.Dirty
-		|| (flags & SubscriberFlags.Pending && checkDirty(this.deps!))
+		flags & Flags.Dirty
+		|| (flags & Flags.Pending && checkDirty(this.deps!))
 	) {
-		if (update(this)) {
+		if (updateComputed(this)) {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				shallowPropagate(subs);
 			}
 		}
-	} else if (flags & SubscriberFlags.Pending) {
-		this.flags = flags & ~SubscriberFlags.Pending;
+	} else if (flags & Flags.Pending) {
+		this.flags = flags & ~Flags.Pending;
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
 	} else if (activeScope !== undefined) {
 		link(this, activeScope);
 	}
-	return this.currentValue!;
+	return this.value!;
 }
 
 function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
-		if (this.currentValue !== (this.currentValue = value[0])) {
+		const newValue = value[0];
+		if (this.value !== (this.value = newValue)) {
+			this.flags = Flags.Mutable | Flags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
 				if (!batchDepth) {
-					notifyPendingEffects();
+					runQueuedEffects();
 				}
 			}
 		}
 	} else {
+		const value = this.value;
+		if (this.flags & Flags.Dirty) {
+			this.flags = Flags.Mutable;
+			if (this.previousValue !== (this.previousValue = value)) {
+				const subs = this.subs;
+				if (subs !== undefined) {
+					shallowPropagate(subs);
+				}
+			}
+		}
 		if (activeSub !== undefined) {
 			link(this, activeSub);
 		}
-		return this.currentValue;
+		return value;
 	}
 }
 
-function effectStop(this: Subscriber): void {
+function effectStop(this: Effect | EffectScope): void {
 	startTracking(this);
 	endTracking(this);
 }

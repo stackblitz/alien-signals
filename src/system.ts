@@ -1,17 +1,14 @@
-export interface Dependency {
-	subs: Link | undefined;
-	subsTail: Link | undefined;
-}
-
-export interface Subscriber {
-	flags: number | SubscriberFlags;
-	deps: Link | undefined;
-	depsTail: Link | undefined;
+export interface Node {
+	deps?: Link;
+	depsTail?: Link;
+	subs?: Link;
+	subsTail?: Link;
+	flags: Flags;
 }
 
 export interface Link {
-	dep: Dependency | (Dependency & Subscriber);
-	sub: Subscriber | (Dependency & Subscriber);
+	dep: Node;
+	sub: Node;
 	prevSub: Link | undefined;
 	nextSub: Link | undefined;
 	prevDep: Link | undefined;
@@ -23,7 +20,8 @@ interface OneWayLink<T> {
 	linked: OneWayLink<T> | undefined;
 }
 
-export const enum SubscriberFlags {
+export const enum Flags {
+	None = 0,
 	Mutable = 1 << 0,
 	Watching = 1 << 1,
 	Running = 1 << 2,
@@ -37,19 +35,9 @@ export function createReactiveSystem({
 	notify,
 	unwatched,
 }: {
-	/**
-	 * Updates the computed subscriber's value and returns whether it changed.
-	 * 
-	 * This function should be called when a computed subscriber is marked as Dirty.
-	 * The computed subscriber's getter function is invoked, and its value is updated.
-	 * If the value changes, the new value is stored, and the function returns `true`.
-	 * 
-	 * @param sub - The computed subscriber to update.
-	 * @returns `true` if the computed subscriber's value changed; otherwise `false`.
-	 */
-	update(sub: Dependency & Subscriber): boolean;
-	notify(sub: Subscriber): void;
-	unwatched(sub: Dependency): void;
+	update(sub: Node): boolean;
+	notify(sub: Node): void;
+	unwatched(sub: Node): void;
 }) {
 	return {
 		link,
@@ -61,14 +49,7 @@ export function createReactiveSystem({
 		endTracking,
 	};
 
-	/**
-	 * Links a given dependency and subscriber if they are not already linked.
-	 * 
-	 * @param dep - The dependency to be linked.
-	 * @param sub - The subscriber that depends on this dependency.
-	 * @returns The newly created link object if the two are not already linked; otherwise `undefined`.
-	 */
-	function link(dep: Dependency, sub: Subscriber): Link | undefined {
+	function link(dep: Node, sub: Node): Link | undefined {
 		const prevDep = sub.depsTail;
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
@@ -109,7 +90,7 @@ export function createReactiveSystem({
 		return newLink;
 	}
 
-	function unlink(link: Link, sub: Subscriber = link.sub): Link | undefined {
+	function unlink(link: Link, sub = link.sub): Link | undefined {
 		const dep = link.dep;
 		const prevDep = link.prevDep;
 		const nextDep = link.nextDep;
@@ -141,100 +122,54 @@ export function createReactiveSystem({
 		return nextDep;
 	}
 
-	/**
-	 * Traverses and marks subscribers starting from the provided link.
-	 * 
-	 * It sets flags (e.g., Dirty, Pending) on each subscriber
-	 * to indicate which ones require re-computation or effect processing. 
-	 * This function should be called after a signal's value changes.
-	 * 
-	 * @param current - The starting link from which propagation begins.
-	 */
 	function propagate(current: Link): void {
 		let next = current.nextSub;
 		let branchs: OneWayLink<Link | undefined> | undefined;
 		let branchDepth = 0;
-		let targetFlag = SubscriberFlags.Dirty;
 
 		top: do {
 			const sub = current.sub;
 
-			let subFlags = sub.flags;
+			let flags = sub.flags;
 
-			if (!(subFlags & (SubscriberFlags.Running | SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
-				/**
-				 * @when Running ❌, Recursed ❌, Dirty ❌
-				 * @then Notify ✅, Propagate ✅
-				 */
-				sub.flags = subFlags | targetFlag;
-			} else if (!(subFlags & (SubscriberFlags.Running | SubscriberFlags.Recursed | targetFlag))) {
-				/**
-				 * @when Running ❌, Recursed ❌, Dirty ⚠️
-				 * @then Notify ✅, Propagate ❌
-				 */
-				sub.flags = subFlags | targetFlag;
-				subFlags &= SubscriberFlags.Watching;
-			} else if (!(subFlags & (SubscriberFlags.Running | SubscriberFlags.Recursed))) {
-				/**
-				 * @when Running ❌, Recursed ❌, Dirty ✅
-				 * @then Notify ❌, Propagate ❌
-				 */
-				subFlags = 0;
-			} else if (!(subFlags & SubscriberFlags.Running)) {
-				/**
-				 * @when Running ❌, Recursed ✅, Dirty ✅
-				 * @then Notify ✅, Propagate ✅
-				 */
-				sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag;
-			} else if (isValidLink(current, sub)) {
-				if (!(subFlags & (SubscriberFlags.Dirty | SubscriberFlags.Pending))) {
-					/**
-					 * @when Running ✅, Dirty ❌
-					 * @then Notify ❌, Propagate ✅
-					 */
-					sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag;
-					subFlags &= SubscriberFlags.Mutable;
-				} else if (!(subFlags & targetFlag)) {
-					/**
-					 * @when Running ✅, Dirty ⚠️
-					 * @then Notify ❌, Propagate ❌
-					 */
-					sub.flags = subFlags | targetFlag;
-					subFlags = 0;
-				} else {
-					/**
-					 * @when Running ✅, Dirty ✅
-					 * @then Notify ❌, Propagate ❌
-					 */
-					subFlags = 0;
-				}
-			} else {
-				subFlags = 0;
-			}
-
-			if (subFlags & SubscriberFlags.Watching) {
-				notify(sub);
-			}
-
-			if (subFlags & SubscriberFlags.Mutable) {
-				const subSubs = (sub as Dependency).subs;
-				if (subSubs !== undefined) {
-					current = subSubs;
-					if (subSubs.nextSub !== undefined) {
-						branchs = { target: next, linked: branchs };
-						++branchDepth;
-						next = current.nextSub;
+			if (flags & (Flags.Mutable | Flags.Watching)) {
+				if (!(flags & (Flags.Running | Flags.Recursed | Flags.Dirty | Flags.Pending))) {
+					sub.flags = flags | Flags.Pending;
+				} else if (!(flags & (Flags.Running | Flags.Recursed))) {
+					flags = Flags.None;
+				} else if (!(flags & Flags.Running)) {
+					sub.flags = (flags & ~Flags.Recursed) | Flags.Pending;
+				} else if (isValidLink(current, sub)) {
+					if (!(flags & (Flags.Dirty | Flags.Pending))) {
+						sub.flags = flags | Flags.Recursed | Flags.Pending;
+						flags &= Flags.Mutable;
+					} else {
+						flags = Flags.None;
 					}
-					targetFlag = SubscriberFlags.Pending;
-					continue;
+				} else {
+					flags = Flags.None;
+				}
+
+				if (flags & Flags.Watching) {
+					notify(sub);
+				}
+
+				if (flags & Flags.Mutable) {
+					const subSubs = sub.subs;
+					if (subSubs !== undefined) {
+						current = subSubs;
+						if (subSubs.nextSub !== undefined) {
+							branchs = { target: next, linked: branchs };
+							++branchDepth;
+							next = current.nextSub;
+						}
+						continue;
+					}
 				}
 			}
 
 			if ((current = next!) !== undefined) {
 				next = current.nextSub;
-				if (!branchDepth) {
-					targetFlag = SubscriberFlags.Dirty;
-				}
 				continue;
 			}
 
@@ -243,9 +178,6 @@ export function createReactiveSystem({
 				branchs = branchs!.linked;
 				if (current !== undefined) {
 					next = current.nextSub;
-					if (!branchDepth) {
-						targetFlag = SubscriberFlags.Dirty;
-					}
 					continue top;
 				}
 			}
@@ -253,46 +185,21 @@ export function createReactiveSystem({
 			break;
 		} while (true);
 	}
-	/**
-	 * Prepares the given subscriber to track new dependencies.
-	 * 
-	 * It resets the subscriber's internal pointers (e.g., depsTail) and
-	 * sets its flags to indicate it is now tracking dependency links.
-	 * 
-	 * @param sub - The subscriber to start tracking.
-	 */
-	function startTracking(sub: Subscriber): void {
+
+	function startTracking(sub: Node): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(SubscriberFlags.Recursed | SubscriberFlags.Dirty | SubscriberFlags.Pending)) | SubscriberFlags.Running;
+		sub.flags = (sub.flags & ~(Flags.Recursed | Flags.Dirty | Flags.Pending)) | Flags.Running;
 	}
 
-	/**
-	 * Concludes tracking of dependencies for the specified subscriber.
-	 * 
-	 * It clears or unlinks any tracked dependency information, then
-	 * updates the subscriber's flags to indicate tracking is complete.
-	 * 
-	 * @param sub - The subscriber whose tracking is ending.
-	 */
-	function endTracking(sub: Subscriber): void {
+	function endTracking(sub: Node): void {
 		const depsTail = sub.depsTail;
 		let toRemove = depsTail !== undefined ? depsTail.nextDep : sub.deps;
 		while (toRemove !== undefined) {
 			toRemove = unlink(toRemove, sub);
 		}
-		sub.flags &= ~SubscriberFlags.Running;
+		sub.flags &= ~Flags.Running;
 	}
 
-	/**
-	 * Recursively checks and updates all computed subscribers marked as pending.
-	 * 
-	 * It traverses the linked structure using a stack mechanism. For each computed
-	 * subscriber in a pending state, update is called and shallowPropagate
-	 * is triggered if a value changes. Returns whether any updates occurred.
-	 * 
-	 * @param current - The starting link representing a sequence of pending computeds.
-	 * @returns `true` if a computed was updated, otherwise `false`.
-	 */
 	function checkDirty(current: Link): boolean {
 		let prevLinks: OneWayLink<Link> | undefined;
 		let checkDepth = 0;
@@ -301,27 +208,25 @@ export function createReactiveSystem({
 		top: do {
 			dirty = false;
 			const dep = current.dep;
+			const depFlags = dep.flags;
 
-			if (current.sub.flags & SubscriberFlags.Dirty) {
+			if (current.sub.flags & Flags.Dirty) {
 				dirty = true;
-			} else if ('flags' in dep) {
-				const depFlags = dep.flags;
-				if ((depFlags & (SubscriberFlags.Mutable | SubscriberFlags.Dirty)) === (SubscriberFlags.Mutable | SubscriberFlags.Dirty)) {
-					if (update(dep)) {
-						const subs = dep.subs!;
-						if (subs.nextSub !== undefined) {
-							shallowPropagate(subs);
-						}
-						dirty = true;
+			} else if ((depFlags & (Flags.Mutable | Flags.Dirty)) === (Flags.Mutable | Flags.Dirty)) {
+				if (update(dep)) {
+					const subs = dep.subs!;
+					if (subs.nextSub !== undefined) {
+						shallowPropagate(subs);
 					}
-				} else if ((depFlags & (SubscriberFlags.Mutable | SubscriberFlags.Pending)) === (SubscriberFlags.Mutable | SubscriberFlags.Pending)) {
-					if (current.nextSub !== undefined || current.prevSub !== undefined) {
-						prevLinks = { target: current, linked: prevLinks };
-					}
-					current = dep.deps!;
-					++checkDepth;
-					continue;
+					dirty = true;
 				}
+			} else if ((depFlags & (Flags.Mutable | Flags.Pending)) === (Flags.Mutable | Flags.Pending)) {
+				if (current.nextSub !== undefined || current.prevSub !== undefined) {
+					prevLinks = { target: current, linked: prevLinks };
+				}
+				current = dep.deps!;
+				++checkDepth;
+				continue;
 			}
 
 			if (!dirty && current.nextDep !== undefined) {
@@ -331,7 +236,7 @@ export function createReactiveSystem({
 
 			while (checkDepth) {
 				--checkDepth;
-				const sub = current.sub as Dependency & Subscriber;
+				const sub = current.sub;
 				const firstSub = sub.subs!;
 				if (dirty) {
 					if (update(sub)) {
@@ -345,7 +250,7 @@ export function createReactiveSystem({
 						continue;
 					}
 				} else {
-					sub.flags &= ~SubscriberFlags.Pending;
+					sub.flags &= ~Flags.Pending;
 				}
 				if (firstSub.nextSub !== undefined) {
 					current = prevLinks!.target;
@@ -364,22 +269,14 @@ export function createReactiveSystem({
 		} while (true);
 	}
 
-	/**
-	 * Quickly propagates Pending status to Dirty for each subscriber in the chain.
-	 * 
-	 * If the subscriber is also marked as an effect, it is added to the queuedEffects list
-	 * for later processing.
-	 * 
-	 * @param link - The head of the linked list to process.
-	 */
 	function shallowPropagate(link: Link): void {
 		do {
 			const sub = link.sub;
 			const nextSub = link.nextSub;
 			const subFlags = sub.flags;
-			if ((subFlags & (SubscriberFlags.Pending | SubscriberFlags.Dirty)) === SubscriberFlags.Pending) {
-				sub.flags = subFlags | SubscriberFlags.Dirty;
-				if (subFlags & SubscriberFlags.Watching) {
+			if ((subFlags & (Flags.Pending | Flags.Dirty)) === Flags.Pending) {
+				sub.flags = subFlags | Flags.Dirty;
+				if (subFlags & Flags.Watching) {
 					notify(sub);
 				}
 			}
@@ -387,17 +284,7 @@ export function createReactiveSystem({
 		} while (link !== undefined);
 	}
 
-	/**
-	 * Verifies whether the given link is valid for the specified subscriber.
-	 * 
-	 * It iterates through the subscriber's link list (from sub.deps to sub.depsTail)
-	 * to determine if the provided link object is part of that chain.
-	 * 
-	 * @param checkLink - The link object to validate.
-	 * @param sub - The subscriber whose link list is being checked.
-	 * @returns `true` if the link is found in the subscriber's list; otherwise `false`.
-	 */
-	function isValidLink(checkLink: Link, sub: Subscriber): boolean {
+	function isValidLink(checkLink: Link, sub: Node): boolean {
 		const depsTail = sub.depsTail;
 		if (depsTail !== undefined) {
 			let link = sub.deps!;
