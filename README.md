@@ -27,16 +27,21 @@ Even though Vue 3.4 is already optimized, alien-signals is still noticeably fast
 
 I spent considerable time [optimizing Vue 3.4’s reactivity system](https://github.com/vuejs/core/pull/5912), gaining experience along the way. Since Vue 3.5 [switched to a pull-based algorithm similar to Preact](https://github.com/vuejs/core/pull/10397), I decided to continue researching a push-pull based implementation in a separate project. Our end goal is to implement fully incremental AST parsing and virtual code generation in Vue language tools, based on alien-signals.
 
+## Other Language Implementations
+
+- **Lua:** [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua)
+- **Dart:** [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart)
+- **Go:** [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go)
+- **Luau:** [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau)
+- **Java:** [CTRL-Neo-Studios/java-alien-signals](https://github.com/CTRL-Neo-Studios/java-alien-signals)
+- **C#:** [CTRL-Neo-Studios/csharp-alien-signals](https://github.com/CTRL-Neo-Studios/csharp-alien-signals)
+
 ## Derived Projects
 
-- [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua): Lua implementation of alien-signals
-- [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart): Dart implementation of alien-signals
-- [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go): Go implementation of alien-signals
 - [Rajaniraiyn/react-alien-signals](https://github.com/Rajaniraiyn/react-alien-signals): React bindings for the alien-signals API
 - [CCherry07/alien-deepsignals](https://github.com/CCherry07/alien-deepsignals): Use alien-signals with the interface of a plain JavaScript object
 - [hunghg255/reactjs-signal](https://github.com/hunghg255/reactjs-signal): Share Store State with Signal Pattern
 - [gn8-ai/universe-alien-signals](https://github.com/gn8-ai/universe-alien-signals): Enables simple use of the Alien Signals state management system in modern frontend frameworks
-- [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau): Luau implementation of alien-signals
 
 ## Adoption
 
@@ -93,7 +98,7 @@ You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to bu
 - [proposal-signals/signal-polyfill#44](https://github.com/proposal-signals/signal-polyfill/pull/44)
 
 
-## About `propagate` and `checkDirty` functions
+<!-- ## About `propagate` and `checkDirty` functions
 
 In order to eliminate recursive calls and improve performance, we record the last link node of the previous loop in `propagate` and `checkDirty` functions, and implement the rollback logic to return to this node.
 
@@ -194,4 +199,4 @@ function checkDirty(link: Link): boolean {
 
 	return false;
 }
-```
+``` -->
