@@ -126,12 +126,12 @@ export function createReactiveSystem({
 		return nextDep;
 	}
 
-	function propagate(current: Link): void {
-		let next = current.nextSub;
-		let branchs: Stack<Link | undefined> | undefined;
+	function propagate(link: Link): void {
+		let next = link.nextSub;
+		let stack: Stack<Link | undefined> | undefined;
 
 		top: do {
-			const sub = current.sub;
+			const sub = link.sub;
 
 			let flags = sub.flags;
 
@@ -142,7 +142,7 @@ export function createReactiveSystem({
 					flags = ReactiveFlags.None;
 				} else if (!(flags & ReactiveFlags.RecursedCheck)) {
 					sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-				} else if (isValidLink(current, sub)) {
+				} else if (isValidLink(link, sub)) {
 					if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
 						sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
 						flags &= ReactiveFlags.Mutable;
@@ -160,26 +160,26 @@ export function createReactiveSystem({
 				if (flags & ReactiveFlags.Mutable) {
 					const subSubs = sub.subs;
 					if (subSubs !== undefined) {
-						current = subSubs;
+						link = subSubs;
 						if (subSubs.nextSub !== undefined) {
-							branchs = { value: next, prev: branchs };
-							next = current.nextSub;
+							stack = { value: next, prev: stack };
+							next = link.nextSub;
 						}
 						continue;
 					}
 				}
 			}
 
-			if ((current = next!) !== undefined) {
-				next = current.nextSub;
+			if ((link = next!) !== undefined) {
+				next = link.nextSub;
 				continue;
 			}
 
-			while (branchs !== undefined) {
-				current = branchs.value!;
-				branchs = branchs.prev;
-				if (current !== undefined) {
-					next = current.nextSub;
+			while (stack !== undefined) {
+				link = stack.value!;
+				stack = stack.prev;
+				if (link !== undefined) {
+					next = link.nextSub;
 					continue top;
 				}
 			}
@@ -202,12 +202,12 @@ export function createReactiveSystem({
 		sub.flags &= ~ReactiveFlags.RecursedCheck;
 	}
 
-	function checkDirty(current: Link, sub: ReactiveNode): boolean {
-		let prevLinks: Stack<Link> | undefined;
+	function checkDirty(link: Link, sub: ReactiveNode): boolean {
+		let stack: Stack<Link> | undefined;
 		let checkDepth = 0;
 
 		top: do {
-			const dep = current.dep;
+			const dep = link.dep;
 			const depFlags = dep.flags;
 
 			let dirty = false;
@@ -223,17 +223,17 @@ export function createReactiveSystem({
 					dirty = true;
 				}
 			} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Pending)) === (ReactiveFlags.Mutable | ReactiveFlags.Pending)) {
-				if (current.nextSub !== undefined || current.prevSub !== undefined) {
-					prevLinks = { value: current, prev: prevLinks };
+				if (link.nextSub !== undefined || link.prevSub !== undefined) {
+					stack = { value: link, prev: stack };
 				}
-				current = dep.deps!;
+				link = dep.deps!;
 				sub = dep;
 				++checkDepth;
 				continue;
 			}
 
-			if (!dirty && current.nextDep !== undefined) {
-				current = current.nextDep;
+			if (!dirty && link.nextDep !== undefined) {
+				link = link.nextDep;
 				continue;
 			}
 
@@ -242,25 +242,25 @@ export function createReactiveSystem({
 				const firstSub = sub.subs!;
 				const hasMultipleSubs = firstSub.nextSub !== undefined;
 				if (hasMultipleSubs) {
-					current = prevLinks!.value;
-					prevLinks = prevLinks!.prev;
+					link = stack!.value;
+					stack = stack!.prev;
 				} else {
-					current = firstSub;
+					link = firstSub;
 				}
 				if (dirty) {
 					if (update(sub)) {
 						if (hasMultipleSubs) {
 							shallowPropagate(firstSub);
 						}
-						sub = current.sub;
+						sub = link.sub;
 						continue;
 					}
 				} else {
 					sub.flags &= ~ReactiveFlags.Pending;
 				}
-				sub = current.sub;
-				if (current.nextDep !== undefined) {
-					current = current.nextDep;
+				sub = link.sub;
+				if (link.nextDep !== undefined) {
+					link = link.nextDep;
 					continue top;
 				}
 				dirty = false;

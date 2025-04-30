@@ -107,9 +107,9 @@ This results in code that is difficult to understand, and you don't necessarily 
 #### `propagate`
 
 ```ts
-function propagate(current: Link): void {
+function propagate(link: Link): void {
 	do {
-		const sub = current.sub;
+		const sub = link.sub;
 
 		let flags = sub.flags;
 
@@ -120,7 +120,7 @@ function propagate(current: Link): void {
 				flags = ReactiveFlags.None;
 			} else if (!(flags & ReactiveFlags.RecursedCheck)) {
 				sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-			} else if (isValidLink(current, sub)) {
+			} else if (isValidLink(link, sub)) {
 				if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
 					sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
 					flags &= ReactiveFlags.Mutable;
@@ -143,17 +143,17 @@ function propagate(current: Link): void {
 			}
 		}
 
-		current = current.nextSub!;
-	} while (current !== undefined);
+		link = link.nextSub!;
+	} while (link !== undefined);
 }
 ```
 
 #### `checkDirty`
 
 ```ts
-function checkDirty(current: Link, sub: ReactiveNode): boolean {
+function checkDirty(link: Link, sub: ReactiveNode): boolean {
 	do {
-		const dep = current.dep;
+		const dep = link.dep;
 		const depFlags = dep.flags;
 
 		if (sub.flags & ReactiveFlags.Dirty) {
@@ -180,8 +180,8 @@ function checkDirty(current: Link, sub: ReactiveNode): boolean {
 			}
 		}
 
-		current = current.nextDep!;
-	} while (current !== undefined);
+		link = link.nextDep!;
+	} while (link !== undefined);
 
 	return false;
 }
