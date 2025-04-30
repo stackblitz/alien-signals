@@ -43,10 +43,10 @@ export function createReactiveSystem({
 		link,
 		unlink,
 		propagate,
-		shallowPropagate,
 		checkDirty,
-		startTracking,
 		endTracking,
+		startTracking,
+		shallowPropagate,
 	};
 
 	function link(dep: ReactiveNode, sub: ReactiveNode): void {
