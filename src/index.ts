@@ -202,16 +202,18 @@ function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			activeSub = prevSub;
 			endTracking(e);
 		}
-	} else {
-		let link = e.deps;
-		while (link !== undefined) {
-			const dep = link.dep;
-			const depFlags = dep.flags;
-			if (depFlags & EffectFlags.Queued) {
-				runEffect(dep, dep.flags = depFlags & ~EffectFlags.Queued);
-			}
-			link = link.nextDep;
+		return;
+	} else if (flags & ReactiveFlags.Pending) {
+		e.flags = flags & ~ReactiveFlags.Pending;
+	}
+	let link = e.deps;
+	while (link !== undefined) {
+		const dep = link.dep;
+		const depFlags = dep.flags;
+		if (depFlags & EffectFlags.Queued) {
+			runEffect(dep, dep.flags = depFlags & ~EffectFlags.Queued);
 		}
+		link = link.nextDep;
 	}
 }
 
