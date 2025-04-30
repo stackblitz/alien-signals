@@ -197,12 +197,12 @@ export function createReactiveSystem({
 	function checkDirty(current: Link): boolean {
 		let prevLinks: Stack<Link> | undefined;
 		let checkDepth = 0;
-		let dirty: boolean;
 
 		top: do {
-			dirty = false;
 			const dep = current.dep;
 			const depFlags = dep.flags;
+
+			let dirty = false;
 
 			if (current.sub.flags & ReactiveFlags.Dirty) {
 				dirty = true;
