@@ -35,12 +35,12 @@ const {
 } = createReactiveSystem({
 	update(signal: Signal | Computed): boolean {
 		if ('getter' in signal) {
-			return updateComputed(signal);
+			return update(signal);
 		} else {
 			return signal.previousValue !== (signal.previousValue = signal.value);
 		}
 	},
-	notify: queueEffect,
+	notify,
 	unwatched(signal: Signal | Effect | Computed) {
 		let toRemove = signal.deps;
 		if (toRemove !== undefined) {
@@ -88,7 +88,7 @@ export function startBatch() {
 
 export function endBatch() {
 	if (!--batchDepth) {
-		runQueuedEffects();
+		flush();
 	}
 }
 
@@ -113,7 +113,7 @@ export function signal<T>(initialValue?: T): {
 	(): T | undefined;
 	(value: T | undefined): void;
 } {
-	return signalGetterSetter.bind({
+	return signalOper.bind({
 		previousValue: initialValue,
 		value: initialValue,
 		subs: undefined,
@@ -123,7 +123,7 @@ export function signal<T>(initialValue?: T): {
 }
 
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
-	return computedGetter.bind({
+	return computedOper.bind({
 		value: undefined,
 		subs: undefined,
 		subsTail: undefined,
@@ -154,7 +154,7 @@ export function effect<T>(fn: () => T): () => void {
 	} finally {
 		setCurrentSub(prev);
 	}
-	return effectStop.bind(e);
+	return effectOper.bind(e);
 }
 
 export function effectScope<T>(fn: () => T): () => void {
@@ -174,35 +174,35 @@ export function effectScope<T>(fn: () => T): () => void {
 	} finally {
 		setCurrentScope(prev);
 	}
-	return effectStop.bind(e);
+	return effectOper.bind(e);
 }
 
-function updateComputed(computed: Computed): boolean {
-	const prevSub = setCurrentSub(computed);
-	startTracking(computed);
+function update(c: Computed): boolean {
+	const prevSub = setCurrentSub(c);
+	startTracking(c);
 	try {
-		const oldValue = computed.value;
-		return oldValue !== (computed.value = computed.getter(oldValue));
+		const oldValue = c.value;
+		return oldValue !== (c.value = c.getter(oldValue));
 	} finally {
 		setCurrentSub(prevSub);
-		endTracking(computed);
+		endTracking(c);
 	}
 }
 
-function queueEffect(e: Effect | EffectScope) {
+function notify(e: Effect | EffectScope) {
 	const flags = e.flags;
 	if (!(flags & EffectFlags.Queued)) {
 		e.flags = flags | EffectFlags.Queued;
 		const subs = e.subs;
 		if (subs !== undefined) {
-			queueEffect(subs.sub as Effect | EffectScope);
+			notify(subs.sub as Effect | EffectScope);
 		} else {
 			queuedEffects[queuedEffectsLength++] = e;
 		}
 	}
 }
 
-function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
+function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	if (
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!))
@@ -224,30 +224,30 @@ function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		const dep = link.dep;
 		const depFlags = dep.flags;
 		if (depFlags & EffectFlags.Queued) {
-			runEffect(dep, dep.flags = depFlags & ~EffectFlags.Queued);
+			run(dep, dep.flags = depFlags & ~EffectFlags.Queued);
 		}
 		link = link.nextDep;
 	}
 }
 
-function runQueuedEffects(): void {
+function flush(): void {
 	while (notifyIndex < queuedEffectsLength) {
 		const effect = queuedEffects[notifyIndex];
 		// @ts-expect-error
 		queuedEffects[notifyIndex++] = undefined;
-		runEffect(effect, effect.flags &= ~EffectFlags.Queued);
+		run(effect, effect.flags &= ~EffectFlags.Queued);
 	}
 	notifyIndex = 0;
 	queuedEffectsLength = 0;
 }
 
-function computedGetter<T>(this: Computed<T>): T {
+function computedOper<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!))
 	) {
-		if (updateComputed(this)) {
+		if (update(this)) {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				shallowPropagate(subs);
@@ -264,7 +264,7 @@ function computedGetter<T>(this: Computed<T>): T {
 	return this.value!;
 }
 
-function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
+function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		const newValue = value[0];
 		if (this.value !== (this.value = newValue)) {
@@ -273,7 +273,7 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 			if (subs !== undefined) {
 				propagate(subs);
 				if (!batchDepth) {
-					runQueuedEffects();
+					flush();
 				}
 			}
 		}
@@ -295,7 +295,7 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	}
 }
 
-function effectStop(this: Effect | EffectScope): void {
+function effectOper(this: Effect | EffectScope): void {
 	let dep = this.deps;
 	while (dep !== undefined) {
 		dep = unlink(dep, this);
