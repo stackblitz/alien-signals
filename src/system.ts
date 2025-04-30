@@ -258,12 +258,11 @@ export function createReactiveSystem({
 				} else {
 					sub.flags &= ~ReactiveFlags.Pending;
 				}
+				sub = current.sub;
 				if (current.nextDep !== undefined) {
 					current = current.nextDep;
-					sub = current.sub;
 					continue top;
 				}
-				sub = current.sub;
 				dirty = false;
 			}
 
