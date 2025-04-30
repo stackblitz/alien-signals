@@ -54,13 +54,21 @@ export function createReactiveSystem({
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
 		}
-		const nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
-		if (nextDep !== undefined && nextDep.dep === dep) {
-			sub.depsTail = nextDep;
-			return;
+		let nextDep: Link | undefined = undefined;
+		const recursedCheck = sub.flags & ReactiveFlags.RecursedCheck;
+		if (recursedCheck) {
+			nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
+			if (nextDep !== undefined && nextDep.dep === dep) {
+				sub.depsTail = nextDep;
+				return;
+			}
 		}
 		const prevSub = dep.subsTail;
-		if (prevSub !== undefined && prevSub.sub === sub && isValidLink(prevSub, sub)) {
+		if (
+			prevSub !== undefined
+			&& prevSub.sub === sub
+			&& (!recursedCheck || isValidLink(prevSub, sub))
+		) {
 			return;
 		}
 		const newLink
