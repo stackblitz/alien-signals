@@ -107,56 +107,40 @@ This results in code that is difficult to understand, and you don't necessarily 
 #### `propagate`
 
 ```ts
-function propagate(link: Link, targetFlag = SubscriberFlags.Dirty): void {
+function propagate(link: Link): void {
 	do {
 		const sub = link.sub;
-		const subFlags = sub.flags;
 
-		let shouldNotify = false;
+		let flags = sub.flags;
 
-		if (!(subFlags & (SubscriberFlags.Tracking | SubscriberFlags.Recursed | SubscriberFlags.Propagated))) {
-			sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
-			shouldNotify = true;
-		} else if ((subFlags & SubscriberFlags.Recursed) && !(subFlags & SubscriberFlags.Tracking)) {
-			sub.flags = (subFlags & ~SubscriberFlags.Recursed) | targetFlag | SubscriberFlags.Notified;
-			shouldNotify = true;
-		} else if (!(subFlags & SubscriberFlags.Propagated) && isValidLink(current, sub)) {
-			sub.flags = subFlags | SubscriberFlags.Recursed | targetFlag | SubscriberFlags.Notified;
-			shouldNotify = (sub as Dependency).subs !== undefined;
-		}
-
-		if (shouldNotify) {
-			const subSubs = (sub as Dependency).subs;
-			if (subSubs !== undefined) {
-				propagate(
-					subSubs,
-					subFlags & SubscriberFlags.Effect
-						? SubscriberFlags.PendingEffect
-						: SubscriberFlags.PendingComputed
-				);
-			}
-			if (subFlags & SubscriberFlags.Effect) {
-				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
+		if (flags & (ReactiveFlags.Mutable | ReactiveFlags.Watching)) {
+			if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
+				sub.flags = flags | ReactiveFlags.Pending;
+			} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
+				flags = ReactiveFlags.None;
+			} else if (!(flags & ReactiveFlags.RecursedCheck)) {
+				sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
+			} else if (isValidLink(link, sub)) {
+				if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
+					sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
+					flags &= ReactiveFlags.Mutable;
 				} else {
-					queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
+					flags = ReactiveFlags.None;
+				}
+			} else {
+				flags = ReactiveFlags.None;
+			}
+
+			if (flags & ReactiveFlags.Watching) {
+				notify(sub);
+			}
+
+			if (flags & ReactiveFlags.Mutable) {
+				const subSubs = sub.subs;
+				if (subSubs !== undefined) {
+					propagate(subSubs);
 				}
 			}
-		} else if (!(subFlags & (SubscriberFlags.Tracking | targetFlag))) {
-			sub.flags = subFlags | targetFlag | SubscriberFlags.Notified;
-			if ((subFlags & (SubscriberFlags.Effect | SubscriberFlags.Notified)) === SubscriberFlags.Effect) {
-				if (queuedEffectsTail !== undefined) {
-					queuedEffectsTail = queuedEffectsTail.linked = { target: sub, linked: undefined };
-				} else {
-					queuedEffectsTail = queuedEffects = { target: sub, linked: undefined };
-				}
-			}
-		} else if (
-			!(subFlags & targetFlag)
-			&& (subFlags & SubscriberFlags.Propagated)
-			&& isValidLink(link, sub)
-		) {
-			sub.flags = subFlags | targetFlag;
 		}
 
 		link = link.nextSub!;
@@ -167,33 +151,35 @@ function propagate(link: Link, targetFlag = SubscriberFlags.Dirty): void {
 #### `checkDirty`
 
 ```ts
-function checkDirty(link: Link): boolean {
+function checkDirty(link: Link, sub: ReactiveNode): boolean {
 	do {
 		const dep = link.dep;
-		if ('flags' in dep) {
-			const depFlags = dep.flags;
-			if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.Dirty)) === (SubscriberFlags.Computed | SubscriberFlags.Dirty)) {
-				if (updateComputed(dep)) {
+		const depFlags = dep.flags;
+
+		if (sub.flags & ReactiveFlags.Dirty) {
+			return true;
+		} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) === (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) {
+			if (update(dep)) {
+				const subs = dep.subs!;
+				if (subs.nextSub !== undefined) {
+					shallowPropagate(subs);
+				}
+				return true;
+			}
+		} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Pending)) === (ReactiveFlags.Mutable | ReactiveFlags.Pending)) {
+			if (checkDirty(dep.deps!, dep)) {
+				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
 					}
 					return true;
 				}
-			} else if ((depFlags & (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) === (SubscriberFlags.Computed | SubscriberFlags.PendingComputed)) {
-				if (checkDirty(dep.deps!)) {
-					if (updateComputed(dep)) {
-						const subs = dep.subs!;
-						if (subs.nextSub !== undefined) {
-							shallowPropagate(subs);
-						}
-						return true;
-					}
-				} else {
-					dep.flags = depFlags & ~SubscriberFlags.PendingComputed;
-				}
+			} else {
+				dep.flags = depFlags & ~ReactiveFlags.Pending;
 			}
 		}
+
 		link = link.nextDep!;
 	} while (link !== undefined);
 

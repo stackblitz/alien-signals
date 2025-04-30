@@ -43,3 +43,19 @@ test('should handle flags are indirectly updated during checkDirty', () => {
 	a(true);
 	expect(d()).toBe(true);
 });
+
+test('should not update if the signal value is reverted', () => {
+	let times = 0;
+
+	const src = signal(0);
+	const c1 = computed(() => {
+		times++;
+		return src();
+	});
+	c1();
+	expect(times).toBe(1);
+	src(1);
+	src(0);
+	c1();
+	expect(times).toBe(1);
+});
