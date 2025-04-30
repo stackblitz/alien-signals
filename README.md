@@ -151,7 +151,7 @@ function propagate(current: Link): void {
 #### `checkDirty`
 
 ```ts
-function checkDirty(current: Link, sub = current.sub): boolean {
+function checkDirty(current: Link, sub: ReactiveNode): boolean {
 	do {
 		const dep = current.dep;
 		const depFlags = dep.flags;
@@ -167,7 +167,7 @@ function checkDirty(current: Link, sub = current.sub): boolean {
 				return true;
 			}
 		} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Pending)) === (ReactiveFlags.Mutable | ReactiveFlags.Pending)) {
-			if (checkDirty(dep.deps!)) {
+			if (checkDirty(dep.deps!, dep)) {
 				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
