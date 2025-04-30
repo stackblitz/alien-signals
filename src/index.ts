@@ -189,7 +189,6 @@ function queueEffect(e: Effect | EffectScope) {
 }
 
 function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
-	e.flags = flags & ~EffectFlags.Queued;
 	if (
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!))
@@ -209,7 +208,7 @@ function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			const dep = link.dep;
 			const depFlags = dep.flags;
 			if (depFlags & EffectFlags.Queued) {
-				runEffect(dep, depFlags);
+				runEffect(dep, dep.flags = depFlags & ~EffectFlags.Queued);
 			}
 			link = link.nextDep;
 		}
@@ -221,7 +220,7 @@ function runQueuedEffects(): void {
 		const effect = queuedEffects[notifyIndex];
 		// @ts-expect-error
 		queuedEffects[notifyIndex++] = undefined;
-		runEffect(effect, effect.flags);
+		runEffect(effect, effect.flags &= ~EffectFlags.Queued);
 	}
 	notifyIndex = 0;
 	queuedEffectsLength = 0;

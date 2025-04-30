@@ -35,13 +35,9 @@ test('should not run untracked inner effect', () => {
 		}
 	});
 
-	decrement();
-	decrement();
-	decrement();
-
-	function decrement() {
-		a(a() - 1);
-	}
+	a(2);
+	a(1);
+	a(0);
 });
 
 test('should run outer effect first', () => {
