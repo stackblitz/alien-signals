@@ -22,7 +22,7 @@ interface Signal<T = any> extends ReactiveNode {
 	value: T;
 }
 
-const pauseStack: (Computed | Effect | undefined)[] = [];
+const pauseStack: (ReactiveNode | undefined)[] = [];
 const queuedEffects: (Effect | EffectScope)[] = [];
 const {
 	link,
@@ -59,10 +59,29 @@ export let batchDepth = 0;
 
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
-let activeSub: Computed | Effect | undefined;
+let activeSub: ReactiveNode | undefined;
 let activeScope: EffectScope | undefined;
 
-//#region Public functions
+export function getCurrentSub(): ReactiveNode | undefined {
+	return activeSub;
+}
+
+export function setCurrentSub(sub: ReactiveNode | undefined) {
+	const prevSub = activeSub;
+	activeSub = sub;
+	return prevSub;
+}
+
+export function getCurrentScope(): EffectScope | undefined {
+	return activeScope;
+}
+
+export function setCurrentScope(scope: EffectScope | undefined) {
+	const prevScope = activeScope;
+	activeScope = scope;
+	return prevScope;
+}
+
 export function startBatch() {
 	++batchDepth;
 }
@@ -129,12 +148,11 @@ export function effect<T>(fn: () => T): () => void {
 	} else if (activeScope !== undefined) {
 		link(e, activeScope);
 	}
-	const prevSub = activeSub;
-	activeSub = e;
+	const prev = setCurrentSub(e);
 	try {
 		e.fn();
 	} finally {
-		activeSub = prevSub;
+		setCurrentSub(prev);
 	}
 	return effectStop.bind(e);
 }
@@ -150,28 +168,24 @@ export function effectScope<T>(fn: () => T): () => void {
 	if (activeScope !== undefined) {
 		link(e, activeScope);
 	}
-	const prevSub = activeScope;
-	activeScope = e;
+	const prev = setCurrentScope(e);
 	try {
 		fn();
 	} finally {
-		activeScope = prevSub;
+		setCurrentScope(prev);
 	}
 	return effectStop.bind(e);
 }
-//#endregion
 
-//#region Internal functions
-function updateComputed(signal: Computed): boolean {
-	const prevSub = activeSub;
-	activeSub = signal;
-	startTracking(signal);
+function updateComputed(computed: Computed): boolean {
+	const prevSub = setCurrentSub(computed);
+	startTracking(computed);
 	try {
-		const oldValue = signal.value;
-		return oldValue !== (signal.value = signal.getter(oldValue));
+		const oldValue = computed.value;
+		return oldValue !== (computed.value = computed.getter(oldValue));
 	} finally {
-		activeSub = prevSub;
-		endTracking(signal);
+		setCurrentSub(prevSub);
+		endTracking(computed);
 	}
 }
 
@@ -193,13 +207,12 @@ function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!))
 	) {
-		const prevSub = activeSub;
-		activeSub = e as Effect;
+		const prev = setCurrentSub(e);
 		startTracking(e);
 		try {
 			(e as Effect).fn();
 		} finally {
-			activeSub = prevSub;
+			setCurrentSub(prev);
 			endTracking(e);
 		}
 		return;
@@ -227,9 +240,7 @@ function runQueuedEffects(): void {
 	notifyIndex = 0;
 	queuedEffectsLength = 0;
 }
-//#endregion
 
-//#region Bound functions
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
@@ -296,4 +307,3 @@ function effectStop(this: Effect | EffectScope): void {
 	}
 	this.flags = ReactiveFlags.None;
 }
-//#endregion
