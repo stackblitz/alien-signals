@@ -240,26 +240,23 @@ export function createReactiveSystem({
 			while (checkDepth) {
 				--checkDepth;
 				const firstSub = sub.subs!;
+				const hasMultipleSubs = firstSub.nextSub !== undefined;
+				if (hasMultipleSubs) {
+					current = prevLinks!.value;
+					prevLinks = prevLinks!.prev;
+				} else {
+					current = firstSub;
+				}
 				if (dirty) {
 					if (update(sub)) {
-						if (firstSub.nextSub !== undefined) {
-							current = prevLinks!.value;
-							prevLinks = prevLinks!.prev;
+						if (hasMultipleSubs) {
 							shallowPropagate(firstSub);
-						} else {
-							current = firstSub;
 						}
 						sub = current.sub;
 						continue;
 					}
 				} else {
 					sub.flags &= ~ReactiveFlags.Pending;
-				}
-				if (firstSub.nextSub !== undefined) {
-					current = prevLinks!.value;
-					prevLinks = prevLinks!.prev;
-				} else {
-					current = firstSub;
 				}
 				if (current.nextDep !== undefined) {
 					current = current.nextDep;
