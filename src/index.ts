@@ -47,10 +47,7 @@ const {
 			do {
 				toRemove = unlink(toRemove, signal);
 			} while (toRemove !== undefined);
-			const flags = signal.flags;
-			if (!(flags & ReactiveFlags.Dirty)) {
-				signal.flags = flags | ReactiveFlags.Dirty;
-			}
+			signal.flags |= ReactiveFlags.Dirty;
 		}
 	},
 });
