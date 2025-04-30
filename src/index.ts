@@ -205,7 +205,7 @@ function notify(e: Effect | EffectScope) {
 function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	if (
 		flags & ReactiveFlags.Dirty
-		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!))
+		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!, e))
 	) {
 		const prev = setCurrentSub(e);
 		startTracking(e);
@@ -245,7 +245,7 @@ function computedOper<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
 		flags & ReactiveFlags.Dirty
-		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!))
+		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!, this))
 	) {
 		if (update(this)) {
 			const subs = this.subs;

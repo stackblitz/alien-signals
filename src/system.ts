@@ -202,7 +202,7 @@ export function createReactiveSystem({
 		sub.flags &= ~ReactiveFlags.RecursedCheck;
 	}
 
-	function checkDirty(current: Link): boolean {
+	function checkDirty(current: Link, sub: ReactiveNode): boolean {
 		let prevLinks: Stack<Link> | undefined;
 		let checkDepth = 0;
 
@@ -212,7 +212,7 @@ export function createReactiveSystem({
 
 			let dirty = false;
 
-			if (current.sub.flags & ReactiveFlags.Dirty) {
+			if (sub.flags & ReactiveFlags.Dirty) {
 				dirty = true;
 			} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) === (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) {
 				if (update(dep)) {
@@ -227,6 +227,7 @@ export function createReactiveSystem({
 					prevLinks = { value: current, prev: prevLinks };
 				}
 				current = dep.deps!;
+				sub = dep;
 				++checkDepth;
 				continue;
 			}
@@ -238,7 +239,6 @@ export function createReactiveSystem({
 
 			while (checkDepth) {
 				--checkDepth;
-				const sub = current.sub;
 				const firstSub = sub.subs!;
 				if (dirty) {
 					if (update(sub)) {
@@ -249,6 +249,7 @@ export function createReactiveSystem({
 						} else {
 							current = firstSub;
 						}
+						sub = current.sub;
 						continue;
 					}
 				} else {
@@ -262,8 +263,10 @@ export function createReactiveSystem({
 				}
 				if (current.nextDep !== undefined) {
 					current = current.nextDep;
+					sub = current.sub;
 					continue top;
 				}
+				sub = current.sub;
 				dirty = false;
 			}
 
