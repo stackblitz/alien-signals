@@ -24,7 +24,7 @@ export const enum Flags {
 	None = 0,
 	Mutable = 1 << 0,
 	Watching = 1 << 1,
-	Running = 1 << 2,
+	RecursedCheck = 1 << 2,
 	Recursed = 1 << 3,
 	Dirty = 1 << 4,
 	Pending = 1 << 5,
@@ -130,11 +130,11 @@ export function createReactiveSystem({
 			let flags = sub.flags;
 
 			if (flags & (Flags.Mutable | Flags.Watching)) {
-				if (!(flags & (Flags.Running | Flags.Recursed | Flags.Dirty | Flags.Pending))) {
+				if (!(flags & (Flags.RecursedCheck | Flags.Recursed | Flags.Dirty | Flags.Pending))) {
 					sub.flags = flags | Flags.Pending;
-				} else if (!(flags & (Flags.Running | Flags.Recursed))) {
+				} else if (!(flags & (Flags.RecursedCheck | Flags.Recursed))) {
 					flags = Flags.None;
-				} else if (!(flags & Flags.Running)) {
+				} else if (!(flags & Flags.RecursedCheck)) {
 					sub.flags = (flags & ~Flags.Recursed) | Flags.Pending;
 				} else if (isValidLink(current, sub)) {
 					if (!(flags & (Flags.Dirty | Flags.Pending))) {
@@ -185,7 +185,7 @@ export function createReactiveSystem({
 
 	function startTracking(sub: Node): void {
 		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(Flags.Recursed | Flags.Dirty | Flags.Pending)) | Flags.Running;
+		sub.flags = (sub.flags & ~(Flags.Recursed | Flags.Dirty | Flags.Pending)) | Flags.RecursedCheck;
 	}
 
 	function endTracking(sub: Node): void {
@@ -194,7 +194,7 @@ export function createReactiveSystem({
 		while (toRemove !== undefined) {
 			toRemove = unlink(toRemove, sub);
 		}
-		sub.flags &= ~Flags.Running;
+		sub.flags &= ~Flags.RecursedCheck;
 	}
 
 	function checkDirty(current: Link): boolean {
