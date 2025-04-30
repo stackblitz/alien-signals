@@ -121,7 +121,6 @@ export function createReactiveSystem({
 	function propagate(current: Link): void {
 		let next = current.nextSub;
 		let branchs: OneWayLink<Link | undefined> | undefined;
-		let branchDepth = 0;
 
 		top: do {
 			const sub = current.sub;
@@ -156,7 +155,6 @@ export function createReactiveSystem({
 						current = subSubs;
 						if (subSubs.nextSub !== undefined) {
 							branchs = { target: next, linked: branchs };
-							++branchDepth;
 							next = current.nextSub;
 						}
 						continue;
@@ -169,9 +167,9 @@ export function createReactiveSystem({
 				continue;
 			}
 
-			while (branchDepth--) {
-				current = branchs!.target!;
-				branchs = branchs!.linked;
+			while (branchs !== undefined) {
+				current = branchs.target!;
+				branchs = branchs.linked;
 				if (current !== undefined) {
 					next = current.nextSub;
 					continue top;
