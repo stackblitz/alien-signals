@@ -1,23 +1,23 @@
 export * from './system.js';
 
-import { createReactiveSystem, Node, Flags } from './system.js';
+import { createReactiveSystem, ReactiveNode, ReactiveFlags } from './system.js';
 
 const enum EffectFlags {
 	Queued = 1 << 6,
 }
 
-interface EffectScope extends Node { }
+interface EffectScope extends ReactiveNode { }
 
-interface Effect extends Node {
+interface Effect extends ReactiveNode {
 	fn(): void;
 }
 
-interface Computed<T = any> extends Node {
+interface Computed<T = any> extends ReactiveNode {
 	value: T | undefined;
 	getter: (previousValue?: T) => T;
 }
 
-interface Signal<T = any> extends Node {
+interface Signal<T = any> extends ReactiveNode {
 	previousValue: T;
 	value: T;
 }
@@ -48,8 +48,8 @@ const {
 				toRemove = unlink(toRemove, signal);
 			} while (toRemove !== undefined);
 			const flags = signal.flags;
-			if (!(flags & Flags.Dirty)) {
-				signal.flags = flags | Flags.Dirty;
+			if (!(flags & ReactiveFlags.Dirty)) {
+				signal.flags = flags | ReactiveFlags.Dirty;
 			}
 		}
 	},
@@ -99,7 +99,7 @@ export function signal<T>(initialValue?: T): {
 		value: initialValue,
 		subs: undefined,
 		subsTail: undefined,
-		flags: Flags.Mutable,
+		flags: ReactiveFlags.Mutable,
 	}) as () => T | undefined;
 }
 
@@ -110,7 +110,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: Flags.Mutable | Flags.Dirty,
+		flags: ReactiveFlags.Mutable | ReactiveFlags.Dirty,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -122,7 +122,7 @@ export function effect<T>(fn: () => T): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: Flags.Watching,
+		flags: ReactiveFlags.Watching,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
@@ -145,7 +145,7 @@ export function effectScope<T>(fn: () => T): () => void {
 		depsTail: undefined,
 		subs: undefined,
 		subsTail: undefined,
-		flags: Flags.None,
+		flags: ReactiveFlags.None,
 	};
 	if (activeScope !== undefined) {
 		link(e, activeScope);
@@ -188,11 +188,11 @@ function queueEffect(e: Effect | EffectScope) {
 	}
 }
 
-function runEffect(e: Effect | EffectScope, flags: Flags): void {
+function runEffect(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	e.flags = flags & ~EffectFlags.Queued;
 	if (
-		flags & Flags.Dirty
-		|| (flags & Flags.Pending && checkDirty(e.deps!))
+		flags & ReactiveFlags.Dirty
+		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!))
 	) {
 		const prevSub = activeSub;
 		activeSub = e as Effect;
@@ -232,8 +232,8 @@ function runQueuedEffects(): void {
 function computedGetter<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
-		flags & Flags.Dirty
-		|| (flags & Flags.Pending && checkDirty(this.deps!))
+		flags & ReactiveFlags.Dirty
+		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!))
 	) {
 		if (updateComputed(this)) {
 			const subs = this.subs;
@@ -241,8 +241,8 @@ function computedGetter<T>(this: Computed<T>): T {
 				shallowPropagate(subs);
 			}
 		}
-	} else if (flags & Flags.Pending) {
-		this.flags = flags & ~Flags.Pending;
+	} else if (flags & ReactiveFlags.Pending) {
+		this.flags = flags & ~ReactiveFlags.Pending;
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
@@ -256,7 +256,7 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		const newValue = value[0];
 		if (this.value !== (this.value = newValue)) {
-			this.flags = Flags.Mutable | Flags.Dirty;
+			this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
@@ -267,8 +267,8 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 		}
 	} else {
 		const value = this.value;
-		if (this.flags & Flags.Dirty) {
-			this.flags = Flags.Mutable;
+		if (this.flags & ReactiveFlags.Dirty) {
+			this.flags = ReactiveFlags.Mutable;
 			if (this.previousValue !== (this.previousValue = value)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
@@ -293,6 +293,6 @@ function effectStop(this: Effect | EffectScope): void {
 		unlink(sub);
 		sub = this.subs;
 	}
-	this.flags = Flags.None;
+	this.flags = ReactiveFlags.None;
 }
 //#endregion
