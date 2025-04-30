@@ -284,7 +284,15 @@ function signalGetterSetter<T>(this: Signal<T>, ...value: [T]): T | void {
 }
 
 function effectStop(this: Effect | EffectScope): void {
-	startTracking(this);
-	endTracking(this);
+	let dep = this.deps;
+	while (dep !== undefined) {
+		dep = unlink(dep, this);
+	}
+	let sub = this.subs;
+	while (sub !== undefined) {
+		unlink(sub);
+		sub = this.subs;
+	}
+	this.flags = Flags.None;
 }
 //#endregion

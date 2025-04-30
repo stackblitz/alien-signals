@@ -49,7 +49,7 @@ export function createReactiveSystem({
 		endTracking,
 	};
 
-	function link(dep: Node, sub: Node): Link | undefined {
+	function link(dep: Node, sub: Node): void {
 		const prevDep = sub.depsTail;
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
@@ -87,7 +87,6 @@ export function createReactiveSystem({
 		} else {
 			dep.subs = newLink;
 		}
-		return newLink;
 	}
 
 	function unlink(link: Link, sub = link.sub): Link | undefined {
