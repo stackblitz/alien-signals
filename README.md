@@ -120,13 +120,9 @@ function propagate(link: Link): void {
 				flags = ReactiveFlags.None;
 			} else if (!(flags & ReactiveFlags.RecursedCheck)) {
 				sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-			} else if (isValidLink(link, sub)) {
-				if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
-					sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
-					flags &= ReactiveFlags.Mutable;
-				} else {
-					flags = ReactiveFlags.None;
-				}
+			} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)) && isValidLink(link, sub)) {
+				sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
+				flags &= ReactiveFlags.Mutable;
 			} else {
 				flags = ReactiveFlags.None;
 			}
