@@ -15,9 +15,9 @@ export interface Link {
 	nextDep: Link | undefined;
 }
 
-interface OneWayLink<T> {
-	target: T;
-	linked: OneWayLink<T> | undefined;
+interface Stack<T> {
+	value: T;
+	prev: Stack<T> | undefined;
 }
 
 export const enum ReactiveFlags {
@@ -120,7 +120,7 @@ export function createReactiveSystem({
 
 	function propagate(current: Link): void {
 		let next = current.nextSub;
-		let branchs: OneWayLink<Link | undefined> | undefined;
+		let branchs: Stack<Link | undefined> | undefined;
 
 		top: do {
 			const sub = current.sub;
@@ -154,7 +154,7 @@ export function createReactiveSystem({
 					if (subSubs !== undefined) {
 						current = subSubs;
 						if (subSubs.nextSub !== undefined) {
-							branchs = { target: next, linked: branchs };
+							branchs = { value: next, prev: branchs };
 							next = current.nextSub;
 						}
 						continue;
@@ -168,8 +168,8 @@ export function createReactiveSystem({
 			}
 
 			while (branchs !== undefined) {
-				current = branchs.target!;
-				branchs = branchs.linked;
+				current = branchs.value!;
+				branchs = branchs.prev;
 				if (current !== undefined) {
 					next = current.nextSub;
 					continue top;
@@ -195,7 +195,7 @@ export function createReactiveSystem({
 	}
 
 	function checkDirty(current: Link): boolean {
-		let prevLinks: OneWayLink<Link> | undefined;
+		let prevLinks: Stack<Link> | undefined;
 		let checkDepth = 0;
 		let dirty: boolean;
 
@@ -216,7 +216,7 @@ export function createReactiveSystem({
 				}
 			} else if ((depFlags & (ReactiveFlags.Mutable | ReactiveFlags.Pending)) === (ReactiveFlags.Mutable | ReactiveFlags.Pending)) {
 				if (current.nextSub !== undefined || current.prevSub !== undefined) {
-					prevLinks = { target: current, linked: prevLinks };
+					prevLinks = { value: current, prev: prevLinks };
 				}
 				current = dep.deps!;
 				++checkDepth;
@@ -235,8 +235,8 @@ export function createReactiveSystem({
 				if (dirty) {
 					if (update(sub)) {
 						if (firstSub.nextSub !== undefined) {
-							current = prevLinks!.target;
-							prevLinks = prevLinks!.linked;
+							current = prevLinks!.value;
+							prevLinks = prevLinks!.prev;
 							shallowPropagate(firstSub);
 						} else {
 							current = firstSub;
@@ -247,8 +247,8 @@ export function createReactiveSystem({
 					sub.flags &= ~ReactiveFlags.Pending;
 				}
 				if (firstSub.nextSub !== undefined) {
-					current = prevLinks!.target;
-					prevLinks = prevLinks!.linked;
+					current = prevLinks!.value;
+					prevLinks = prevLinks!.prev;
 				} else {
 					current = firstSub;
 				}
