@@ -221,22 +221,18 @@ export function createReactiveSystem({
 					 * @then Notify ✅, Propagate ✅
 					 */
 					sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-				} else if (isValidLink(link, sub)) {
-					if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
-						/**
-						 * @when Running ✅, Dirty ❌
-						 * @then Notify ❌, Propagate ✅
-						 */
-						sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
-						flags &= ReactiveFlags.Mutable;
-					} else {
-						/**
-						 * @when Running ✅, Dirty ✅
-						 * @then Notify ❌, Propagate ❌
-						 */
-						flags = ReactiveFlags.None;
-					}
+				} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)) && isValidLink(link, sub)) {
+          /**
+					 * @when Running ✅, Dirty ❌
+					 * @then Notify ❌, Propagate ✅
+					 */
+					sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
+					flags &= ReactiveFlags.Mutable;
 				} else {
+          /**
+					 * @when Running ✅, Dirty ✅
+					 * @then Notify ❌, Propagate ❌
+					 */
 					flags = ReactiveFlags.None;
 				}
 

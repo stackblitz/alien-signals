@@ -35,9 +35,9 @@ const {
 } = createReactiveSystem({
 	update(signal: Signal | Computed): boolean {
 		if ('getter' in signal) {
-			return update(signal);
+			return updateComputed(signal);
 		} else {
-			return signal.previousValue !== (signal.previousValue = signal.value);
+			return updateSignal(signal, signal.value);
 		}
 	},
 	notify,
@@ -49,13 +49,10 @@ const {
 			do {
 				toRemove = unlink(toRemove, signal);
 			} while (toRemove !== undefined);
-			const flags = signal.flags;
-			if (!(flags & ReactiveFlags.Dirty)) {
-				// Because `signal` is now unlinked from its deps, it won't
-				// stay consistent with them, so mark it Dirty because it will
-				// need to be re-computed if accessed again.
-				signal.flags = flags | ReactiveFlags.Dirty;
-			}
+  		// Because `signal` is now unlinked from its deps, it won't
+			// stay consistent with them, so mark it Dirty because it will
+			// need to be re-computed if accessed again.
+			signal.flags |= ReactiveFlags.Dirty;
 		}
 	},
 });
@@ -227,7 +224,7 @@ export function effectScope<T>(fn: () => T): () => void {
 	return effectOper.bind(e);
 }
 
-function update(c: Computed): boolean {
+function updateComputed(c: Computed): boolean {
 	const prevSub = setCurrentSub(c);
 	startTracking(c);
 	try {
@@ -237,6 +234,11 @@ function update(c: Computed): boolean {
 		setCurrentSub(prevSub);
 		endTracking(c);
 	}
+}
+
+function updateSignal(s: Signal, value: any): boolean {
+	s.flags = ReactiveFlags.Mutable;
+	return s.previousValue !== (s.previousValue = value);
 }
 
 function notify(e: Effect | EffectScope) {
@@ -308,7 +310,7 @@ function computedOper<T>(this: Computed<T>): T {
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!, this))
 	) {
-		if (update(this)) {
+		if (updateComputed(this)) {
 			const subs = this.subs;
 			if (subs !== undefined) {
 				shallowPropagate(subs);
@@ -343,8 +345,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 		// signal() get call
 		const value = this.value;
 		if (this.flags & ReactiveFlags.Dirty) {
-			this.flags = ReactiveFlags.Mutable;
-			if (this.previousValue !== (this.previousValue = value)) {
+			if (updateSignal(this, value)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
 					shallowPropagate(subs);
