@@ -1,6 +1,6 @@
 export * from './system.js';
 
-import { createReactiveSystem, ReactiveNode, ReactiveFlags } from './system.js';
+import { createReactiveSystem, ReactiveFlags, ReactiveNode } from './system.js';
 
 const enum EffectFlags {
 	Queued = 1 << 6,
@@ -42,6 +42,8 @@ const {
 	},
 	notify,
 	unwatched(signal: Signal | Effect | Computed) {
+		// `signal` no longer has any subscribers.
+		// Unlink it from is deps.
 		let toRemove = signal.deps;
 		if (toRemove !== undefined) {
 			do {
@@ -49,6 +51,9 @@ const {
 			} while (toRemove !== undefined);
 			const flags = signal.flags;
 			if (!(flags & ReactiveFlags.Dirty)) {
+				// Because `signal` is now unlinked from its deps, it won't
+				// stay consistent with them, so mark it Dirty because it will
+				// need to be re-computed if accessed again.
 				signal.flags = flags | ReactiveFlags.Dirty;
 			}
 		}
@@ -101,10 +106,18 @@ export function resumeTracking() {
 	activeSub = pauseStack.pop();
 }
 
+/**
+ * A Signal stores a value, and can be updated.
+ * When updated, its subscribers are notified.
+ */
 export function signal<T>(): {
 	(): T | undefined;
 	(value: T | undefined): void;
 };
+/**
+ * A Signal stores a value, and can be updated.
+ * When updated, its subscribers are notified.
+ */
 export function signal<T>(initialValue: T): {
 	(): T;
 	(value: T): void;
@@ -122,6 +135,18 @@ export function signal<T>(initialValue?: T): {
 	}) as () => T | undefined;
 }
 
+/**
+ * A Computed derives a memoized value from other signals, and only re-computes
+ * when those dependencies change.
+ * 
+ * ```ts
+ * const data = signal(1);
+ * const timesTwo = computed(() => data() * 2);
+ * console.log(timesTwo()); // logs 2
+ * data(2);
+ * console.log(timesTwo()); // logs 4
+ * ```
+ */
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	return computedOper.bind({
 		value: undefined,
@@ -134,6 +159,18 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	}) as () => T;
 }
 
+/**
+ * An Effect runs a function, and schedules it to re-run when the signals it
+ * reads change.
+ * ```ts
+ * const data = signal(0);
+ * const done = effect(() => console.log(data())); // logs 0
+ * data(1) // logs 1
+ * data(2) // logs 2
+ * done() // stops logging
+ * data(3) // doesn't log
+ * ```
+ */
 export function effect<T>(fn: () => T): () => void {
 	const e: Effect = {
 		fn,
@@ -157,6 +194,19 @@ export function effect<T>(fn: () => T): () => void {
 	return effectOper.bind(e);
 }
 
+/**
+ * An EffectScope groups effects allowing them to be disposed at the same time.
+ * ```ts
+ * const data = signal(0);
+ * const done = effectScope(() => {
+ * 	effect(() => console.log(data()));
+ * 	effect(() => console.log(data()));
+ * });
+ * data(1) // logs
+ * done()
+ * data(2) // doesn't log
+ * ```
+ */
 export function effectScope<T>(fn: () => T): () => void {
 	const e: EffectScope = {
 		deps: undefined,
@@ -202,7 +252,12 @@ function notify(e: Effect | EffectScope) {
 	}
 }
 
-function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
+function run(
+	e: Effect | EffectScope,
+	// We pass `flags` as a micro-optimization to avoid the overhead of the
+	// `e.flags` property access inside the function, since the caller probably
+	// looked at them to decide to call `run` or not.
+	flags: ReactiveFlags): void {
 	if (
 		flags & ReactiveFlags.Dirty
 		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!, e))
@@ -210,6 +265,10 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		const prev = setCurrentSub(e);
 		startTracking(e);
 		try {
+			// If there are inner effects inside `fn`, they run here too since they're
+			// called in `fn`.
+			//
+			// This cast is safe because an EffectScope is never marked Dirty.
 			(e as Effect).fn();
 		} finally {
 			setCurrentSub(prev);
@@ -219,6 +278,8 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	} else if (flags & ReactiveFlags.Pending) {
 		e.flags = flags & ~ReactiveFlags.Pending;
 	}
+	// Even if this outer Effect isn't dirty, we still need to run the inner
+	// effects which may be dirty.
 	let link = e.deps;
 	while (link !== undefined) {
 		const dep = link.dep;
@@ -265,6 +326,7 @@ function computedOper<T>(this: Computed<T>): T {
 }
 
 function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
+	// signal(newValue) set value call
 	if (value.length) {
 		const newValue = value[0];
 		if (this.value !== (this.value = newValue)) {
@@ -278,6 +340,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 			}
 		}
 	} else {
+		// signal() get call
 		const value = this.value;
 		if (this.flags & ReactiveFlags.Dirty) {
 			this.flags = ReactiveFlags.Mutable;
