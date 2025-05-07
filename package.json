@@ -50,8 +50,8 @@
 	"scripts": {
 		"prepublishOnly": "npm run build",
 		"build": "tsc && npm run build:esm && npm run build:cjs",
-		"build:esm": "esbuild src/*.ts --format=esm --outdir=esm --out-extension:.js=.mjs",
-		"build:cjs": "esbuild src/*.ts --format=cjs --outdir=cjs --out-extension:.js=.cjs",
+		"build:esm": "mkdir -p esm && cp src/index.ts esm/index.mts && cp src/system.ts esm/system.mts && sed -i '' \"s/'\\.\\/system.js'/'\\.\\/system.mjs'/g\" esm/index.mts && tsc esm/index.mts esm/system.mts --outDir esm --module esnext",
+		"build:cjs": "mkdir -p cjs && cp src/index.ts cjs/index.cts && cp src/system.ts cjs/system.cts && sed -i '' \"s/'\\.\\/system.js'/'\\.\\/system.cjs'/g\" cjs/index.cts && tsc cjs/index.cts cjs/system.cts --outDir cjs --module commonjs",
 		"test": "npm run build && vitest run",
 		"lint": "tsslint --project tsconfig.json",
 		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs",
@@ -60,7 +60,6 @@
 	"devDependencies": {
 		"@tsslint/cli": "latest",
 		"@tsslint/config": "latest",
-		"esbuild": "latest",
 		"mitata": "latest",
 		"typescript": "latest",
 		"vitest": "latest",

@@ -14,9 +14,6 @@ importers:
       '@tsslint/config':
         specifier: latest
         version: 1.5.11(typescript@5.8.2)
-      esbuild:
-        specifier: latest
-        version: 0.25.1
       jest-extended:
         specifier: latest
         version: 4.0.2

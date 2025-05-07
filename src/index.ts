@@ -1,6 +1,6 @@
 export * from './system.js';
 
-import { createReactiveSystem, ReactiveNode, ReactiveFlags } from './system.js';
+import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
 const enum EffectFlags {
 	Queued = 1 << 6,
@@ -47,7 +47,7 @@ const {
 			do {
 				toRemove = unlink(toRemove, signal);
 			} while (toRemove !== undefined);
-			signal.flags |= ReactiveFlags.Dirty;
+			signal.flags |= 16 satisfies ReactiveFlags.Dirty;
 		}
 	},
 });
@@ -120,7 +120,7 @@ export function signal<T>(initialValue?: T): {
 		value: initialValue,
 		subs: undefined,
 		subsTail: undefined,
-		flags: ReactiveFlags.Mutable,
+		flags: 1 satisfies ReactiveFlags.Mutable,
 	}) as () => T | undefined;
 }
 
@@ -131,7 +131,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: ReactiveFlags.Mutable | ReactiveFlags.Dirty,
+		flags: 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -143,7 +143,7 @@ export function effect(fn: () => void): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: ReactiveFlags.Watching,
+		flags: 2 satisfies ReactiveFlags.Watching,
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
@@ -165,7 +165,7 @@ export function effectScope(fn: () => void): () => void {
 		depsTail: undefined,
 		subs: undefined,
 		subsTail: undefined,
-		flags: ReactiveFlags.None,
+		flags: 0 satisfies ReactiveFlags.None,
 	};
 	if (activeScope !== undefined) {
 		link(e, activeScope);
@@ -194,7 +194,7 @@ function updateComputed(c: Computed): boolean {
 }
 
 function updateSignal(s: Signal, value: any): boolean {
-	s.flags = ReactiveFlags.Mutable;
+	s.flags = 1 satisfies ReactiveFlags.Mutable;
 	return s.previousValue !== (s.previousValue = value);
 }
 
@@ -213,8 +213,8 @@ function notify(e: Effect | EffectScope) {
 
 function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	if (
-		flags & ReactiveFlags.Dirty
-		|| (flags & ReactiveFlags.Pending && checkDirty(e.deps!, e))
+		flags & 16 satisfies ReactiveFlags.Dirty
+		|| (flags & 32 satisfies ReactiveFlags.Pending && checkDirty(e.deps!, e))
 	) {
 		const prev = setCurrentSub(e);
 		startTracking(e);
@@ -225,8 +225,8 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			endTracking(e);
 		}
 		return;
-	} else if (flags & ReactiveFlags.Pending) {
-		e.flags = flags & ~ReactiveFlags.Pending;
+	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
+		e.flags = flags & ~32 satisfies ReactiveFlags.Pending;
 	}
 	let link = e.deps;
 	while (link !== undefined) {
@@ -252,8 +252,8 @@ function flush(): void {
 function computedOper<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
-		flags & ReactiveFlags.Dirty
-		|| (flags & ReactiveFlags.Pending && checkDirty(this.deps!, this))
+		flags & 16 satisfies ReactiveFlags.Dirty
+		|| (flags & 32 satisfies ReactiveFlags.Pending && checkDirty(this.deps!, this))
 	) {
 		if (updateComputed(this)) {
 			const subs = this.subs;
@@ -261,8 +261,8 @@ function computedOper<T>(this: Computed<T>): T {
 				shallowPropagate(subs);
 			}
 		}
-	} else if (flags & ReactiveFlags.Pending) {
-		this.flags = flags & ~ReactiveFlags.Pending;
+	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
+		this.flags = flags & ~32 satisfies ReactiveFlags.Pending;
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
@@ -276,7 +276,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		const newValue = value[0];
 		if (this.value !== (this.value = newValue)) {
-			this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+			this.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
@@ -287,7 +287,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 		}
 	} else {
 		const value = this.value;
-		if (this.flags & ReactiveFlags.Dirty) {
+		if (this.flags & 16 satisfies ReactiveFlags.Dirty) {
 			if (updateSignal(this, value)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
@@ -311,5 +311,5 @@ function effectOper(this: Effect | EffectScope): void {
 	if (sub !== undefined) {
 		unlink(sub);
 	}
-	this.flags = ReactiveFlags.None;
+	this.flags = 0 satisfies ReactiveFlags.None;
 }
