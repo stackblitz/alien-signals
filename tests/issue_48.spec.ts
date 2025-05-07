@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { computed, effect, pauseTracking, resumeTracking, signal } from '../src';
+import { computed, effect, setCurrentSub, signal } from '../src';
 
 test('#48', () => {
 	const source = signal(0);
@@ -61,7 +61,7 @@ function reaction<T>(
 
 	const dispose = effect(() => {
 		const current = tracked();
-		if (!fireImmediately && version === 0) {
+		if (!fireImmediately && !version) {
 			prevValue = current;
 		}
 		version++;
@@ -88,10 +88,10 @@ function reaction<T>(
 }
 
 function untracked<T>(callback: () => T): T {
+	const currentSub = setCurrentSub(undefined);
 	try {
-		pauseTracking();
 		return callback();
 	} finally {
-		resumeTracking();
+		setCurrentSub(currentSub);
 	}
 }

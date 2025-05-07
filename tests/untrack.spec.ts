@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, pauseTracking, resumeTracking, signal } from '../src';
+import { computed, effect, effectScope, setCurrentSub, signal } from '../src';
 
 test('should pause tracking in computed', () => {
 	const src = signal(0);
@@ -7,9 +7,9 @@ test('should pause tracking in computed', () => {
 	let computedTriggerTimes = 0;
 	const c = computed(() => {
 		computedTriggerTimes++;
-		pauseTracking();
+		const currentSub = setCurrentSub(undefined);
 		const value = src();
-		resumeTracking();
+		setCurrentSub(currentSub);
 		return value;
 	});
 
@@ -29,9 +29,9 @@ test('should pause tracking in effect', () => {
 	effect(() => {
 		effectTriggerTimes++;
 		if (is()) {
-			pauseTracking();
+			const currentSub = setCurrentSub(undefined);
 			src();
-			resumeTracking();
+			setCurrentSub(currentSub);
 		}
 	});
 
@@ -63,9 +63,9 @@ test('should pause tracking in effect scope', () => {
 	effectScope(() => {
 		effect(() => {
 			effectTriggerTimes++;
-			pauseTracking();
+			const currentSub = setCurrentSub(undefined);
 			src();
-			resumeTracking();
+			setCurrentSub(currentSub);
 		});
 	});
 

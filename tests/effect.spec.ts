@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, endBatch, pauseTracking, resumeTracking, signal, startBatch } from '../src';
+import { computed, effect, effectScope, endBatch, setCurrentSub, signal, startBatch } from '../src';
 
 test('should clear subscriptions when untracked by all subscribers', () => {
 	let bRunTimes = 0;
@@ -159,7 +159,7 @@ test('should custom effect support batch', () => {
 
 	const aa = computed(() => {
 		logs.push('aa-0');
-		if (a() === 0) {
+		if (!a()) {
 			b(1);
 		}
 		logs.push('aa-1');
@@ -187,9 +187,9 @@ test('should duplicate subscribers do not affect the notify order', () => {
 
 	effect(() => {
 		order.push('a');
-		pauseTracking();
+		const currentSub = setCurrentSub(undefined);
 		const isOne = src2() === 1;
-		resumeTracking();
+		setCurrentSub(currentSub);
 		if (isOne) {
 			src1();
 		}
