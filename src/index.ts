@@ -301,10 +301,9 @@ function effectOper(this: Effect | EffectScope): void {
 	while (dep !== undefined) {
 		dep = unlink(dep, this);
 	}
-	let sub = this.subs;
-	while (sub !== undefined) {
+	const sub = this.subs;
+	if (sub !== undefined) {
 		unlink(sub);
-		sub = this.subs;
 	}
 	this.flags = ReactiveFlags.None;
 }
