@@ -24,3 +24,25 @@ test('should not trigger after stop', () => {
 	count(4);
 	expect(triggers).toBe(3);
 });
+
+test('should dispose inner effects if created in an effect', () => {
+	const source = signal(1);
+
+	let triggers = 0;
+
+	effect(() => {
+		const dispose = effectScope(() => {
+			effect(() => {
+				source();
+				triggers++;
+			});
+		});
+		expect(triggers).toBe(1);
+
+		source(2);
+		expect(triggers).toBe(2);
+		dispose();
+		source(3);
+		expect(triggers).toBe(2);
+	});
+});

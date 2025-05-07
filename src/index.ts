@@ -166,11 +166,13 @@ export function effectScope<T>(fn: () => T): () => void {
 	if (activeScope !== undefined) {
 		link(e, activeScope);
 	}
-	const prev = setCurrentScope(e);
+	const prevSub = setCurrentSub(undefined);
+	const prevScope = setCurrentScope(e);
 	try {
 		fn();
 	} finally {
-		setCurrentScope(prev);
+		setCurrentScope(prevScope);
+		setCurrentSub(prevSub);
 	}
 	return effectOper.bind(e);
 }
