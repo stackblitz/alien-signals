@@ -89,12 +89,16 @@ export function endBatch() {
 	}
 }
 
-// TODO: remove in next major, use `getCurrentSub(undefined)` instead
+/**
+ * @deprecated Will be removed in the next major version. Use `const pausedSub = setCurrentSub(undefined)` instead for better performance.
+ */
 export function pauseTracking() {
 	pauseStack.push(setCurrentSub(undefined));
 }
 
-// TODO: remove in next major, use `getCurrentSub(getCurrentSub(undefined))` instead
+/**
+ * @deprecated Will be removed in the next major version. Use `setCurrentSub(pausedSub)` instead for better performance.
+ */
 export function resumeTracking() {
 	setCurrentSub(pauseStack.pop());
 }
