@@ -52,7 +52,7 @@
 		"build": "tsc && npm run build:esm && npm run build:cjs",
 		"build:esm": "esbuild src/*.ts --format=esm --outdir=esm --out-extension:.js=.mjs",
 		"build:cjs": "esbuild src/*.ts --format=cjs --outdir=cjs --out-extension:.js=.cjs",
-		"test": "vitest run",
+		"test": "npm run build && vitest run",
 		"lint": "tsslint --project tsconfig.json",
 		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs",
 		"bench:memory": "npm run build:esm && node --expose-gc benchs/memoryUsage.mjs"
