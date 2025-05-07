@@ -35,8 +35,8 @@
 	"scripts": {
 		"prepublishOnly": "npm run build",
 		"build": "tsc && npm run build:esm && npm run build:cjs",
-		"build:esm": "esbuild src/index.ts --bundle --minify-whitespace --format=esm --outfile=esm/index.mjs",
-		"build:cjs": "esbuild src/index.ts --bundle --minify-whitespace --format=cjs --outfile=cjs/index.cjs",
+		"build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs",
+		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.cjs",
 		"test": "vitest run",
 		"lint": "tsslint --project tsconfig.json",
 		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs",
