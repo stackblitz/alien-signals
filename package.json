@@ -39,8 +39,8 @@
 		}
 	},
 	"files": [
-		"cjs/index.cjs",
-		"esm/index.mjs",
+		"cjs/*.cjs",
+		"esm/*.mjs",
 		"types/*.d.ts"
 	],
 	"repository": {
@@ -50,8 +50,8 @@
 	"scripts": {
 		"prepublishOnly": "npm run build",
 		"build": "tsc && npm run build:esm && npm run build:cjs",
-		"build:esm": "esbuild src/**/*.ts --format=esm --outdir=esm --out-extension:.js=.mjs",
-		"build:cjs": "esbuild src/**/*.ts --format=cjs --outdir=cjs --out-extension:.js=.cjs",
+		"build:esm": "esbuild src/*.ts --format=esm --outdir=esm --out-extension:.js=.mjs",
+		"build:cjs": "esbuild src/*.ts --format=cjs --outdir=cjs --out-extension:.js=.cjs",
 		"test": "vitest run",
 		"lint": "tsslint --project tsconfig.json",
 		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs",
