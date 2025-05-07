@@ -136,7 +136,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	}) as () => T;
 }
 
-export function effect<T>(fn: () => T): () => void {
+export function effect(fn: () => void): () => void {
 	const e: Effect = {
 		fn,
 		subs: undefined,
@@ -159,7 +159,7 @@ export function effect<T>(fn: () => T): () => void {
 	return effectOper.bind(e);
 }
 
-export function effectScope<T>(fn: () => T): () => void {
+export function effectScope(fn: () => void): () => void {
 	const e: EffectScope = {
 		deps: undefined,
 		depsTail: undefined,
