@@ -23,7 +23,7 @@ interface Signal<T = any> extends ReactiveNode {
 }
 
 const pauseStack: (ReactiveNode | undefined)[] = [];
-const queuedEffects: (Effect | EffectScope)[] = [];
+const queuedEffects: (Effect | EffectScope | undefined)[] = [];
 const {
 	link,
 	unlink,
@@ -241,8 +241,7 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 
 function flush(): void {
 	while (notifyIndex < queuedEffectsLength) {
-		const effect = queuedEffects[notifyIndex];
-		// @ts-expect-error
+		const effect = queuedEffects[notifyIndex]!;
 		queuedEffects[notifyIndex++] = undefined;
 		run(effect, effect.flags &= ~EffectFlags.Queued);
 	}
