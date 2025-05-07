@@ -41,13 +41,17 @@ const {
 		}
 	},
 	notify,
-	unwatched(signal: Signal | Effect | Computed) {
-		let toRemove = signal.deps;
-		if (toRemove !== undefined) {
-			do {
-				toRemove = unlink(toRemove, signal);
-			} while (toRemove !== undefined);
-			signal.flags |= 16 satisfies ReactiveFlags.Dirty;
+	unwatched(node: Signal | Computed | Effect | EffectScope) {
+		if ('getter' in node) {
+			let toRemove = node.deps;
+			if (toRemove !== undefined) {
+				node.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+				do {
+					toRemove = unlink(toRemove, node);
+				} while (toRemove !== undefined);
+			}
+		} else if (!('previousValue' in node)) {
+			effectOper.call(node);
 		}
 	},
 });
