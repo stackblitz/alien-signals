@@ -89,13 +89,14 @@ export function endBatch() {
 	}
 }
 
+// TODO: remove in next major, use `getCurrentSub(undefined)` instead
 export function pauseTracking() {
-	pauseStack.push(activeSub);
-	activeSub = undefined;
+	pauseStack.push(setCurrentSub(undefined));
 }
 
+// TODO: remove in next major, use `getCurrentSub(getCurrentSub(undefined))` instead
 export function resumeTracking() {
-	activeSub = pauseStack.pop();
+	setCurrentSub(pauseStack.pop());
 }
 
 export function signal<T>(): {
