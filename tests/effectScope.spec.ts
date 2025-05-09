@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { effect, effectScope, signal } from '../src';
+import { effect, effectScope, signal } from 'alien-signals';
 
 test('should not trigger after stop', () => {
 	const count = signal(1);

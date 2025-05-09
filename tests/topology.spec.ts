@@ -1,5 +1,5 @@
 import { expect, test, vi, describe } from 'vitest';
-import {computed, effect, signal} from '../src';
+import {computed, effect, signal} from 'alien-signals';
 
 // To give access to .toHaveBeenCalledBefore()
 import * as matchers from 'jest-extended';

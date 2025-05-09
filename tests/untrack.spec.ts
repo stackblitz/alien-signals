@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, setCurrentSub, signal } from '../src';
+import { computed, effect, effectScope, setCurrentSub, signal } from 'alien-signals';
 
 test('should pause tracking in computed', () => {
 	const src = signal(0);
