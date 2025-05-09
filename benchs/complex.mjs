@@ -1,5 +1,5 @@
 import { run, bench, boxplot } from 'mitata';
-import { computed, effect, signal } from '../esm/index.mjs';
+import { computed, effect, signal } from 'alien-signals';
 
 boxplot(() => {
 	bench('complex: $w * $h', function* (state) {
