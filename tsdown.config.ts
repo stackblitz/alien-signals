@@ -20,5 +20,6 @@ export default defineConfig({
 			entryFileNames: `${dir}/[name].${ext}`,
 			chunkFileNames: `${dir}/[name]-[hash].${ext}`,
 		};
-	}
+	},
+	publint: true,
 });

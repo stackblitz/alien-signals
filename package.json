@@ -41,7 +41,6 @@
 	"scripts": {
 		"prepublishOnly": "npm run build",
 		"build": "tsdown",
-		"postbuild": "publint",
 		"pretest": "npm run build",
 		"test": "vitest run",
 		"lint": "tsslint --project tsconfig.json",
