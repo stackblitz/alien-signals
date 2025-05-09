@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { computed, effect, setCurrentSub, signal } from '../src';
+import { computed, effect, setCurrentSub, signal } from 'alien-signals';
 
 test('#48', () => {
 	const source = signal(0);

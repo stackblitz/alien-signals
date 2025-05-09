@@ -2,15 +2,14 @@
 	"compilerOptions": {
 		"target": "ES2021",
 		"lib": [ "ES2021" ],
-		"module": "CommonJS",
-		"declaration": true,
-		"emitDeclarationOnly": true,
+		"module": "ESNext",
+		"noEmit": true,
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
-		"rootDir": "src",
-		"outDir": "types",
+		"declaration": true,
+		"moduleResolution": "bundler"
 	},
 	"include": [ "src" ],
 }

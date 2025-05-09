@@ -1,4 +1,4 @@
-import { computed, effect, signal } from '../esm/index.mjs';
+import { computed, effect, signal } from 'alien-signals';
 
 globalThis.gc();
 let start = process.memoryUsage().heapUsed;
