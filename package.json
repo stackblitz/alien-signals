@@ -3,7 +3,6 @@
 	"version": "2.0.4",
 	"license": "MIT",
 	"description": "The lightest signal library.",
-	"packageManager": "pnpm@9.12.0",
 	"types": "./types/index.d.ts",
 	"exports": {
 		".": {
