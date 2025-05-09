@@ -1,46 +1,38 @@
 {
 	"name": "alien-signals",
 	"version": "2.0.4",
-	"license": "MIT",
 	"description": "The lightest signal library.",
-	"packageManager": "pnpm@9.12.0",
-	"types": "./types/index.d.ts",
+	"license": "MIT",
+	"keywords": [
+		"signal"
+	],
+	"type": "module",
+	"main": "./dist/esm/index.mjs",
+	"types": "./dist/esm/index.d.mts",
 	"exports": {
 		".": {
-			"types": "./types/index.d.ts",
-			"import": "./esm/index.mjs",
-			"require": "./cjs/index.cjs"
-		},
-		"./cjs": {
-			"types": "./types/index.d.ts",
-			"import": "./cjs/index.cjs",
-			"require": "./cjs/index.cjs"
-		},
-		"./esm": {
-			"types": "./types/index.d.ts",
-			"import": "./esm/index.mjs",
-			"require": "./esm/index.mjs"
+			"require": {
+				"types": "./dist/cjs/index.d.cts",
+				"default": "./dist/cjs/index.cjs"
+			},
+			"import": {
+				"types": "./dist/esm/index.d.mts",
+				"default": "./dist/esm/index.mjs"
+			}
 		},
 		"./system": {
-			"types": "./types/system.d.ts",
-			"import": "./esm/system.mjs",
-			"require": "./cjs/system.cjs"
-		},
-		"./cjs/system": {
-			"types": "./types/system.d.ts",
-			"import": "./cjs/system.cjs",
-			"require": "./cjs/system.cjs"
-		},
-		"./esm/system": {
-			"types": "./types/system.d.ts",
-			"import": "./esm/system.mjs",
-			"require": "./esm/system.mjs"
+			"require": {
+				"types": "./dist/cjs/system.d.cts",
+				"default": "./dist/cjs/system.cjs"
+			},
+			"import": {
+				"types": "./dist/esm/system.d.mts",
+				"default": "./dist/esm/system.mjs"
+			}
 		}
 	},
 	"files": [
-		"cjs/*.cjs",
-		"esm/*.mjs",
-		"types/*.d.ts"
+		"dist"
 	],
 	"repository": {
 		"type": "git",
@@ -48,20 +40,23 @@
 	},
 	"scripts": {
 		"prepublishOnly": "npm run build",
-		"build": "tsc && npm run build:esm && npm run build:cjs",
-		"build:esm": "mkdir -p esm && cp src/index.ts esm/index.mts && cp src/system.ts esm/system.mts && sed -i '' \"s/'\\.\\/system.js'/'\\.\\/system.mjs'/g\" esm/index.mts && tsc esm/*.mts --removeComments --outDir esm --module esnext",
-		"build:cjs": "mkdir -p cjs && cp src/index.ts cjs/index.cts && cp src/system.ts cjs/system.cts && sed -i '' \"s/'\\.\\/system.js'/'\\.\\/system.cjs'/g\" cjs/index.cts && tsc cjs/*.cts --removeComments --outDir cjs --module commonjs",
-		"test": "npm run build && vitest run",
+		"build": "tsdown",
+		"postbuild": "publint",
+		"pretest": "npm run build",
+		"test": "vitest run",
 		"lint": "tsslint --project tsconfig.json",
-		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs",
-		"bench:memory": "npm run build:esm && node --expose-gc benchs/memoryUsage.mjs"
+		"bench": "npm run build && node --jitless --expose-gc benchs/propagate.mjs",
+		"bench:memory": "npm run build && node --expose-gc benchs/memoryUsage.mjs"
 	},
 	"devDependencies": {
 		"@tsslint/cli": "latest",
 		"@tsslint/config": "latest",
+		"jest-extended": "latest",
 		"mitata": "latest",
+		"publint": "latest",
+		"tsdown": "latest",
 		"typescript": "latest",
-		"vitest": "latest",
-		"jest-extended": "latest"
-	}
+		"vitest": "latest"
+	},
+	"packageManager": "pnpm@9.12.0"
 }
