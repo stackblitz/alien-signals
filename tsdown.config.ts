@@ -1,23 +1,24 @@
-import { defineConfig, type Options } from "tsdown";
+import { defineConfig } from "tsdown";
 
-const shared = {
+export default defineConfig({
+	format: ["esm", "cjs"],
+	outDir: "dist",
 	entry: ["src/index.ts", "src/system.ts"],
 	platform: "neutral",
 	clean: true,
 	dts: true,
 	fixedExtension: true,
 	minify: false,
-} satisfies Options;
+	outputOptions: (_, format) => {
+		const es = format === "es";
 
-export default defineConfig([
-	{
-		format: "esm",
-		outDir: "dist/esm",
-		...shared
-	},
-	{
-		format: "cjs",
-		outDir: "dist/cjs",
-		...shared
-	},
-]);
+		const dir = es ? "esm" : "cjs";
+
+		const ext = es ? "mjs" : "cjs";
+
+		return {
+			entryFileNames: `${dir}/[name].${ext}`,
+			chunkFileNames: `${dir}/[name]-[hash].${ext}`,
+		};
+	}
+});
