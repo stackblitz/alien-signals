@@ -230,7 +230,7 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		}
 		return;
 	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
-		e.flags = flags & ~32 satisfies ReactiveFlags.Pending;
+		e.flags = flags & ~(32 satisfies ReactiveFlags.Pending);
 	}
 	let link = e.deps;
 	while (link !== undefined) {
@@ -266,7 +266,7 @@ function computedOper<T>(this: Computed<T>): T {
 			}
 		}
 	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
-		this.flags = flags & ~32 satisfies ReactiveFlags.Pending;
+		this.flags = flags & ~(32 satisfies ReactiveFlags.Pending);
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);

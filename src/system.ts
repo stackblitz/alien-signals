@@ -141,7 +141,7 @@ export function createReactiveSystem({
 				} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
 					flags = 0 satisfies ReactiveFlags.None;
 				} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
-					sub.flags = (flags & ~8 satisfies ReactiveFlags.Recursed) | 32 satisfies ReactiveFlags.Pending;
+					sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
 				} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
 					sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
 					flags &= 1 satisfies ReactiveFlags.Mutable;
@@ -195,7 +195,7 @@ export function createReactiveSystem({
 		while (toRemove !== undefined) {
 			toRemove = unlink(toRemove, sub);
 		}
-		sub.flags &= ~4 satisfies ReactiveFlags.RecursedCheck;
+		sub.flags &= ~(4 satisfies ReactiveFlags.RecursedCheck);
 	}
 
 	function checkDirty(link: Link, sub: ReactiveNode): boolean {
@@ -252,7 +252,7 @@ export function createReactiveSystem({
 						continue;
 					}
 				} else {
-					sub.flags &= ~32 satisfies ReactiveFlags.Pending;
+					sub.flags &= ~(32 satisfies ReactiveFlags.Pending);
 				}
 				sub = link.sub;
 				if (link.nextDep !== undefined) {
