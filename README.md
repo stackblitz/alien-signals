@@ -45,7 +45,8 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 
 ## Adoption
 
-- [vuejs/core](https://github.com/vuejs/core): The core algorithm has been ported to 3.6 or higher (PR：https://github.com/vuejs/core/pull/12349)
+- [vuejs/core](https://github.com/vuejs/core): The core algorithm has been ported to v3.6 (PR: https://github.com/vuejs/core/pull/12349)
+- [statelyai/xstate](https://github.com/statelyai/xstate): The core algorithm has been ported to implement the atom architecture (PR: https://github.com/statelyai/xstate/pull/5250)
 - [vuejs/language-tools](https://github.com/vuejs/language-tools): Used in the language-core package for virtual code generation
 
 ## Usage
