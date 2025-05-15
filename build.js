@@ -17,17 +17,21 @@ if (config === undefined) {
 
 const typesProgram = ts.createProgram({
 	rootNames: config.fileNames,
-	options: config.options,
+	options: {
+		...config.options,
+		outDir: 'types',
+		declaration: true,
+		emitDeclarationOnly: true,
+	},
 	configFileParsingDiagnostics: config.errors,
 });
 const cjsProgram = ts.createProgram({
 	rootNames: config.fileNames,
 	options: {
 		...config.options,
-		declaration: false,
-		emitDeclarationOnly: false,
-		removeComments: true,
 		outDir: 'cjs',
+		removeComments: true,
+		module: ts.ModuleKind.CommonJS,
 	},
 	configFileParsingDiagnostics: config.errors,
 });
@@ -35,10 +39,8 @@ const esmProgram = ts.createProgram({
 	rootNames: config.fileNames,
 	options: {
 		...config.options,
-		declaration: false,
-		emitDeclarationOnly: false,
-		removeComments: true,
 		outDir: 'esm',
+		removeComments: true,
 		module: ts.ModuleKind.ESNext,
 	},
 	configFileParsingDiagnostics: config.errors,
