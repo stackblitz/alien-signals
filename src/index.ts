@@ -1,5 +1,3 @@
-export * from './system.js';
-
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
 const enum EffectFlags {
@@ -22,7 +20,6 @@ interface Signal<T = any> extends ReactiveNode {
 	value: T;
 }
 
-const pauseStack: (ReactiveNode | undefined)[] = [];
 const queuedEffects: (Effect | EffectScope | undefined)[] = [];
 const {
 	link,
@@ -56,8 +53,7 @@ const {
 	},
 });
 
-export let batchDepth = 0;
-
+let batchDepth = 0;
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
@@ -83,6 +79,10 @@ export function setCurrentScope(scope: EffectScope | undefined) {
 	return prevScope;
 }
 
+export function getBatchDepth() {
+	return batchDepth;
+}
+
 export function startBatch() {
 	++batchDepth;
 }
@@ -91,20 +91,6 @@ export function endBatch() {
 	if (!--batchDepth) {
 		flush();
 	}
-}
-
-/**
- * @deprecated Will be removed in the next major version. Use `const pausedSub = setCurrentSub(undefined)` instead for better performance.
- */
-export function pauseTracking() {
-	pauseStack.push(setCurrentSub(undefined));
-}
-
-/**
- * @deprecated Will be removed in the next major version. Use `setCurrentSub(pausedSub)` instead for better performance.
- */
-export function resumeTracking() {
-	setCurrentSub(pauseStack.pop());
 }
 
 export function signal<T>(): {
