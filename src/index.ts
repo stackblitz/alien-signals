@@ -1,5 +1,3 @@
-export * from './system.js';
-
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
 const enum EffectFlags {
