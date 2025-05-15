@@ -48,7 +48,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "npm run check && npm run test",
-		"check": "tsc",
+		"check": "tsc --noEmit",
 		"build": "node ./build.js",
 		"test": "npm run build && vitest run",
 		"lint": "tsslint --project tsconfig.json",
