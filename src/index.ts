@@ -53,8 +53,7 @@ const {
 	},
 });
 
-export let batchDepth = 0;
-
+let batchDepth = 0;
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
@@ -78,6 +77,10 @@ export function setCurrentScope(scope: EffectScope | undefined) {
 	const prevScope = activeScope;
 	activeScope = scope;
 	return prevScope;
+}
+
+export function getBatchDepth() {
+	return batchDepth;
 }
 
 export function startBatch() {
