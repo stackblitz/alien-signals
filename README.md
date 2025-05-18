@@ -4,6 +4,7 @@
 
 <p align="center">
 	<a href="https://npmjs.com/package/alien-signals"><img src="https://badgen.net/npm/v/alien-signals" alt="npm package"></a>
+	<a href="https://deepwiki.com/stackblitz/alien-signals"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 # alien-signals
@@ -29,12 +30,12 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 
 ## Other Language Implementations
 
-- **Dart:** [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart) <sup>2.0.4</sup>
+- **Dart:** [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart) <sup>2.0.5</sup>
+- **Lua:** [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua) <sup>2.0.5</sup>
 - **Luau:** [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau) <sup>1.0.13</sup>
 - **Java:** [CTRL-Neo-Studios/java-alien-signals](https://github.com/CTRL-Neo-Studios/java-alien-signals) <sup>1.0.13</sup>
 - **C#:** [CTRL-Neo-Studios/csharp-alien-signals](https://github.com/CTRL-Neo-Studios/csharp-alien-signals) <sup>1.0.13</sup>
 - **Go:** [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go) <sup>1.0.7</sup>
-- **Lua:** [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua) <sup>0.6.0</sup>
 
 ## Derived Projects
 
