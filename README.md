@@ -46,7 +46,6 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [gn8-ai/universe-alien-signals](https://github.com/gn8-ai/universe-alien-signals): Enables simple use of the Alien Signals state management system in modern frontend frameworks
 - [WebReflection/alien-signals](https://github.com/WebReflection/alien-signals): Preact signals like API and a class based approach for easy brand check
 - [@lift-html/alien](https://github.com/JLarky/lift-html/tree/main/packages/alien): Integrating alien-signals into lift-html
-- [unuse](https://github.com/un-ts/unuse): A framework-agnostic `use` library inspired by `VueUse`
 
 ## Adoption
 
@@ -54,6 +53,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [statelyai/xstate](https://github.com/statelyai/xstate): The core algorithm has been ported to implement the atom architecture (PR: https://github.com/statelyai/xstate/pull/5250)
 - [flamrdevs/xignal](https://github.com/flamrdevs/xignal): Infrastructure for the reactive system
 - [vuejs/language-tools](https://github.com/vuejs/language-tools): Used in the language-core package for virtual code generation
+- [unuse](https://github.com/un-ts/unuse): A framework-agnostic `use` library inspired by `VueUse`
 
 ## Usage
 
