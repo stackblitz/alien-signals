@@ -2,8 +2,14 @@ export * from './system.js';
 
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
+const FORCR_SIGNAL_TRIGGER = Symbol.for('__signal_trigger');
+
 const enum EffectFlags {
 	Queued = 1 << 6,
+}
+
+const enum SignalFlags {
+  ForceDirty = 1 << 7,
 }
 
 interface EffectScope extends ReactiveNode { }
@@ -119,13 +125,24 @@ export function signal<T>(initialValue?: T): {
 	(): T | undefined;
 	(value: T | undefined): void;
 } {
-	return signalOper.bind({
-		previousValue: initialValue,
-		value: initialValue,
-		subs: undefined,
-		subsTail: undefined,
-		flags: 1 satisfies ReactiveFlags.Mutable,
-	}) as () => T | undefined;
+  return new Proxy(signalOper.bind({
+    previousValue: initialValue,
+    value: initialValue,
+    subs: undefined,
+    subsTail: undefined,
+    flags: 1 satisfies ReactiveFlags.Mutable,
+  }), { has: proxySignalHas }) as () => T | undefined;
+}
+
+const proxySignalHas = (a: any, b: any) => b === FORCR_SIGNAL_TRIGGER || b in a;
+
+export function triggerSignal<T>(signal: {
+	(): T | undefined;
+	(value: T | undefined): void;
+}): void {
+  if (FORCR_SIGNAL_TRIGGER in signal) {
+    signal(FORCR_SIGNAL_TRIGGER as any);
+  }
 }
 
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
@@ -198,7 +215,10 @@ function updateComputed(c: Computed): boolean {
 }
 
 function updateSignal(s: Signal, value: any): boolean {
-	s.flags = 1 satisfies ReactiveFlags.Mutable;
+  const flags = s.flags;
+  s.flags = 1 satisfies ReactiveFlags.Mutable;
+  if ((flags & SignalFlags.ForceDirty) === SignalFlags.ForceDirty) return true;
+
 	return s.previousValue !== (s.previousValue = value);
 }
 
@@ -276,11 +296,15 @@ function computedOper<T>(this: Computed<T>): T {
 	return this.value!;
 }
 
-function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
+function signalOper<T>(this: Signal<T>, ...value: [T | typeof FORCR_SIGNAL_TRIGGER]): T | void {
 	if (value.length) {
 		const newValue = value[0];
-		if (this.value !== (this.value = newValue)) {
-			this.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+    const forceDirty = newValue === FORCR_SIGNAL_TRIGGER;
+		if (forceDirty || this.value !== (this.value = newValue)) {
+      let flags: number = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+      if (forceDirty) flags = 145 as ReactiveFlags.Mutable | ReactiveFlags.Dirty | SignalFlags.ForceDirty;
+
+      this.flags = flags as ReactiveFlags;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
