@@ -125,22 +125,20 @@ export function signal<T>(initialValue?: T): {
 	(): T | undefined;
 	(value: T | undefined): void;
 } {
-  return new Proxy(signalOper.bind({
+  return signalOper.bind({
     previousValue: initialValue,
     value: initialValue,
     subs: undefined,
     subsTail: undefined,
     flags: 1 satisfies ReactiveFlags.Mutable,
-  }), { has: proxySignalHas }) as () => T | undefined;
+  }) as () => T | undefined;
 }
-
-const proxySignalHas = (a: any, b: any) => b === FORCR_SIGNAL_TRIGGER || b in a;
 
 export function triggerSignal<T>(signal: {
 	(): T | undefined;
 	(value: T | undefined): void;
 }): void {
-  if (FORCR_SIGNAL_TRIGGER in signal) {
+  if (signal.name === "bound signalOper") {
     signal(FORCR_SIGNAL_TRIGGER as any);
   }
 }
