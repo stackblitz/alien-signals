@@ -2,9 +2,6 @@ export * from './system.js';
 
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
-const IS_SIGNAL = Symbol('alien-signals:is-signal');
-const SIGNAL_TRIGGER = Symbol('alien-signals:signal-trigger');
-
 const enum EffectFlags {
 	Queued = 1 << 6,
 }
@@ -129,15 +126,6 @@ export function signal<T>(initialValue?: T): {
 		subsTail: undefined,
 		flags: 1 satisfies ReactiveFlags.Mutable,
 	}) as () => T | undefined;
-}
-
-export function triggerSignal<T>(signal: {
-	(): T | undefined;
-	(value: T | undefined): void;
-}) {
-  if ((signal as any)?.[IS_SIGNAL]) {
-    signal(SIGNAL_TRIGGER as T);
-  }
 }
 
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
@@ -291,7 +279,7 @@ function computedOper<T>(this: Computed<T>): T {
 function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
 		const newValue = value[0];
-		if (newValue === SIGNAL_TRIGGER || this.value !== (this.value = newValue)) {
+		if (this.value !== (this.value = newValue)) {
 			this.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
@@ -317,8 +305,6 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 		return value;
 	}
 }
-
-signalOper[IS_SIGNAL] = true;
 
 function effectOper(this: Effect | EffectScope): void {
 	let dep = this.deps;
