@@ -9,7 +9,7 @@ const enum EffectFlags {
 }
 
 const enum SignalFlags {
-  ForceDirty = 1 << 7,
+	ForceDirty = 1 << 7,
 }
 
 interface EffectScope extends ReactiveNode { }
@@ -125,22 +125,22 @@ export function signal<T>(initialValue?: T): {
 	(): T | undefined;
 	(value: T | undefined): void;
 } {
-  return signalOper.bind({
-    previousValue: initialValue,
-    value: initialValue,
-    subs: undefined,
-    subsTail: undefined,
-    flags: 1 satisfies ReactiveFlags.Mutable,
-  }) as () => T | undefined;
+	return signalOper.bind({
+		previousValue: initialValue,
+		value: initialValue,
+		subs: undefined,
+		subsTail: undefined,
+		flags: 1 satisfies ReactiveFlags.Mutable,
+	}) as () => T | undefined;
 }
 
 export function triggerSignal<T>(signal: {
 	(): T | undefined;
 	(value: T | undefined): void;
 }): void {
-  if (signal.name === "bound signalOper") {
-    signal(FORCR_SIGNAL_TRIGGER as any);
-  }
+	if (signal.name === "bound signalOper") {
+		signal(FORCR_SIGNAL_TRIGGER as any);
+	}
 }
 
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
@@ -213,9 +213,9 @@ function updateComputed(c: Computed): boolean {
 }
 
 function updateSignal(s: Signal, value: any): boolean {
-  const flags = s.flags;
-  s.flags = 1 satisfies ReactiveFlags.Mutable;
-  if ((flags & SignalFlags.ForceDirty) === SignalFlags.ForceDirty) return true;
+	const flags = s.flags;
+	s.flags = 1 satisfies ReactiveFlags.Mutable;
+	if ((flags & SignalFlags.ForceDirty) === SignalFlags.ForceDirty) return true;
 
 	return s.previousValue !== (s.previousValue = value);
 }
@@ -297,12 +297,12 @@ function computedOper<T>(this: Computed<T>): T {
 function signalOper<T>(this: Signal<T>, ...value: [T | typeof FORCR_SIGNAL_TRIGGER]): T | void {
 	if (value.length) {
 		const newValue = value[0];
-    const forceDirty = newValue === FORCR_SIGNAL_TRIGGER;
+		const forceDirty = newValue === FORCR_SIGNAL_TRIGGER;
 		if (forceDirty || this.value !== (this.value = newValue)) {
-      let flags: number = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-      if (forceDirty) flags = 145 as ReactiveFlags.Mutable | ReactiveFlags.Dirty | SignalFlags.ForceDirty;
+			let flags: number = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+			if (forceDirty) flags = 145 as ReactiveFlags.Mutable | ReactiveFlags.Dirty | SignalFlags.ForceDirty;
 
-      this.flags = flags as ReactiveFlags;
+			this.flags = flags as ReactiveFlags;
 			const subs = this.subs;
 			if (subs !== undefined) {
 				propagate(subs);
