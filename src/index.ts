@@ -203,16 +203,19 @@ function updateSignal(s: Signal, value: any): boolean {
 }
 
 function notify(e: Effect | EffectScope) {
-	const flags = e.flags;
-	if (!(flags & EffectFlags.Queued)) {
-		e.flags = flags | EffectFlags.Queued;
-		const subs = e.subs;
-		if (subs !== undefined) {
-			notify(subs.sub as Effect | EffectScope);
-		} else {
+	do {
+		const flags = e.flags;
+		if (!(flags & EffectFlags.Queued)) {
+			e.flags = flags | EffectFlags.Queued;
+			const subs = e.subs;
+			if (subs) {
+				e = subs.sub as Effect | EffectScope;
+				continue;
+			}
 			queuedEffects[queuedEffectsLength++] = e;
 		}
-	}
+		break;
+	} while (e !== undefined)
 }
 
 function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
