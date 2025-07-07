@@ -2,13 +2,12 @@ export * from './system.js';
 
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
-const enum EffectFlags {
-	Queued = 1 << 6,
+interface EffectScope extends ReactiveNode {
+	nextEffect: Effect | EffectScope | undefined;
 }
 
-interface EffectScope extends ReactiveNode { }
-
 interface Effect extends ReactiveNode {
+	nextEffect: Effect | EffectScope | undefined;
 	fn(): void;
 }
 
@@ -23,7 +22,6 @@ interface Signal<T = any> extends ReactiveNode {
 }
 
 const pauseStack: (ReactiveNode | undefined)[] = [];
-const queuedEffects: (Effect | EffectScope | undefined)[] = [];
 const {
 	link,
 	unlink,
@@ -58,10 +56,10 @@ const {
 
 export let batchDepth = 0;
 
-let notifyIndex = 0;
-let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
 let activeScope: EffectScope | undefined;
+let queuedEffects: Effect | EffectScope | undefined;
+let queuedEffectsTail: Effect | EffectScope | undefined;
 
 export function getCurrentSub(): ReactiveNode | undefined {
 	return activeSub;
@@ -147,6 +145,7 @@ export function effect(fn: () => void): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
+		nextEffect: undefined,
 		flags: 2 satisfies ReactiveFlags.Watching,
 	};
 	if (activeSub !== undefined) {
@@ -169,6 +168,7 @@ export function effectScope(fn: () => void): () => void {
 		depsTail: undefined,
 		subs: undefined,
 		subsTail: undefined,
+		nextEffect: undefined,
 		flags: 0 satisfies ReactiveFlags.None,
 	};
 	if (activeScope !== undefined) {
@@ -204,13 +204,15 @@ function updateSignal(s: Signal, value: any): boolean {
 
 function notify(e: Effect | EffectScope) {
 	const flags = e.flags;
-	if (!(flags & EffectFlags.Queued)) {
-		e.flags = flags | EffectFlags.Queued;
+	if (!(flags & 64 /* Queued */)) {
+		e.flags = flags | 64 /* Queued */;
 		const subs = e.subs;
 		if (subs !== undefined) {
 			notify(subs.sub as Effect | EffectScope);
+		} else if (queuedEffectsTail !== undefined) {
+			queuedEffectsTail = queuedEffectsTail.nextEffect = e;
 		} else {
-			queuedEffects[queuedEffectsLength++] = e;
+			queuedEffectsTail = queuedEffects = e;
 		}
 	}
 }
@@ -236,21 +238,23 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	while (link !== undefined) {
 		const dep = link.dep;
 		const depFlags = dep.flags;
-		if (depFlags & EffectFlags.Queued) {
-			run(dep, dep.flags = depFlags & ~EffectFlags.Queued);
+		if (depFlags & 64 /* Queued */) {
+			run(dep as Effect | EffectScope, dep.flags = depFlags & ~64 /* ~Queued */);
 		}
 		link = link.nextDep;
 	}
 }
 
 function flush(): void {
-	while (notifyIndex < queuedEffectsLength) {
-		const effect = queuedEffects[notifyIndex]!;
-		queuedEffects[notifyIndex++] = undefined;
-		run(effect, effect.flags &= ~EffectFlags.Queued);
+	while (queuedEffects !== undefined) {
+		const effect = queuedEffects;
+		if ((queuedEffects = effect.nextEffect) !== undefined) {
+			effect.nextEffect = undefined;
+		} else {
+			queuedEffectsTail = undefined;
+		}
+		run(effect, effect.flags &= ~64 /* ~Queued */);
 	}
-	notifyIndex = 0;
-	queuedEffectsLength = 0;
 }
 
 function computedOper<T>(this: Computed<T>): T {
