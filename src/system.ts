@@ -64,13 +64,6 @@ export function createReactiveSystem({
 			}
 		}
 		const prevSub = dep.subsTail;
-		if (
-			prevSub !== undefined
-			&& prevSub.sub === sub
-			&& (!recursedCheck || isValidLink(prevSub, sub))
-		) {
-			return;
-		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
