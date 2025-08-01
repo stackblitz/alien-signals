@@ -7,6 +7,7 @@ export interface ReactiveNode {
 }
 
 export interface Link {
+	version: number;
 	dep: ReactiveNode;
 	sub: ReactiveNode;
 	prevSub: Link | undefined;
@@ -39,6 +40,7 @@ export function createReactiveSystem({
 	notify(sub: ReactiveNode): void;
 	unwatched(sub: ReactiveNode): void;
 }) {
+	let version = 0;
 	return {
 		link,
 		unlink,
@@ -54,20 +56,24 @@ export function createReactiveSystem({
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
 		}
-		let nextDep: Link | undefined = undefined;
-		const recursedCheck = sub.flags & 4 satisfies ReactiveFlags.RecursedCheck;
-		if (recursedCheck) {
+		let nextDep: Link | undefined;
+		if (sub.flags & 4 satisfies ReactiveFlags.RecursedCheck) {
 			nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
 			if (nextDep !== undefined && nextDep.dep === dep) {
+				nextDep.version = version;
 				sub.depsTail = nextDep;
 				return;
 			}
 		}
 		const prevSub = dep.subsTail;
+		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
+			return;
+		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
 			= {
+				version,
 				dep,
 				sub,
 				prevDep,
@@ -178,6 +184,7 @@ export function createReactiveSystem({
 	}
 
 	function startTracking(sub: ReactiveNode): void {
+		++version;
 		sub.depsTail = undefined;
 		sub.flags = (sub.flags & ~(56 as ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) | 4 satisfies ReactiveFlags.RecursedCheck;
 	}
