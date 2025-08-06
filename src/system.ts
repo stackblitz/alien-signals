@@ -40,7 +40,7 @@ export function createReactiveSystem({
 	notify(sub: ReactiveNode): void;
 	unwatched(sub: ReactiveNode): void;
 }) {
-	let version = 0;
+	let currentVersion = 0;
 	return {
 		link,
 		unlink,
@@ -58,19 +58,19 @@ export function createReactiveSystem({
 		}
 		const nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
 		if (nextDep !== undefined && nextDep.dep === dep) {
-			nextDep.version = version;
+			nextDep.version = currentVersion;
 			sub.depsTail = nextDep;
 			return;
 		}
 		const prevSub = dep.subsTail;
-		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
+		if (prevSub !== undefined && prevSub.version === currentVersion && prevSub.sub === sub) {
 			return;
 		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
 			= {
-				version,
+				version: currentVersion,
 				dep,
 				sub,
 				prevDep,
@@ -179,7 +179,7 @@ export function createReactiveSystem({
 	}
 
 	function startTracking(sub: ReactiveNode): void {
-		++version;
+		++currentVersion;
 		sub.depsTail = undefined;
 		sub.flags = (sub.flags & ~(56 as ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) | 4 satisfies ReactiveFlags.RecursedCheck;
 	}
