@@ -223,9 +223,12 @@ export function createReactiveSystem({
 				continue;
 			}
 
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
+			if (!dirty) {
+				const nextDep = link.nextDep;
+				if (nextDep !== undefined) {
+					link = nextDep;
+					continue;
+				}
 			}
 
 			while (checkDepth) {
