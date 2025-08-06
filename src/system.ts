@@ -131,34 +131,32 @@ export function createReactiveSystem({
 
 			let flags = sub.flags;
 
-			if (flags & 3 as ReactiveFlags.Mutable | ReactiveFlags.Watching) {
-				if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
-					sub.flags = flags | 32 satisfies ReactiveFlags.Pending;
-				} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
-					flags = 0 satisfies ReactiveFlags.None;
-				} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
-					sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
-				} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
-					sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
-					flags &= 1 satisfies ReactiveFlags.Mutable;
-				} else {
-					flags = 0 satisfies ReactiveFlags.None;
-				}
+			if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
+				sub.flags = flags | 32 satisfies ReactiveFlags.Pending;
+			} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
+				flags = 0 satisfies ReactiveFlags.None;
+			} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
+				sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
+			} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
+				sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
+				flags &= 1 satisfies ReactiveFlags.Mutable;
+			} else {
+				flags = 0 satisfies ReactiveFlags.None;
+			}
 
-				if (flags & 2 satisfies ReactiveFlags.Watching) {
-					notify(sub);
-				}
+			if (flags & 2 satisfies ReactiveFlags.Watching) {
+				notify(sub);
+			}
 
-				if (flags & 1 satisfies ReactiveFlags.Mutable) {
-					const subSubs = sub.subs;
-					if (subSubs !== undefined) {
-						link = subSubs;
-						if (subSubs.nextSub !== undefined) {
-							stack = { value: next, prev: stack };
-							next = link.nextSub;
-						}
-						continue;
+			if (flags & 1 satisfies ReactiveFlags.Mutable) {
+				const subSubs = sub.subs;
+				if (subSubs !== undefined) {
+					link = subSubs;
+					if (subSubs.nextSub !== undefined) {
+						stack = { value: next, prev: stack };
+						next = link.nextSub;
 					}
+					continue;
 				}
 			}
 
