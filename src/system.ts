@@ -151,10 +151,10 @@ export function createReactiveSystem({
 			if (flags & 1 satisfies ReactiveFlags.Mutable) {
 				const subSubs = sub.subs;
 				if (subSubs !== undefined) {
-					link = subSubs;
-					if (subSubs.nextSub !== undefined) {
+					const nextSub = (link = subSubs).nextSub;
+					if (nextSub !== undefined) {
 						stack = { value: next, prev: stack };
-						next = link.nextSub;
+						next = nextSub;
 					}
 					continue;
 				}
