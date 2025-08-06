@@ -223,9 +223,12 @@ export function createReactiveSystem({
 				continue;
 			}
 
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
+			if (!dirty) {
+				const nextDep = link.nextDep;
+				if (nextDep !== undefined) {
+					link = nextDep;
+					continue;
+				}
 			}
 
 			while (checkDepth) {
@@ -250,8 +253,9 @@ export function createReactiveSystem({
 					sub.flags &= ~(32 satisfies ReactiveFlags.Pending);
 				}
 				sub = link.sub;
-				if (link.nextDep !== undefined) {
-					link = link.nextDep;
+				const nextDep = link.nextDep;
+				if (nextDep !== undefined) {
+					link = nextDep;
 					continue top;
 				}
 				dirty = false;
