@@ -120,29 +120,27 @@ function propagate(link: Link): void {
 
 		let flags = sub.flags;
 
-		if (flags & (ReactiveFlags.Mutable | ReactiveFlags.Watching)) {
-			if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
-				sub.flags = flags | ReactiveFlags.Pending;
-			} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
-				flags = ReactiveFlags.None;
-			} else if (!(flags & ReactiveFlags.RecursedCheck)) {
-				sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-			} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)) && isValidLink(link, sub)) {
-				sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
-				flags &= ReactiveFlags.Mutable;
-			} else {
-				flags = ReactiveFlags.None;
-			}
+		if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
+			sub.flags = flags | ReactiveFlags.Pending;
+		} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
+			flags = ReactiveFlags.None;
+		} else if (!(flags & ReactiveFlags.RecursedCheck)) {
+			sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
+		} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)) && isValidLink(link, sub)) {
+			sub.flags = flags | ReactiveFlags.Recursed | ReactiveFlags.Pending;
+			flags &= ReactiveFlags.Mutable;
+		} else {
+			flags = ReactiveFlags.None;
+		}
 
-			if (flags & ReactiveFlags.Watching) {
-				notify(sub);
-			}
+		if (flags & ReactiveFlags.Watching) {
+			notify(sub);
+		}
 
-			if (flags & ReactiveFlags.Mutable) {
-				const subSubs = sub.subs;
-				if (subSubs !== undefined) {
-					propagate(subSubs);
-				}
+		if (flags & ReactiveFlags.Mutable) {
+			const subSubs = sub.subs;
+			if (subSubs !== undefined) {
+				propagate(subSubs);
 			}
 		}
 

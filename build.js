@@ -1,4 +1,3 @@
-// @ts-check
 const path = require('path');
 const ts = require('typescript');
 const config = ts.getParsedCommandLineOfConfigFile(

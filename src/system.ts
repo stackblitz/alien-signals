@@ -40,7 +40,7 @@ export function createReactiveSystem({
 	notify(sub: ReactiveNode): void;
 	unwatched(sub: ReactiveNode): void;
 }) {
-	let version = 0;
+	let currentVersion = 0;
 	return {
 		link,
 		unlink,
@@ -56,24 +56,21 @@ export function createReactiveSystem({
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
 		}
-		let nextDep: Link | undefined;
-		if (sub.flags & 4 satisfies ReactiveFlags.RecursedCheck) {
-			nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
-			if (nextDep !== undefined && nextDep.dep === dep) {
-				nextDep.version = version;
-				sub.depsTail = nextDep;
-				return;
-			}
+		const nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
+		if (nextDep !== undefined && nextDep.dep === dep) {
+			nextDep.version = currentVersion;
+			sub.depsTail = nextDep;
+			return;
 		}
 		const prevSub = dep.subsTail;
-		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
+		if (prevSub !== undefined && prevSub.version === currentVersion && prevSub.sub === sub) {
 			return;
 		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
 			= {
-				version,
+				version: currentVersion,
 				dep,
 				sub,
 				prevDep,
@@ -134,34 +131,32 @@ export function createReactiveSystem({
 
 			let flags = sub.flags;
 
-			if (flags & 3 as ReactiveFlags.Mutable | ReactiveFlags.Watching) {
-				if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
-					sub.flags = flags | 32 satisfies ReactiveFlags.Pending;
-				} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
-					flags = 0 satisfies ReactiveFlags.None;
-				} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
-					sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
-				} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
-					sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
-					flags &= 1 satisfies ReactiveFlags.Mutable;
-				} else {
-					flags = 0 satisfies ReactiveFlags.None;
-				}
+			if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
+				sub.flags = flags | 32 satisfies ReactiveFlags.Pending;
+			} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
+				flags = 0 satisfies ReactiveFlags.None;
+			} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
+				sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
+			} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
+				sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
+				flags &= 1 satisfies ReactiveFlags.Mutable;
+			} else {
+				flags = 0 satisfies ReactiveFlags.None;
+			}
 
-				if (flags & 2 satisfies ReactiveFlags.Watching) {
-					notify(sub);
-				}
+			if (flags & 2 satisfies ReactiveFlags.Watching) {
+				notify(sub);
+			}
 
-				if (flags & 1 satisfies ReactiveFlags.Mutable) {
-					const subSubs = sub.subs;
-					if (subSubs !== undefined) {
-						link = subSubs;
-						if (subSubs.nextSub !== undefined) {
-							stack = { value: next, prev: stack };
-							next = link.nextSub;
-						}
-						continue;
+			if (flags & 1 satisfies ReactiveFlags.Mutable) {
+				const subSubs = sub.subs;
+				if (subSubs !== undefined) {
+					const nextSub = (link = subSubs).nextSub;
+					if (nextSub !== undefined) {
+						stack = { value: next, prev: stack };
+						next = nextSub;
 					}
+					continue;
 				}
 			}
 
@@ -184,7 +179,7 @@ export function createReactiveSystem({
 	}
 
 	function startTracking(sub: ReactiveNode): void {
-		++version;
+		++currentVersion;
 		sub.depsTail = undefined;
 		sub.flags = (sub.flags & ~(56 as ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) | 4 satisfies ReactiveFlags.RecursedCheck;
 	}
@@ -228,9 +223,12 @@ export function createReactiveSystem({
 				continue;
 			}
 
-			if (!dirty && link.nextDep !== undefined) {
-				link = link.nextDep;
-				continue;
+			if (!dirty) {
+				const nextDep = link.nextDep;
+				if (nextDep !== undefined) {
+					link = nextDep;
+					continue;
+				}
 			}
 
 			while (checkDepth) {
