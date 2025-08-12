@@ -128,7 +128,6 @@ export function createReactiveSystem({
 
 		top: do {
 			const sub = link.sub;
-
 			let flags = sub.flags;
 
 			if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
@@ -199,13 +198,12 @@ export function createReactiveSystem({
 
 		top: do {
 			const dep = link.dep;
-			const depFlags = dep.flags;
-
+			const flags = dep.flags;
 			let dirty = false;
 
 			if (sub.flags & 16 satisfies ReactiveFlags.Dirty) {
 				dirty = true;
-			} else if ((depFlags & 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) === 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) {
+			} else if ((flags & 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) === 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) {
 				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
@@ -213,7 +211,7 @@ export function createReactiveSystem({
 					}
 					dirty = true;
 				}
-			} else if ((depFlags & 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) === 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) {
+			} else if ((flags & 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) === 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) {
 				if (link.nextSub !== undefined || link.prevSub !== undefined) {
 					stack = { value: link, prev: stack };
 				}
@@ -231,8 +229,7 @@ export function createReactiveSystem({
 				}
 			}
 
-			while (checkDepth) {
-				--checkDepth;
+			while (checkDepth--) {
 				const firstSub = sub.subs!;
 				const hasMultipleSubs = firstSub.nextSub !== undefined;
 				if (hasMultipleSubs) {
@@ -268,16 +265,14 @@ export function createReactiveSystem({
 	function shallowPropagate(link: Link): void {
 		do {
 			const sub = link.sub;
-			const nextSub = link.nextSub;
-			const subFlags = sub.flags;
-			if ((subFlags & 48 as ReactiveFlags.Pending | ReactiveFlags.Dirty) === 32 satisfies ReactiveFlags.Pending) {
-				sub.flags = subFlags | 16 satisfies ReactiveFlags.Dirty;
-				if (subFlags & 2 satisfies ReactiveFlags.Watching) {
+			const flags = sub.flags;
+			if ((flags & 48 as ReactiveFlags.Pending | ReactiveFlags.Dirty) === 32 satisfies ReactiveFlags.Pending) {
+				sub.flags = flags | 16 satisfies ReactiveFlags.Dirty;
+				if (flags & 2 satisfies ReactiveFlags.Watching) {
 					notify(sub);
 				}
 			}
-			link = nextSub!;
-		} while (link !== undefined);
+		} while ((link = link.nextSub!) !== undefined);
 	}
 
 	function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
@@ -291,8 +286,7 @@ export function createReactiveSystem({
 				if (link === depsTail) {
 					break;
 				}
-				link = link.nextDep!;
-			} while (link !== undefined);
+			} while ((link = link.nextDep!) !== undefined);
 		}
 		return false;
 	}
