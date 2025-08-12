@@ -16,7 +16,7 @@ This project explores a push-pull based signal algorithm. Its current implementa
 - Inner effects scheduling of Svelte
 - Graph-coloring approach of Reactively (https://milomg.dev/2022-12-01/reactivity)
 
-We impose some constraints (such as not using Array/Set/Map and disallowing function recursion) to ensure performance. We found that under these conditions, maintaining algorithmic simplicity offers more significant improvements than complex scheduling strategies.
+We impose some constraints (such as not using Array/Set/Map and disallowing function recursion in [the algorithmic core](https://github.com/stackblitz/alien-signals/blob/master/src/system.ts)) to ensure performance. We found that under these conditions, maintaining algorithmic simplicity offers more significant improvements than complex scheduling strategies.
 
 Even though Vue 3.4 is already optimized, alien-signals is still noticeably faster. (I wrote code for both, and since they share similar algorithms, they’re quite comparable.)
 
