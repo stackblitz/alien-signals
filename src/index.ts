@@ -2,6 +2,10 @@ export * from './system.js';
 
 import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
 
+const enum EffectFlags {
+	Queued = 1 << 6,
+}
+
 interface EffectScope extends ReactiveNode {
 	nextEffect: Effect | EffectScope | undefined;
 }
@@ -204,8 +208,8 @@ function updateSignal(s: Signal, value: any): boolean {
 
 function notify(e: Effect | EffectScope) {
 	const flags = e.flags;
-	if (!(flags & 64 /* Queued */)) {
-		e.flags = flags | 64 /* Queued */;
+	if (!(flags & EffectFlags.Queued)) {
+		e.flags = flags | EffectFlags.Queued;
 		const subs = e.subs;
 		if (subs !== undefined) {
 			notify(subs.sub as Effect | EffectScope);
@@ -238,7 +242,7 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	while (link !== undefined) {
 		const dep = link.dep;
 		const depFlags = dep.flags;
-		if (depFlags & 64 /* Queued */) {
+		if (depFlags & EffectFlags.Queued) {
 			run(dep as Effect | EffectScope, dep.flags = depFlags & ~64 /* ~Queued */);
 		}
 		link = link.nextDep;
