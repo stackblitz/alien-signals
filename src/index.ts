@@ -243,7 +243,7 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		const dep = link.dep;
 		const depFlags = dep.flags;
 		if (depFlags & EffectFlags.Queued) {
-			run(dep as Effect | EffectScope, dep.flags = depFlags & ~64 /* ~Queued */);
+			run(dep as Effect | EffectScope, dep.flags = depFlags & ~EffectFlags.Queued);
 		}
 		link = link.nextDep;
 	}
@@ -257,7 +257,7 @@ function flush(): void {
 		} else {
 			queuedEffectsTail = undefined;
 		}
-		run(effect, effect.flags &= ~64 /* ~Queued */);
+		run(effect, effect.flags &= ~EffectFlags.Queued);
 	}
 }
 
