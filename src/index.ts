@@ -278,8 +278,7 @@ function computedOper<T>(this: Computed<T>): T {
 
 function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
-		const newValue = value[0];
-		if (this.value !== (this.value = newValue)) {
+		if (this.value !== (this.value = value[0])) {
 			this.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
