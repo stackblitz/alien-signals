@@ -1,7 +1,10 @@
-import { defineConfig } from '@tsslint/config';
+import { createDiagnosticsPlugin, defineConfig, isCLI } from '@tsslint/config';
 import type * as ts from 'typescript';
 
 export default defineConfig({
+	plugins: isCLI()
+		? [createDiagnosticsPlugin()]
+		: [],
 	rules: {
 		'number-equality'({
 			typescript: ts,
