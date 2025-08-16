@@ -48,10 +48,9 @@
 	},
 	"scripts": {
 		"prepublishOnly": "npm run check && npm run test",
-		"check": "tsc --noEmit",
+		"check": "tsslint --project tsconfig.json",
 		"build": "node ./build.js",
 		"test": "npm run build && vitest run",
-		"lint": "tsslint --project tsconfig.json",
 		"bench": "npm run build && node --jitless --expose-gc benchs/propagate.mjs",
 		"memory": "npm run build && node --expose-gc benchs/memoryUsage.mjs"
 	},
