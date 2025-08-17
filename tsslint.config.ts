@@ -8,12 +8,12 @@ export default defineConfig({
 	rules: {
 		'number-equality'({
 			typescript: ts,
-			sourceFile,
-			reportWarning,
-			languageService,
+			file,
+			program,
+			report,
 		}) {
-			const checker = languageService.getProgram()!.getTypeChecker();
-			ts.forEachChild(sourceFile, function visit(node) {
+			const checker = program.getTypeChecker();
+			ts.forEachChild(file, function visit(node) {
 				if (
 					ts.isBinaryExpression(node) &&
 					node.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken &&
@@ -22,18 +22,18 @@ export default defineConfig({
 				) {
 					const type = checker.getTypeAtLocation(node.left);
 					if (type.flags & ts.TypeFlags.Number) {
-						reportWarning(
+						report(
 							`Replace "x === 0" with "!x" for numeric variables to clarify boolean usage.`,
-							node.getStart(sourceFile),
+							node.getStart(file),
 							node.getEnd(),
 						).withFix('Use exclamation instead', () => [
 							{
-								fileName: sourceFile.fileName,
+								fileName: file.fileName,
 								textChanges: [
 									{
-										newText: `!(${node.left.getText(sourceFile)})`,
+										newText: `!(${node.left.getText(file)})`,
 										span: {
-											start: node.getStart(sourceFile),
+											start: node.getStart(file),
 											length: node.getWidth(),
 										},
 									},
@@ -47,13 +47,13 @@ export default defineConfig({
 		},
 		'object-equality'({
 			typescript: ts,
-			sourceFile,
-			reportWarning,
-			languageService,
+			file,
+			program,
+			report,
 		}) {
-			const checker = languageService.getProgram()!.getTypeChecker();
+			const checker = program.getTypeChecker();
 			const checkFlags = [ts.TypeFlags.Undefined, ts.TypeFlags.Null];
-			ts.forEachChild(sourceFile, function visit(node) {
+			ts.forEachChild(file, function visit(node) {
 				if (
 					ts.isPrefixUnaryExpression(node) &&
 					node.operator === ts.SyntaxKind.ExclamationToken
@@ -67,38 +67,38 @@ export default defineConfig({
 								ts.isPrefixUnaryExpression(node.parent) &&
 								node.parent.operator === ts.SyntaxKind.ExclamationToken
 							) {
-								reportWarning(
+								report(
 									`Do not use "!!" for a variable of type "object | ${flagText}". Replace with "!== ${flagText}" for clarity.`,
-									node.parent.getStart(sourceFile),
+									node.parent.getStart(file),
 									node.getEnd(),
 								).withFix(`Replace with !== ${flagText}`, () => [
 									{
-										fileName: sourceFile.fileName,
+										fileName: file.fileName,
 										textChanges: [
 											{
-												newText: `${node.operand.getText(sourceFile)} !== ${flagText}`,
+												newText: `${node.operand.getText(file)} !== ${flagText}`,
 												span: {
-													start: node.parent.getStart(sourceFile),
+													start: node.parent.getStart(file),
 													length:
-														node.getEnd() - node.parent.getStart(sourceFile),
+														node.getEnd() - node.parent.getStart(file),
 												},
 											},
 										],
 									},
 								]);
 							} else {
-								reportWarning(
+								report(
 									`Do not use "!" for a variable of type "object | ${flagText}". Replace with "=== ${flagText}" for clarity.`,
-									node.getStart(sourceFile),
+									node.getStart(file),
 									node.getEnd(),
 								).withFix(`Replace with === ${flagText}`, () => [
 									{
-										fileName: sourceFile.fileName,
+										fileName: file.fileName,
 										textChanges: [
 											{
-												newText: `${node.operand.getText(sourceFile)} === ${flagText}`,
+												newText: `${node.operand.getText(file)} === ${flagText}`,
 												span: {
-													start: node.getStart(sourceFile),
+													start: node.getStart(file),
 													length: node.getWidth(),
 												},
 											},

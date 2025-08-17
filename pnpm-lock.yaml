@@ -10,10 +10,10 @@ importers:
     devDependencies:
       '@tsslint/cli':
         specifier: latest
-        version: 1.6.0(typescript@5.9.2)
+        version: 2.0.1(typescript@5.9.2)
       '@tsslint/config':
         specifier: latest
-        version: 1.6.0(typescript@5.9.2)
+        version: 2.0.1(typescript@5.9.2)
       jest-extended:
         specifier: latest
         version: 6.0.0(typescript@5.9.2)
@@ -317,20 +317,20 @@ packages:
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
 
-  '@tsslint/cli@1.6.0':
-    resolution: {integrity: sha512-0ya08t69uoBX0V+F2ye41PgqzM0tH94KfxWwgzQymt3M08RYtPSp7Vy9F0TRlzBcOAD8hfIbrnihO8rOC8dGzA==}
+  '@tsslint/cli@2.0.1':
+    resolution: {integrity: sha512-7g+jVQrs9d3D9kMpT1TBlLBQhmQriDGekyywwvrBnmocA1KJvVskms7t3xHxkGupNrF5dH+TZaQVacwCKw93Sg==}
     hasBin: true
     peerDependencies:
       typescript: '*'
 
-  '@tsslint/config@1.6.0':
-    resolution: {integrity: sha512-961hHQelcEsC+w/IWZGoPNXoa2jFCFikNHzuEk3zeUXMuB9yUsZusgnkQ5MgJ1zjLWadoHJUntH4oBXUvAypxg==}
+  '@tsslint/config@2.0.1':
+    resolution: {integrity: sha512-al2vj06aenhqMs2/Vm3p2gVNAFCbpuw7C3E+DFWXVpKH3+g48cJaPymRI3Ma4mQqmvSMIPF5VFN/H1SSYzdwNw==}
 
-  '@tsslint/core@1.6.0':
-    resolution: {integrity: sha512-CiNg1jCVUupsnSryhoov+rdxTc9qWTLVL8OikfDzBZHo/0cSCXXT/L0zbNe/5Ufubqc6W77+51q3VJ4YDwNB4g==}
+  '@tsslint/core@2.0.1':
+    resolution: {integrity: sha512-Freonkuz+cuIyMahmDgz3xLxfgKON79Y/K7LcKexJVqRnIYMIQcA0wxRKjk0eCNOj59PlzV8RYwYGvFaxDd8Qw==}
 
-  '@tsslint/types@1.6.0':
-    resolution: {integrity: sha512-h2lv3XHTvGm1zkSyARKzQ2y0yRQQWkDwLtpJT4rNbhflECd+haOI4BNgjfnP8bl+ra8KIy7rqUVNEQZQ6ACtOg==}
+  '@tsslint/types@2.0.1':
+    resolution: {integrity: sha512-0XllhTjC3eVmbVNPAIAGlmAsIOymKbi5IzAk5QnreBDBxBA9jCPGl1NB0ijtBMrUai6zWiRB3/hPvikeEGs3hQ==}
 
   '@types/chai@5.2.2':
     resolution: {integrity: sha512-8kB30R7Hwqf40JPiKhVzodJs2Qc1ZJ5zuT3uzw5Hq/dhNCl3G3l83jfpdI1e20BP348+fV7VIL/+FxaXkqBmWg==}
@@ -973,11 +973,11 @@ snapshots:
 
   '@sinclair/typebox@0.27.8': {}
 
-  '@tsslint/cli@1.6.0(typescript@5.9.2)':
+  '@tsslint/cli@2.0.1(typescript@5.9.2)':
     dependencies:
       '@clack/prompts': 0.8.2
-      '@tsslint/config': 1.6.0(typescript@5.9.2)
-      '@tsslint/core': 1.6.0
+      '@tsslint/config': 2.0.1(typescript@5.9.2)
+      '@tsslint/core': 2.0.1
       '@volar/language-core': 2.4.23
       '@volar/language-hub': 0.0.1
       '@volar/typescript': 2.4.23
@@ -985,20 +985,20 @@ snapshots:
       json5: 2.2.3
       typescript: 5.9.2
 
-  '@tsslint/config@1.6.0(typescript@5.9.2)':
+  '@tsslint/config@2.0.1(typescript@5.9.2)':
     dependencies:
-      '@tsslint/types': 1.6.0
+      '@tsslint/types': 2.0.1
       ts-api-utils: 2.1.0(typescript@5.9.2)
     transitivePeerDependencies:
       - typescript
 
-  '@tsslint/core@1.6.0':
+  '@tsslint/core@2.0.1':
     dependencies:
-      '@tsslint/types': 1.6.0
+      '@tsslint/types': 2.0.1
       esbuild: 0.25.9
       minimatch: 10.0.3
 
-  '@tsslint/types@1.6.0': {}
+  '@tsslint/types@2.0.1': {}
 
   '@types/chai@5.2.2':
     dependencies:
