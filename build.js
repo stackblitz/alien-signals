@@ -16,33 +16,33 @@ if (config === undefined) {
 
 const typesProgram = ts.createProgram({
 	rootNames: config.fileNames,
+	configFileParsingDiagnostics: config.errors,
 	options: {
 		...config.options,
 		outDir: 'types',
 		declaration: true,
 		emitDeclarationOnly: true,
 	},
-	configFileParsingDiagnostics: config.errors,
 });
 const cjsProgram = ts.createProgram({
 	rootNames: config.fileNames,
+	configFileParsingDiagnostics: config.errors,
 	options: {
 		...config.options,
 		outDir: 'cjs',
 		removeComments: true,
 		module: ts.ModuleKind.CommonJS,
 	},
-	configFileParsingDiagnostics: config.errors,
 });
 const esmProgram = ts.createProgram({
 	rootNames: config.fileNames,
+	configFileParsingDiagnostics: config.errors,
 	options: {
 		...config.options,
 		outDir: 'esm',
 		removeComments: true,
 		module: ts.ModuleKind.ESNext,
 	},
-	configFileParsingDiagnostics: config.errors,
 });
 
 typesProgram.emit(undefined, ts.sys.writeFile);
