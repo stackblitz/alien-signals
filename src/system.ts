@@ -276,17 +276,12 @@ export function createReactiveSystem({
 	}
 
 	function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
-		const depsTail = sub.depsTail;
-		if (depsTail !== undefined) {
-			let link = sub.deps!;
-			do {
-				if (link === checkLink) {
-					return true;
-				}
-				if (link === depsTail) {
-					break;
-				}
-			} while ((link = link.nextDep!) !== undefined);
+		let link = sub.depsTail;
+		while (link !== undefined) {
+			if (link === checkLink) {
+				return true;
+			}
+			link = link.prevDep;
 		}
 		return false;
 	}
