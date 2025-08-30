@@ -195,11 +195,11 @@ export function createReactiveSystem({
 	function checkDirty(link: Link, sub: ReactiveNode): boolean {
 		let stack: Stack<Link> | undefined;
 		let checkDepth = 0;
+		let dirty = false;
 
 		top: do {
 			const dep = link.dep;
 			const flags = dep.flags;
-			let dirty = false;
 
 			if (sub.flags & 16 satisfies ReactiveFlags.Dirty) {
 				dirty = true;
@@ -246,6 +246,7 @@ export function createReactiveSystem({
 						sub = link.sub;
 						continue;
 					}
+					dirty = false;
 				} else {
 					sub.flags &= ~(32 satisfies ReactiveFlags.Pending);
 				}
@@ -255,7 +256,6 @@ export function createReactiveSystem({
 					link = nextDep;
 					continue top;
 				}
-				dirty = false;
 			}
 
 			return dirty;
