@@ -209,7 +209,13 @@ function notify(e: Effect | EffectScope) {
 function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 	if (
 		flags & 16 satisfies ReactiveFlags.Dirty
-		|| (flags & 32 satisfies ReactiveFlags.Pending && checkDirty(e.deps!, e))
+		|| (
+			flags & 32 satisfies ReactiveFlags.Pending
+			&& (
+				checkDirty(e.deps!, e)
+				|| (e.flags = flags & ~(32 satisfies ReactiveFlags.Pending), false)
+			)
+		)
 	) {
 		const prev = setCurrentSub(e);
 		startTracking(e);
@@ -220,8 +226,6 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			endTracking(e);
 		}
 		return;
-	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
-		e.flags = flags & ~(32 satisfies ReactiveFlags.Pending);
 	}
 	let link = e.deps;
 	while (link !== undefined) {
@@ -248,7 +252,13 @@ function computedOper<T>(this: Computed<T>): T {
 	const flags = this.flags;
 	if (
 		flags & 16 satisfies ReactiveFlags.Dirty
-		|| (flags & 32 satisfies ReactiveFlags.Pending && checkDirty(this.deps!, this))
+		|| (
+			flags & 32 satisfies ReactiveFlags.Pending
+			&& (
+				checkDirty(this.deps!, this)
+				|| (this.flags = flags & ~(32 satisfies ReactiveFlags.Pending), false)
+			)
+		)
 	) {
 		if (updateComputed(this)) {
 			const subs = this.subs;
@@ -256,8 +266,6 @@ function computedOper<T>(this: Computed<T>): T {
 				shallowPropagate(subs);
 			}
 		}
-	} else if (flags & 32 satisfies ReactiveFlags.Pending) {
-		this.flags = flags & ~(32 satisfies ReactiveFlags.Pending);
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
