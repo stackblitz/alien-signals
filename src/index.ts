@@ -49,8 +49,10 @@ const {
 					toRemove = unlink(toRemove, node);
 				} while (toRemove !== undefined);
 			}
-		} else if (!('previousValue' in node)) {
+		} else if ('fn' in node) {
 			effectOper.call(node);
+		} else if (!('previousValue' in node)) {
+			effectScopeOper.call(node);
 		}
 	},
 });
@@ -82,6 +84,22 @@ export function endBatch() {
 	if (!--batchDepth) {
 		flush();
 	}
+}
+
+export function isSignal(fn: () => void): boolean {
+	return fn.name === 'bound signalOper';
+}
+
+export function isComputed(fn: () => void): boolean {
+	return fn.name === 'bound computedOper';
+}
+
+export function isEffect(fn: () => void): boolean {
+	return fn.name === 'bound effectOper';
+}
+
+export function isEffectScope(fn: () => void): boolean {
+	return fn.name === 'bound effectScopeOper';
 }
 
 export function signal<T>(): {
@@ -155,7 +173,7 @@ export function effectScope(fn: () => void): () => void {
 	} finally {
 		setCurrentSub(prev);
 	}
-	return effectOper.bind(e);
+	return effectScopeOper.bind(e);
 }
 
 function updateComputed(c: Computed): boolean {
@@ -281,7 +299,12 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	}
 }
 
-function effectOper(this: Effect | EffectScope): void {
+function effectOper(this: Effect): void {
+	effectScopeOper.call(this);
+	this.flags = 0 satisfies ReactiveFlags.None;
+}
+
+function effectScopeOper(this: EffectScope): void {
 	let dep = this.deps;
 	while (dep !== undefined) {
 		dep = unlink(dep, this);
@@ -290,5 +313,4 @@ function effectOper(this: Effect | EffectScope): void {
 	if (sub !== undefined) {
 		unlink(sub);
 	}
-	this.flags = 0 satisfies ReactiveFlags.None;
 }
