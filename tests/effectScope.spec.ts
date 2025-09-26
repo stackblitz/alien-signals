@@ -46,3 +46,20 @@ test('should dispose inner effects if created in an effect', () => {
 		expect(triggers).toBe(2);
 	});
 });
+
+test('should track signal updates in an inner scope when accessed by an outer effect', () => {
+	const source = signal(1);
+
+	let triggers = 0;
+
+	effect(() => {
+		effectScope(() => {
+			source();
+		});
+		triggers++;
+	});
+
+	expect(triggers).toBe(1);
+	source(2);
+	expect(triggers).toBe(2);
+});

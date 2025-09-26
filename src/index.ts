@@ -61,7 +61,6 @@ export let batchDepth = 0;
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
-let activeScope: EffectScope | undefined;
 
 export function getCurrentSub(): ReactiveNode | undefined {
 	return activeSub;
@@ -71,16 +70,6 @@ export function setCurrentSub(sub: ReactiveNode | undefined) {
 	const prevSub = activeSub;
 	activeSub = sub;
 	return prevSub;
-}
-
-export function getCurrentScope(): EffectScope | undefined {
-	return activeScope;
-}
-
-export function setCurrentScope(scope: EffectScope | undefined) {
-	const prevScope = activeScope;
-	activeScope = scope;
-	return prevScope;
 }
 
 export function startBatch() {
@@ -151,8 +140,6 @@ export function effect(fn: () => void): () => void {
 	};
 	if (activeSub !== undefined) {
 		link(e, activeSub);
-	} else if (activeScope !== undefined) {
-		link(e, activeScope);
 	}
 	const prev = setCurrentSub(e);
 	try {
@@ -171,16 +158,14 @@ export function effectScope(fn: () => void): () => void {
 		subsTail: undefined,
 		flags: 0 satisfies ReactiveFlags.None,
 	};
-	if (activeScope !== undefined) {
-		link(e, activeScope);
+	if (activeSub !== undefined) {
+		link(e, activeSub);
 	}
-	const prevSub = setCurrentSub(undefined);
-	const prevScope = setCurrentScope(e);
+	const prev = setCurrentSub(e);
 	try {
 		fn();
 	} finally {
-		setCurrentScope(prevScope);
-		setCurrentSub(prevSub);
+		setCurrentSub(prev);
 	}
 	return effectOper.bind(e);
 }
@@ -270,8 +255,6 @@ function computedOper<T>(this: Computed<T>): T {
 	}
 	if (activeSub !== undefined) {
 		link(this, activeSub);
-	} else if (activeScope !== undefined) {
-		link(this, activeScope);
 	}
 	return this.value!;
 }
@@ -298,8 +281,13 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 				}
 			}
 		}
-		if (activeSub !== undefined) {
-			link(this, activeSub);
+		let sub = activeSub;
+		while (sub !== undefined) {
+			if (sub.flags & 3 as ReactiveFlags.Mutable | ReactiveFlags.Watching) {
+				link(this, sub);
+				break;
+			}
+			sub = sub.subs?.sub;
 		}
 		return value;
 	}
