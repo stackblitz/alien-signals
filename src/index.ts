@@ -22,7 +22,6 @@ interface Signal<T = any> extends ReactiveNode {
 	value: T;
 }
 
-const pauseStack: (ReactiveNode | undefined)[] = [];
 const queuedEffects: (Effect | EffectScope | undefined)[] = [];
 const {
 	link,
@@ -80,20 +79,6 @@ export function endBatch() {
 	if (!--batchDepth) {
 		flush();
 	}
-}
-
-/**
- * @deprecated Will be removed in the next major version. Use `const pausedSub = setCurrentSub(undefined)` instead for better performance.
- */
-export function pauseTracking() {
-	pauseStack.push(setCurrentSub(undefined));
-}
-
-/**
- * @deprecated Will be removed in the next major version. Use `setCurrentSub(pausedSub)` instead for better performance.
- */
-export function resumeTracking() {
-	setCurrentSub(pauseStack.pop());
 }
 
 export function signal<T>(): {
