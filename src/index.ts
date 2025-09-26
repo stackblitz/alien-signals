@@ -55,8 +55,7 @@ const {
 	},
 });
 
-export let batchDepth = 0;
-
+let batchDepth = 0;
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
@@ -69,6 +68,10 @@ export function setCurrentSub(sub: ReactiveNode | undefined) {
 	const prevSub = activeSub;
 	activeSub = sub;
 	return prevSub;
+}
+
+export function getBatchDepth(): number {
+	return batchDepth;
 }
 
 export function startBatch() {
