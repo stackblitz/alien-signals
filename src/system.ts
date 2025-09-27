@@ -40,37 +40,34 @@ export function createReactiveSystem({
 	notify(sub: ReactiveNode): void;
 	unwatched(sub: ReactiveNode): void;
 }) {
-	let currentVersion = 0;
 	return {
 		link,
 		unlink,
 		propagate,
 		checkDirty,
-		endTracking,
-		startTracking,
 		shallowPropagate,
 	};
 
-	function link(dep: ReactiveNode, sub: ReactiveNode): void {
+	function link(dep: ReactiveNode, sub: ReactiveNode, version: number): void {
 		const prevDep = sub.depsTail;
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
 		}
 		const nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
 		if (nextDep !== undefined && nextDep.dep === dep) {
-			nextDep.version = currentVersion;
+			nextDep.version = version;
 			sub.depsTail = nextDep;
 			return;
 		}
 		const prevSub = dep.subsTail;
-		if (prevSub !== undefined && prevSub.version === currentVersion && prevSub.sub === sub) {
+		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
 			return;
 		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
 			= {
-				version: currentVersion,
+				version,
 				dep,
 				sub,
 				prevDep,
@@ -175,21 +172,6 @@ export function createReactiveSystem({
 
 			break;
 		} while (true);
-	}
-
-	function startTracking(sub: ReactiveNode): void {
-		++currentVersion;
-		sub.depsTail = undefined;
-		sub.flags = (sub.flags & ~(56 as ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) | 4 satisfies ReactiveFlags.RecursedCheck;
-	}
-
-	function endTracking(sub: ReactiveNode): void {
-		const depsTail = sub.depsTail;
-		let toRemove = depsTail !== undefined ? depsTail.nextDep : sub.deps;
-		while (toRemove !== undefined) {
-			toRemove = unlink(toRemove, sub);
-		}
-		sub.flags &= ~(4 satisfies ReactiveFlags.RecursedCheck);
 	}
 
 	function checkDirty(link: Link, sub: ReactiveNode): boolean {

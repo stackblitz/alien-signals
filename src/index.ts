@@ -1,4 +1,6 @@
-import { createReactiveSystem, type ReactiveNode, type ReactiveFlags } from './system.js';
+import { createReactiveSystem, type Link, type ReactiveFlags, type ReactiveNode } from './system.js';
+
+let cycle = 0;
 
 const enum EffectFlags {
 	Queued = 1 << 6,
@@ -26,8 +28,6 @@ const {
 	unlink,
 	propagate,
 	checkDirty,
-	endTracking,
-	startTracking,
 	shallowPropagate,
 } = createReactiveSystem({
 	update(signal: Signal | Computed): boolean {
@@ -142,14 +142,15 @@ export function effect(fn: () => void): () => void {
 		depsTail: undefined,
 		flags: 2 satisfies ReactiveFlags.Watching,
 	};
-	if (activeSub !== undefined) {
-		link(e, activeSub);
+	const sub = activeSub;
+	if (sub !== undefined) {
+		link(e, sub, cycle);
 	}
-	const prev = setCurrentSub(e);
+	const prevSub = setCurrentSub(e);
 	try {
 		e.fn();
 	} finally {
-		setCurrentSub(prev);
+		activeSub = prevSub;
 	}
 	return effectOper.bind(e);
 }
@@ -162,27 +163,31 @@ export function effectScope(fn: () => void): () => void {
 		subsTail: undefined,
 		flags: 0 satisfies ReactiveFlags.None,
 	};
-	if (activeSub !== undefined) {
-		link(e, activeSub);
+	const sub = activeSub;
+	if (sub !== undefined) {
+		link(e, sub, cycle);
 	}
-	const prev = setCurrentSub(e);
+	const prevSub = setCurrentSub(e);
 	try {
 		fn();
 	} finally {
-		setCurrentSub(prev);
+		activeSub = prevSub;
 	}
 	return effectScopeOper.bind(e);
 }
 
 function updateComputed(c: Computed): boolean {
+	++cycle;
+	c.depsTail = undefined;
+	c.flags = 5 as (ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck);
 	const prevSub = setCurrentSub(c);
-	startTracking(c);
 	try {
 		const oldValue = c.value;
 		return oldValue !== (c.value = c.getter(oldValue));
 	} finally {
-		setCurrentSub(prevSub);
-		endTracking(c);
+		activeSub = prevSub;
+		c.flags &= ~(4 satisfies ReactiveFlags.RecursedCheck);
+		purgeDeps(c);
 	}
 }
 
@@ -215,24 +220,27 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			)
 		)
 	) {
-		const prev = setCurrentSub(e);
-		startTracking(e);
+		++cycle;
+		e.depsTail = undefined;
+		e.flags = 6 as (ReactiveFlags.Watching | ReactiveFlags.RecursedCheck);
+		const prevSub = setCurrentSub(e);
 		try {
 			(e as Effect).fn();
 		} finally {
-			setCurrentSub(prev);
-			endTracking(e);
+			activeSub = prevSub;
+			e.flags &= ~(4 satisfies ReactiveFlags.RecursedCheck);
+			purgeDeps(e);
 		}
-		return;
-	}
-	let link = e.deps;
-	while (link !== undefined) {
-		const dep = link.dep;
-		const depFlags = dep.flags;
-		if (depFlags & EffectFlags.Queued) {
-			run(dep, dep.flags = depFlags & ~EffectFlags.Queued);
+	} else {
+		let link = e.deps;
+		while (link !== undefined) {
+			const dep = link.dep;
+			const depFlags = dep.flags;
+			if (depFlags & EffectFlags.Queued) {
+				run(dep, dep.flags = depFlags & ~EffectFlags.Queued);
+			}
+			link = link.nextDep;
 		}
-		link = link.nextDep;
 	}
 }
 
@@ -265,8 +273,9 @@ function computedOper<T>(this: Computed<T>): T {
 			}
 		}
 	}
-	if (activeSub !== undefined) {
-		link(this, activeSub);
+	const sub = activeSub;
+	if (sub !== undefined) {
+		link(this, sub, cycle);
 	}
 	return this.value!;
 }
@@ -296,7 +305,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 		let sub = activeSub;
 		while (sub !== undefined) {
 			if (sub.flags & 3 as ReactiveFlags.Mutable | ReactiveFlags.Watching) {
-				link(this, sub);
+				link(this, sub, cycle);
 				break;
 			}
 			sub = sub.subs?.sub;
@@ -318,5 +327,13 @@ function effectScopeOper(this: EffectScope): void {
 	const sub = this.subs;
 	if (sub !== undefined) {
 		unlink(sub);
+	}
+}
+
+function purgeDeps(sub: ReactiveNode) {
+	const depsTail = sub.depsTail as Link | undefined;
+	let toRemove = depsTail !== undefined ? depsTail.nextDep : sub.deps;
+	while (toRemove !== undefined) {
+		toRemove = unlink(toRemove, sub);
 	}
 }
