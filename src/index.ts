@@ -2,10 +2,6 @@ import { createReactiveSystem, type Link, type ReactiveFlags, type ReactiveNode 
 
 let cycle = 0;
 
-const enum EffectFlags {
-	Queued = 1 << 6,
-}
-
 interface EffectScope extends ReactiveNode { }
 
 interface Effect extends ReactiveNode {
@@ -198,8 +194,8 @@ function updateSignal(s: Signal, value: any): boolean {
 
 function notify(e: Effect | EffectScope) {
 	const flags = e.flags;
-	if (!(flags & EffectFlags.Queued)) {
-		e.flags = flags | EffectFlags.Queued;
+	if (!(flags & 64 /* Queued */)) {
+		e.flags = flags | 64 /* Queued */;
 		const subs = e.subs;
 		if (subs !== undefined) {
 			notify(subs.sub as Effect | EffectScope);
@@ -236,8 +232,8 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		while (link !== undefined) {
 			const dep = link.dep;
 			const depFlags = dep.flags;
-			if (depFlags & EffectFlags.Queued) {
-				run(dep, dep.flags = depFlags & ~EffectFlags.Queued);
+			if (depFlags & 64 /* Queued */) {
+				run(dep, dep.flags = depFlags & ~(64 /* Queued */));
 			}
 			link = link.nextDep;
 		}
@@ -248,7 +244,7 @@ function flush(): void {
 	while (notifyIndex < queuedEffectsLength) {
 		const effect = queuedEffects[notifyIndex]!;
 		queuedEffects[notifyIndex++] = undefined;
-		run(effect, effect.flags &= ~EffectFlags.Queued);
+		run(effect, effect.flags &= ~(64 /* Queued */));
 	}
 	notifyIndex = 0;
 	queuedEffectsLength = 0;
