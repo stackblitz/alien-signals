@@ -144,7 +144,7 @@ export function effect(fn: () => void): () => void {
 	};
 	const sub = activeSub;
 	if (sub !== undefined) {
-		link(e, sub, cycle);
+		link(e, sub, 0);
 	}
 	const prevSub = setCurrentSub(e);
 	try {
@@ -165,7 +165,7 @@ export function effectScope(fn: () => void): () => void {
 	};
 	const sub = activeSub;
 	if (sub !== undefined) {
-		link(e, sub, cycle);
+		link(e, sub, 0);
 	}
 	const prevSub = setCurrentSub(e);
 	try {
