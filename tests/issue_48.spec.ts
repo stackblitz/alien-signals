@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { computed, effect, setCurrentSub, signal } from '../src';
+import { computed, effect, setActiveSub, signal } from '../src';
 
 test('#48', () => {
 	const source = signal(0);
@@ -88,10 +88,10 @@ function reaction<T>(
 }
 
 function untracked<T>(callback: () => T): T {
-	const currentSub = setCurrentSub(undefined);
+	const currentSub = setActiveSub(undefined);
 	try {
 		return callback();
 	} finally {
-		setCurrentSub(currentSub);
+		setActiveSub(currentSub);
 	}
 }

@@ -56,11 +56,11 @@ let notifyIndex = 0;
 let queuedEffectsLength = 0;
 let activeSub: ReactiveNode | undefined;
 
-export function getCurrentSub(): ReactiveNode | undefined {
+export function getActiveSub(): ReactiveNode | undefined {
 	return activeSub;
 }
 
-export function setCurrentSub(sub: ReactiveNode | undefined) {
+export function setActiveSub(sub: ReactiveNode | undefined) {
 	const prevSub = activeSub;
 	activeSub = sub;
 	return prevSub;
@@ -142,7 +142,7 @@ export function effect(fn: () => void): () => void {
 	if (sub !== undefined) {
 		link(e, sub, 0);
 	}
-	const prevSub = setCurrentSub(e);
+	const prevSub = setActiveSub(e);
 	try {
 		e.fn();
 	} finally {
@@ -163,7 +163,7 @@ export function effectScope(fn: () => void): () => void {
 	if (sub !== undefined) {
 		link(e, sub, 0);
 	}
-	const prevSub = setCurrentSub(e);
+	const prevSub = setActiveSub(e);
 	try {
 		fn();
 	} finally {
@@ -176,7 +176,7 @@ function updateComputed(c: Computed): boolean {
 	++cycle;
 	c.depsTail = undefined;
 	c.flags = 5 as (ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck);
-	const prevSub = setCurrentSub(c);
+	const prevSub = setActiveSub(c);
 	try {
 		const oldValue = c.value;
 		return oldValue !== (c.value = c.getter(oldValue));
@@ -219,7 +219,7 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 		++cycle;
 		e.depsTail = undefined;
 		e.flags = 6 as (ReactiveFlags.Watching | ReactiveFlags.RecursedCheck);
-		const prevSub = setCurrentSub(e);
+		const prevSub = setActiveSub(e);
 		try {
 			(e as Effect).fn();
 		} finally {
@@ -270,7 +270,7 @@ function computedOper<T>(this: Computed<T>): T {
 		}
 	} else if (!flags) {
 		this.flags = 1 satisfies ReactiveFlags.Mutable;
-		const prevSub = setCurrentSub(this);
+		const prevSub = setActiveSub(this);
 		try {
 			this.value = this.getter();
 		} finally {
