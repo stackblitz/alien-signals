@@ -128,7 +128,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty,
+		flags: 0 satisfies ReactiveFlags.None,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -271,6 +271,14 @@ function computedOper<T>(this: Computed<T>): T {
 			if (subs !== undefined) {
 				shallowPropagate(subs);
 			}
+		}
+	} else if (!flags) {
+		this.flags = 1 satisfies ReactiveFlags.Mutable;
+		const prevSub = setCurrentSub(this);
+		try {
+			this.value = this.getter();
+		} finally {
+			activeSub = prevSub;
 		}
 	}
 	const sub = activeSub;
