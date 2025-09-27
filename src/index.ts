@@ -138,11 +138,10 @@ export function effect(fn: () => void): () => void {
 		depsTail: undefined,
 		flags: 2 satisfies ReactiveFlags.Watching,
 	};
-	const sub = activeSub;
-	if (sub !== undefined) {
-		link(e, sub, 0);
-	}
 	const prevSub = setActiveSub(e);
+	if (prevSub !== undefined) {
+		link(e, prevSub, 0);
+	}
 	try {
 		e.fn();
 	} finally {
@@ -159,11 +158,10 @@ export function effectScope(fn: () => void): () => void {
 		subsTail: undefined,
 		flags: 0 satisfies ReactiveFlags.None,
 	};
-	const sub = activeSub;
-	if (sub !== undefined) {
-		link(e, sub, 0);
-	}
 	const prevSub = setActiveSub(e);
+	if (prevSub !== undefined) {
+		link(e, prevSub, 0);
+	}
 	try {
 		fn();
 	} finally {
