@@ -1,7 +1,5 @@
 import { createReactiveSystem, type Link, type ReactiveFlags, type ReactiveNode } from './system.js';
 
-let cycle = 0;
-
 interface EffectScope extends ReactiveNode { }
 
 interface Effect extends ReactiveNode {
@@ -51,6 +49,7 @@ const {
 	},
 });
 
+let cycle = 0;
 let batchDepth = 0;
 let notifyIndex = 0;
 let queuedEffectsLength = 0;
