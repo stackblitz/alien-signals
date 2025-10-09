@@ -1,4 +1,4 @@
-import { createReactiveSystem, type Link, type ReactiveFlags, type ReactiveNode } from './system.js';
+import { createReactiveSystem, type ReactiveFlags, type ReactiveNode } from './system.js';
 
 interface EffectScope extends ReactiveNode { }
 
@@ -329,7 +329,7 @@ function effectScopeOper(this: EffectScope): void {
 }
 
 function purgeDeps(sub: ReactiveNode) {
-	const depsTail = sub.depsTail as Link | undefined;
+	const depsTail = sub.depsTail;
 	let toRemove = depsTail !== undefined ? depsTail.nextDep : sub.deps;
 	while (toRemove !== undefined) {
 		toRemove = unlink(toRemove, sub);
