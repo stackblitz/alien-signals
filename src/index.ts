@@ -12,8 +12,8 @@ interface Computed<T = any> extends ReactiveNode {
 }
 
 interface Signal<T = any> extends ReactiveNode {
-	previousValue: T;
-	value: T;
+	currentValue: T;
+	pendingValue: T;
 }
 
 const queuedEffects: (Effect | EffectScope | undefined)[] = [];
@@ -28,7 +28,7 @@ const {
 		if ('getter' in signal) {
 			return updateComputed(signal);
 		} else {
-			return updateSignal(signal, signal.value);
+			return updateSignal(signal);
 		}
 	},
 	notify,
@@ -43,7 +43,7 @@ const {
 			}
 		} else if ('fn' in node) {
 			effectOper.call(node);
-		} else if (!('previousValue' in node)) {
+		} else if (!('currentValue' in node)) {
 			effectScopeOper.call(node);
 		}
 	},
@@ -108,8 +108,8 @@ export function signal<T>(initialValue?: T): {
 	(value: T | undefined): void;
 } {
 	return signalOper.bind({
-		previousValue: initialValue,
-		value: initialValue,
+		currentValue: initialValue,
+		pendingValue: initialValue,
 		subs: undefined,
 		subsTail: undefined,
 		flags: 1 satisfies ReactiveFlags.Mutable,
@@ -184,9 +184,9 @@ function updateComputed(c: Computed): boolean {
 	}
 }
 
-function updateSignal(s: Signal, value: any): boolean {
+function updateSignal(s: Signal): boolean {
 	s.flags = 1 satisfies ReactiveFlags.Mutable;
-	return s.previousValue !== (s.previousValue = value);
+	return s.currentValue !== (s.currentValue = s.pendingValue);
 }
 
 function notify(e: Effect | EffectScope) {
@@ -283,7 +283,7 @@ function computedOper<T>(this: Computed<T>): T {
 
 function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	if (value.length) {
-		if (this.value !== (this.value = value[0])) {
+		if (this.pendingValue !== (this.pendingValue = value[0])) {
 			this.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
@@ -294,9 +294,8 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 			}
 		}
 	} else {
-		const value = this.value;
 		if (this.flags & 16 satisfies ReactiveFlags.Dirty) {
-			if (updateSignal(this, value)) {
+			if (updateSignal(this)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
 					shallowPropagate(subs);
@@ -311,7 +310,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 			}
 			sub = sub.subs?.sub;
 		}
-		return value;
+		return this.currentValue;
 	}
 }
 
