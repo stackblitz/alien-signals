@@ -34,12 +34,10 @@ const {
 	notify,
 	unwatched(node: Signal | Computed | Effect | EffectScope) {
 		if ('getter' in node) {
-			let toRemove = node.deps;
-			if (toRemove !== undefined) {
+			if (node.depsTail !== undefined) {
+				node.depsTail = undefined;
 				node.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-				do {
-					toRemove = unlink(toRemove, node);
-				} while (toRemove !== undefined);
+				purgeDeps(node);
 			}
 		} else if ('fn' in node) {
 			effectOper.call(node);
