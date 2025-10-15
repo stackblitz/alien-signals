@@ -49,6 +49,7 @@
 	"scripts": {
 		"prepublishOnly": "npm run check && npm run test",
 		"check": "tsslint --project tsconfig.json",
+		"size": "node ./size.js",
 		"build": "node ./build.js",
 		"test": "npm run build && vitest run",
 		"bench": "npm run build && node --jitless --expose-gc benchs/propagate.mjs",
@@ -57,9 +58,10 @@
 	"devDependencies": {
 		"@tsslint/cli": "latest",
 		"@tsslint/config": "latest",
+		"jest-extended": "latest",
 		"mitata": "latest",
+		"rolldown": "latest",
 		"typescript": "latest",
-		"vitest": "latest",
-		"jest-extended": "latest"
+		"vitest": "latest"
 	}
 }
