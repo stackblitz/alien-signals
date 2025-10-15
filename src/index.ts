@@ -74,19 +74,19 @@ export function endBatch() {
 }
 
 export function isSignal(fn: () => void): boolean {
-	return fn.name === 'bound signalOper';
+	return fn.name === 'bound ' + signalOper.name;
 }
 
 export function isComputed(fn: () => void): boolean {
-	return fn.name === 'bound computedOper';
+	return fn.name === 'bound ' + computedOper.name;
 }
 
 export function isEffect(fn: () => void): boolean {
-	return fn.name === 'bound effectOper';
+	return fn.name === 'bound ' + effectOper.name;
 }
 
 export function isEffectScope(fn: () => void): boolean {
-	return fn.name === 'bound effectScopeOper';
+	return fn.name === 'bound ' + effectScopeOper.name;
 }
 
 export function signal<T>(): {
