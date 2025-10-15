@@ -305,15 +305,13 @@ function effectOper(this: Effect): void {
 }
 
 function effectScopeOper(this: EffectScope): void {
-	let dep = this.deps;
-	while (dep !== undefined) {
-		dep = unlink(dep, this);
-	}
+	this.depsTail = undefined;
+	this.flags = 0 satisfies ReactiveFlags.None;
+	purgeDeps(this);
 	const sub = this.subs;
 	if (sub !== undefined) {
 		unlink(sub);
 	}
-	this.flags = 0 satisfies ReactiveFlags.None;
 }
 
 function purgeDeps(sub: ReactiveNode) {
