@@ -24,25 +24,21 @@ const {
 	checkDirty,
 	shallowPropagate,
 } = createReactiveSystem({
-	update(signal: Signal | Computed): boolean {
-		if ('getter' in signal) {
-			return updateComputed(signal);
+	update(node: Signal | Computed): boolean {
+		if (node.depsTail !== undefined) {
+			return updateComputed(node as Computed);
 		} else {
-			return updateSignal(signal);
+			return updateSignal(node as Signal);
 		}
 	},
 	notify,
 	unwatched(node: Signal | Computed | Effect | EffectScope) {
-		if ('getter' in node) {
-			if (node.depsTail !== undefined) {
-				node.depsTail = undefined;
-				node.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-				purgeDeps(node);
-			}
-		} else if ('fn' in node) {
-			effectOper.call(node);
-		} else if (!('currentValue' in node)) {
+		if (!(node.flags & 1 satisfies ReactiveFlags.Mutable)) {
 			effectScopeOper.call(node);
+		} else if (node.depsTail !== undefined) {
+			node.depsTail = undefined;
+			node.flags = 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+			purgeDeps(node);
 		}
 	},
 });
@@ -121,7 +117,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: 0 satisfies ReactiveFlags.None,
+		flags: 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty,
 		getter: getter as (previousValue?: unknown) => unknown,
 	}) as () => T;
 }
@@ -263,14 +259,6 @@ function computedOper<T>(this: Computed<T>): T {
 				shallowPropagate(subs);
 			}
 		}
-	} else if (!flags) {
-		this.flags = 1 satisfies ReactiveFlags.Mutable;
-		const prevSub = setActiveSub(this);
-		try {
-			this.value = this.getter();
-		} finally {
-			activeSub = prevSub;
-		}
 	}
 	const sub = activeSub;
 	if (sub !== undefined) {
@@ -314,7 +302,6 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 
 function effectOper(this: Effect): void {
 	effectScopeOper.call(this);
-	this.flags = 0 satisfies ReactiveFlags.None;
 }
 
 function effectScopeOper(this: EffectScope): void {
@@ -326,12 +313,13 @@ function effectScopeOper(this: EffectScope): void {
 	if (sub !== undefined) {
 		unlink(sub);
 	}
+	this.flags = 0 satisfies ReactiveFlags.None;
 }
 
 function purgeDeps(sub: ReactiveNode) {
 	const depsTail = sub.depsTail;
-	let toRemove = depsTail !== undefined ? depsTail.nextDep : sub.deps;
-	while (toRemove !== undefined) {
-		toRemove = unlink(toRemove, sub);
+	let dep = depsTail !== undefined ? depsTail.nextDep : sub.deps;
+	while (dep !== undefined) {
+		dep = unlink(dep, sub);
 	}
 }
