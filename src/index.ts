@@ -1,7 +1,5 @@
 import { createReactiveSystem, type ReactiveFlags, type ReactiveNode } from './system.js';
 
-interface EffectScope extends ReactiveNode { }
-
 interface Effect extends ReactiveNode {
 	fn(): void;
 }
@@ -59,7 +57,7 @@ const {
 			queued[insertIndex] = left;
 		}
 	},
-	unwatched(node: Signal | Computed | Effect | EffectScope) {
+	unwatched(node) {
 		if (!(node.flags & 1 satisfies ReactiveFlags.Mutable)) {
 			effectScopeOper.call(node);
 		} else if (node.depsTail !== undefined) {
@@ -165,7 +163,7 @@ export function effect(fn: () => void): () => void {
 }
 
 export function effectScope(fn: () => void): () => void {
-	const e: EffectScope = {
+	const e: ReactiveNode = {
 		deps: undefined,
 		depsTail: undefined,
 		subs: undefined,
@@ -310,7 +308,7 @@ function effectOper(this: Effect): void {
 	effectScopeOper.call(this);
 }
 
-function effectScopeOper(this: EffectScope): void {
+function effectScopeOper(this: ReactiveNode): void {
 	this.depsTail = undefined;
 	this.flags = 0 satisfies ReactiveFlags.None;
 	purgeDeps(this);
