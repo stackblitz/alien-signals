@@ -36,15 +36,14 @@ const {
 		}
 	},
 	notify(effect: Effect) {
-		let flags = effect.flags;
 		let insertIndex = queuedLength;
 		let firstInsertedIndex = insertIndex;
 
 		do {
-			effect.flags = flags & ~(2 satisfies ReactiveFlags.Watching);
+			effect.flags &= ~(2 satisfies ReactiveFlags.Watching);
 			queued[insertIndex++] = effect;
 			effect = effect.subs?.sub as Effect;
-			if (effect === undefined || !((flags = effect.flags) & 2 satisfies ReactiveFlags.Watching)) {
+			if (effect === undefined || !(effect.flags & 2 satisfies ReactiveFlags.Watching)) {
 				break;
 			}
 		} while (true);
