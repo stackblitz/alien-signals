@@ -205,7 +205,7 @@ function updateSignal(s: Signal): boolean {
 }
 
 function run(e: Effect): void {
-	let flags = e.flags;
+	const flags = e.flags;
 	if (
 		flags & 16 satisfies ReactiveFlags.Dirty
 		|| (
