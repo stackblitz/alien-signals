@@ -22,7 +22,7 @@ let notifyIndex = 0;
 let queuedLength = 0;
 let activeSub: ReactiveNode | undefined;
 
-const queued: (Effect | EffectScope | undefined)[] = [];
+const queued: (Effect | undefined)[] = [];
 const {
 	link,
 	unlink,
@@ -37,16 +37,16 @@ const {
 			return updateSignal(node as Signal);
 		}
 	},
-	notify(effect: Effect | EffectScope) {
+	notify(effect: Effect) {
 		let flags = effect.flags;
 		let insertIndex = queuedLength;
 		let firstInsertedIndex = insertIndex;
 
 		do {
-			effect.flags = flags & ~(2 satisfies ReactiveFlags.Watching) | 64 /* Queued */;
+			effect.flags = flags & ~(2 satisfies ReactiveFlags.Watching);
 			queued[insertIndex++] = effect;
-			effect = effect.subs?.sub as Effect | EffectScope;
-			if (effect === undefined || (flags = effect.flags) & 64 /* Queued */) {
+			effect = effect.subs?.sub as Effect;
+			if (effect === undefined || !((flags = effect.flags) & 2 satisfies ReactiveFlags.Watching)) {
 				break;
 			}
 		} while (true);
@@ -204,15 +204,13 @@ function updateSignal(s: Signal): boolean {
 	return s.currentValue !== (s.currentValue = s.pendingValue);
 }
 
-function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
+function run(e: Effect): void {
+	let flags = e.flags;
 	if (
 		flags & 16 satisfies ReactiveFlags.Dirty
 		|| (
 			flags & 32 satisfies ReactiveFlags.Pending
-			&& (
-				checkDirty(e.deps!, e)
-				|| (e.flags = flags & ~(32 satisfies ReactiveFlags.Pending), false)
-			)
+			&& checkDirty(e.deps!, e)
 		)
 	) {
 		++cycle;
@@ -226,6 +224,8 @@ function run(e: Effect | EffectScope, flags: ReactiveFlags): void {
 			e.flags &= ~(4 satisfies ReactiveFlags.RecursedCheck);
 			purgeDeps(e);
 		}
+	} else {
+		e.flags = 2 satisfies ReactiveFlags.Watching;
 	}
 }
 
@@ -233,7 +233,7 @@ function flush(): void {
 	while (notifyIndex < queuedLength) {
 		const effect = queued[notifyIndex]!;
 		queued[notifyIndex++] = undefined;
-		run(effect, effect.flags &= ~(64 /* Queued */));
+		run(effect);
 	}
 	notifyIndex = 0;
 	queuedLength = 0;
