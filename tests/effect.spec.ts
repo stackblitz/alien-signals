@@ -81,64 +81,61 @@ test('should not trigger inner effect when resolve maybe dirty', () => {
 	a(2);
 });
 
-test('should trigger inner effects in sequence', () => {
+test('should notify inner effects in the same order as non-inner effects', () => {
 	const a = signal(0);
 	const b = signal(0);
 	const c = computed(() => a() - b());
-	const order: string[] = [];
+	const order1: string[] = [];
+	const order2: string[] = [];
+	const order3: string[] = [];
+
+	effect(() => {
+		order1.push('effect1');
+		a();
+	});
+	effect(() => {
+		order1.push('effect2');
+		a();
+		b();
+	});
 
 	effect(() => {
 		c();
-
 		effect(() => {
-			order.push('first inner');
+			order2.push('effect1');
 			a();
 		});
-
 		effect(() => {
-			order.push('last inner');
+			order2.push('effect2');
 			a();
 			b();
 		});
 	});
-
-	order.length = 0;
-
-	startBatch();
-	b(1);
-	a(1);
-	endBatch();
-
-	expect(order).toEqual(['first inner', 'last inner']);
-});
-
-test('should trigger inner effects in sequence in effect scope', () => {
-	const a = signal(0);
-	const b = signal(0);
-	const order: string[] = [];
 
 	effectScope(() => {
-
 		effect(() => {
-			order.push('first inner');
+			order3.push('effect1');
 			a();
 		});
-
 		effect(() => {
-			order.push('last inner');
+			order3.push('effect2');
 			a();
 			b();
 		});
 	});
 
-	order.length = 0;
+	order1.length = 0;
+	order2.length = 0;
+	order3.length = 0;
 
 	startBatch();
 	b(1);
 	a(1);
 	endBatch();
 
-	expect(order).toEqual(['first inner', 'last inner']);
+	expect(order1).toEqual(['effect2', 'effect1']);
+	expect(order2).toEqual(order1);
+	expect(order3).toEqual(order1);
 });
 
 test('should custom effect support batch', () => {
