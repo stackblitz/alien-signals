@@ -54,5 +54,13 @@ cjsProgram.emit(undefined, (fileName, text) => {
 esmProgram.emit(undefined, (fileName, text) => {
 	fileName = fileName.slice(0, -'.js'.length) + '.mjs';
 	text = text.replace(/\.\/system\.js/g, './system.mjs');
+	text = text.replace(
+		`var ReactiveFlags;\n(function (ReactiveFlags)`,
+		`var ReactiveFlags = /*#__PURE__*/(function (ReactiveFlags = {})`,
+	);
+	text = text.replace(
+		`})(ReactiveFlags || (ReactiveFlags = {}));`,
+		`    return ReactiveFlags;\n})();`,
+	)
 	ts.sys.writeFile(fileName, text);
 });
