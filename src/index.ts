@@ -16,6 +16,12 @@ interface Signal<T = any> extends ReactiveNode {
 	pendingValue: T;
 }
 
+let cycle = 0;
+let batchDepth = 0;
+let notifyIndex = 0;
+let queuedLength = 0;
+let activeSub: ReactiveNode | undefined;
+
 const queued: (Effect | EffectScope | undefined)[] = [];
 const {
 	link,
@@ -63,12 +69,6 @@ const {
 		}
 	},
 });
-
-let cycle = 0;
-let batchDepth = 0;
-let notifyIndex = 0;
-let queuedLength = 0;
-let activeSub: ReactiveNode | undefined;
 
 export function getActiveSub(): ReactiveNode | undefined {
 	return activeSub;
