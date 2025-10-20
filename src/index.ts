@@ -47,10 +47,10 @@ const {
 
 		queuedLength = insertIndex;
 
-		while (firstInsertedIndex < insertIndex - 1) {
+		while (firstInsertedIndex < insertIndex--) {
 			const left = queued[firstInsertedIndex];
-			queued[firstInsertedIndex++] = queued[insertIndex - 1];
-			queued[--insertIndex] = left;
+			queued[firstInsertedIndex++] = queued[insertIndex];
+			queued[insertIndex] = left;
 		}
 	},
 	unwatched(node: Signal | Computed | Effect | EffectScope) {
