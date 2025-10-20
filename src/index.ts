@@ -50,7 +50,7 @@ const {
 
 		queuedLength = insertIndex;
 
-		while (firstInsertedIndex < insertIndex--) {
+		while (firstInsertedIndex < --insertIndex) {
 			const left = queued[firstInsertedIndex];
 			queued[firstInsertedIndex++] = queued[insertIndex];
 			queued[insertIndex] = left;
