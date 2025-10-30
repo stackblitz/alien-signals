@@ -5,7 +5,7 @@ export interface ReactiveNode {
 	depsTail?: Link;
 	subs?: Link;
 	subsTail?: Link;
-	flags: ReactiveFlags;
+	flags: Flags;
 }
 
 export interface Link {
@@ -36,6 +36,17 @@ export const ReactiveFlags = {
 
 // export overrided type (for backward compatibility)
 export type ReactiveFlags = Flags;
+
+// export namespace for supporting satisfies (for backward compatibility)
+export namespace ReactiveFlags {
+  export type None = Flags.None;
+  export type Mutable = Flags.Mutable;
+  export type Watching = Flags.Watching;
+  export type RecursedCheck = Flags.RecursedCheck;
+  export type Recursed = Flags.Recursed;
+  export type Dirty = Flags.Dirty;
+  export type Pending = Flags.Pending;
+}
 
 export function createReactiveSystem({
 	update,
