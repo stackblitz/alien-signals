@@ -1,9 +1,11 @@
+import { ReactiveFlags as _ReactiveFlags } from './flags.js';
+
 export interface ReactiveNode {
 	deps?: Link;
 	depsTail?: Link;
 	subs?: Link;
 	subsTail?: Link;
-	flags: ReactiveFlags;
+	flags: _ReactiveFlags;
 }
 
 export interface Link {
@@ -21,15 +23,19 @@ interface Stack<T> {
 	prev: Stack<T> | undefined;
 }
 
-export enum ReactiveFlags {
-	None = 0,
-	Mutable = 1 << 0,
-	Watching = 1 << 1,
-	RecursedCheck = 1 << 2,
-	Recursed = 1 << 3,
-	Dirty = 1 << 4,
-	Pending = 1 << 5,
-}
+// export js runtime object
+export const ReactiveFlags = {
+	None: _ReactiveFlags.None,
+	Mutable: _ReactiveFlags.Mutable,
+	Watching: _ReactiveFlags.Watching,
+	RecursedCheck: _ReactiveFlags.RecursedCheck,
+	Recursed: _ReactiveFlags.Recursed,
+	Dirty: _ReactiveFlags.Dirty,
+	Pending: _ReactiveFlags.Pending,
+} as const satisfies Record<keyof typeof _ReactiveFlags, _ReactiveFlags>;
+
+// export overrided type (for backward compatibility)
+export type ReactiveFlags = _ReactiveFlags;
 
 export function createReactiveSystem({
 	update,
@@ -127,24 +133,24 @@ export function createReactiveSystem({
 			const sub = link.sub;
 			let flags = sub.flags;
 
-			if (!(flags & 60 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending)) {
-				sub.flags = flags | 32 satisfies ReactiveFlags.Pending;
-			} else if (!(flags & 12 as ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed)) {
-				flags = 0 satisfies ReactiveFlags.None;
-			} else if (!(flags & 4 satisfies ReactiveFlags.RecursedCheck)) {
-				sub.flags = (flags & ~(8 satisfies ReactiveFlags.Recursed)) | 32 satisfies ReactiveFlags.Pending;
-			} else if (!(flags & 48 as ReactiveFlags.Dirty | ReactiveFlags.Pending) && isValidLink(link, sub)) {
-				sub.flags = flags | 40 as ReactiveFlags.Recursed | ReactiveFlags.Pending;
-				flags &= 1 satisfies ReactiveFlags.Mutable;
+			if (!(flags & (_ReactiveFlags.RecursedCheck | _ReactiveFlags.Recursed | _ReactiveFlags.Dirty | _ReactiveFlags.Pending))) {
+				sub.flags = flags | _ReactiveFlags.Pending;
+			} else if (!(flags & (_ReactiveFlags.RecursedCheck | _ReactiveFlags.Recursed))) {
+				flags = _ReactiveFlags.None;
+			} else if (!(flags & _ReactiveFlags.RecursedCheck)) {
+				sub.flags = (flags & ~_ReactiveFlags.Recursed) | _ReactiveFlags.Pending;
+			} else if (!(flags & (_ReactiveFlags.Dirty | _ReactiveFlags.Pending)) && isValidLink(link, sub)) {
+				sub.flags = flags | (_ReactiveFlags.Recursed | _ReactiveFlags.Pending);
+				flags &= _ReactiveFlags.Mutable;
 			} else {
-				flags = 0 satisfies ReactiveFlags.None;
+				flags = _ReactiveFlags.None;
 			}
 
-			if (flags & 2 satisfies ReactiveFlags.Watching) {
+			if (flags & _ReactiveFlags.Watching) {
 				notify(sub);
 			}
 
-			if (flags & 1 satisfies ReactiveFlags.Mutable) {
+			if (flags & _ReactiveFlags.Mutable) {
 				const subSubs = sub.subs;
 				if (subSubs !== undefined) {
 					const nextSub = (link = subSubs).nextSub;
@@ -183,9 +189,9 @@ export function createReactiveSystem({
 			const dep = link.dep;
 			const flags = dep.flags;
 
-			if (sub.flags & 16 satisfies ReactiveFlags.Dirty) {
+			if (sub.flags & _ReactiveFlags.Dirty) {
 				dirty = true;
-			} else if ((flags & 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) === 17 as ReactiveFlags.Mutable | ReactiveFlags.Dirty) {
+			} else if ((flags & (_ReactiveFlags.Mutable | _ReactiveFlags.Dirty)) === (_ReactiveFlags.Mutable | _ReactiveFlags.Dirty)) {
 				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
@@ -193,7 +199,7 @@ export function createReactiveSystem({
 					}
 					dirty = true;
 				}
-			} else if ((flags & 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) === 33 as ReactiveFlags.Mutable | ReactiveFlags.Pending) {
+			} else if ((flags & (_ReactiveFlags.Mutable | _ReactiveFlags.Pending)) === (_ReactiveFlags.Mutable | _ReactiveFlags.Pending)) {
 				if (link.nextSub !== undefined || link.prevSub !== undefined) {
 					stack = { value: link, prev: stack };
 				}
@@ -230,7 +236,7 @@ export function createReactiveSystem({
 					}
 					dirty = false;
 				} else {
-					sub.flags &= ~(32 satisfies ReactiveFlags.Pending);
+					sub.flags &= ~_ReactiveFlags.Pending;
 				}
 				sub = link.sub;
 				const nextDep = link.nextDep;
@@ -248,9 +254,9 @@ export function createReactiveSystem({
 		do {
 			const sub = link.sub;
 			const flags = sub.flags;
-			if ((flags & 48 as ReactiveFlags.Pending | ReactiveFlags.Dirty) === 32 satisfies ReactiveFlags.Pending) {
-				sub.flags = flags | 16 satisfies ReactiveFlags.Dirty;
-				if (flags & 2 satisfies ReactiveFlags.Watching) {
+			if ((flags & (_ReactiveFlags.Pending | _ReactiveFlags.Dirty)) === _ReactiveFlags.Pending) {
+				sub.flags = flags | _ReactiveFlags.Dirty;
+				if (flags & _ReactiveFlags.Watching) {
 					notify(sub);
 				}
 			}
