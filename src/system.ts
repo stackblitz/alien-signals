@@ -1,4 +1,4 @@
-import { ReactiveFlags as _ReactiveFlags } from './flags.js';
+import { Flags } from './flags.js';
 
 export interface ReactiveNode {
 	deps?: Link;
@@ -25,17 +25,17 @@ interface Stack<T> {
 
 // export js runtime object
 export const ReactiveFlags = {
-	None: _ReactiveFlags.None,
-	Mutable: _ReactiveFlags.Mutable,
-	Watching: _ReactiveFlags.Watching,
-	RecursedCheck: _ReactiveFlags.RecursedCheck,
-	Recursed: _ReactiveFlags.Recursed,
-	Dirty: _ReactiveFlags.Dirty,
-	Pending: _ReactiveFlags.Pending,
-} as const satisfies Record<keyof typeof _ReactiveFlags, _ReactiveFlags>;
+	None: Flags.None,
+	Mutable: Flags.Mutable,
+	Watching: Flags.Watching,
+	RecursedCheck: Flags.RecursedCheck,
+	Recursed: Flags.Recursed,
+	Dirty: Flags.Dirty,
+	Pending: Flags.Pending,
+} as const satisfies Record<keyof typeof Flags, Flags>;
 
 // export overrided type (for backward compatibility)
-export type ReactiveFlags = _ReactiveFlags;
+export type ReactiveFlags = Flags;
 
 export function createReactiveSystem({
 	update,
@@ -133,24 +133,24 @@ export function createReactiveSystem({
 			const sub = link.sub;
 			let flags = sub.flags;
 
-			if (!(flags & (_ReactiveFlags.RecursedCheck | _ReactiveFlags.Recursed | _ReactiveFlags.Dirty | _ReactiveFlags.Pending))) {
-				sub.flags = flags | _ReactiveFlags.Pending;
-			} else if (!(flags & (_ReactiveFlags.RecursedCheck | _ReactiveFlags.Recursed))) {
-				flags = _ReactiveFlags.None;
-			} else if (!(flags & _ReactiveFlags.RecursedCheck)) {
-				sub.flags = (flags & ~_ReactiveFlags.Recursed) | _ReactiveFlags.Pending;
-			} else if (!(flags & (_ReactiveFlags.Dirty | _ReactiveFlags.Pending)) && isValidLink(link, sub)) {
-				sub.flags = flags | (_ReactiveFlags.Recursed | _ReactiveFlags.Pending);
-				flags &= _ReactiveFlags.Mutable;
+			if (!(flags & (Flags.RecursedCheck | Flags.Recursed | Flags.Dirty | Flags.Pending))) {
+				sub.flags = flags | Flags.Pending;
+			} else if (!(flags & (Flags.RecursedCheck | Flags.Recursed))) {
+				flags = Flags.None;
+			} else if (!(flags & Flags.RecursedCheck)) {
+				sub.flags = (flags & ~Flags.Recursed) | Flags.Pending;
+			} else if (!(flags & (Flags.Dirty | Flags.Pending)) && isValidLink(link, sub)) {
+				sub.flags = flags | (Flags.Recursed | Flags.Pending);
+				flags &= Flags.Mutable;
 			} else {
-				flags = _ReactiveFlags.None;
+				flags = Flags.None;
 			}
 
-			if (flags & _ReactiveFlags.Watching) {
+			if (flags & Flags.Watching) {
 				notify(sub);
 			}
 
-			if (flags & _ReactiveFlags.Mutable) {
+			if (flags & Flags.Mutable) {
 				const subSubs = sub.subs;
 				if (subSubs !== undefined) {
 					const nextSub = (link = subSubs).nextSub;
@@ -189,9 +189,9 @@ export function createReactiveSystem({
 			const dep = link.dep;
 			const flags = dep.flags;
 
-			if (sub.flags & _ReactiveFlags.Dirty) {
+			if (sub.flags & Flags.Dirty) {
 				dirty = true;
-			} else if ((flags & (_ReactiveFlags.Mutable | _ReactiveFlags.Dirty)) === (_ReactiveFlags.Mutable | _ReactiveFlags.Dirty)) {
+			} else if ((flags & (Flags.Mutable | Flags.Dirty)) === (Flags.Mutable | Flags.Dirty)) {
 				if (update(dep)) {
 					const subs = dep.subs!;
 					if (subs.nextSub !== undefined) {
@@ -199,7 +199,7 @@ export function createReactiveSystem({
 					}
 					dirty = true;
 				}
-			} else if ((flags & (_ReactiveFlags.Mutable | _ReactiveFlags.Pending)) === (_ReactiveFlags.Mutable | _ReactiveFlags.Pending)) {
+			} else if ((flags & (Flags.Mutable | Flags.Pending)) === (Flags.Mutable | Flags.Pending)) {
 				if (link.nextSub !== undefined || link.prevSub !== undefined) {
 					stack = { value: link, prev: stack };
 				}
@@ -236,7 +236,7 @@ export function createReactiveSystem({
 					}
 					dirty = false;
 				} else {
-					sub.flags &= ~_ReactiveFlags.Pending;
+					sub.flags &= ~Flags.Pending;
 				}
 				sub = link.sub;
 				const nextDep = link.nextDep;
@@ -254,9 +254,9 @@ export function createReactiveSystem({
 		do {
 			const sub = link.sub;
 			const flags = sub.flags;
-			if ((flags & (_ReactiveFlags.Pending | _ReactiveFlags.Dirty)) === _ReactiveFlags.Pending) {
-				sub.flags = flags | _ReactiveFlags.Dirty;
-				if (flags & _ReactiveFlags.Watching) {
+			if ((flags & (Flags.Pending | Flags.Dirty)) === Flags.Pending) {
+				sub.flags = flags | Flags.Dirty;
+				if (flags & Flags.Watching) {
 					notify(sub);
 				}
 			}

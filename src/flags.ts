@@ -1,5 +1,5 @@
 // inline enums if disabled isolatedModules (type only)
-export const enum ReactiveFlags {
+export const enum Flags {
 	None = 0,
 	Mutable = 1 << 0,
 	Watching = 1 << 1,
