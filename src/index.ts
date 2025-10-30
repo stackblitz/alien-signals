@@ -1,4 +1,4 @@
-import { Flags } from './flags.js';
+import { ReactiveFlags as Flags } from './flags.js';
 import { createReactiveSystem, type ReactiveNode } from './system.js';
 
 interface Effect extends ReactiveNode {

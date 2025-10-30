@@ -1,4 +1,4 @@
-import { Flags } from './flags.js';
+import { ReactiveFlags as Flags } from './flags.js';
 
 export interface ReactiveNode {
 	deps?: Link;
