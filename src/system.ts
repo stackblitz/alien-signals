@@ -5,7 +5,7 @@ export interface ReactiveNode {
 	depsTail?: Link;
 	subs?: Link;
 	subsTail?: Link;
-	flags: Flags;
+	flags: ReactiveFlags;
 }
 
 export interface Link {
