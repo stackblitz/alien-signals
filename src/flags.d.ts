@@ -1,4 +1,3 @@
-// inline enums if disabled isolatedModules (type only)
 export const enum ReactiveFlags {
 	None = 0,
 	Mutable = 1 << 0,
