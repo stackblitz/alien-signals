@@ -28,9 +28,15 @@ const typesProgram = ts.createProgram({
 const readFile = ts.sys.readFile;
 ts.sys.readFile = (fileName) => {
 	if (path.basename(fileName) === 'system.ts') {
-		return readFile(fileName)
-			.replace(`export const enum ReactiveFlags {`, `export const ReactiveFlags = {`)
-			.replace(/(\w+) = (\d+),/g, `$1: $2,`);
+		return  `export const ReactiveFlags2 = {
+	None: 0,
+	Mutable: 1,
+	Watching: 2,
+	RecursedCheck: 4,
+	Recursed: 8,
+	Dirty: 16,
+	Pending: 32,
+};\n` + readFile(fileName);
 	}
 	return readFile(fileName);
 }
@@ -60,10 +66,12 @@ typesProgram.emit(undefined, ts.sys.writeFile);
 cjsProgram.emit(undefined, (fileName, text) => {
 	fileName = fileName.slice(0, -'.js'.length) + '.cjs';
 	text = text.replace(/\.\/system\.js/g, './system.cjs');
+	text = text.replace(/ReactiveFlags2/g, 'ReactiveFlags');
 	ts.sys.writeFile(fileName, text);
 });
 esmProgram.emit(undefined, (fileName, text) => {
 	fileName = fileName.slice(0, -'.js'.length) + '.mjs';
 	text = text.replace(/\.\/system\.js/g, './system.mjs');
+	text = text.replace(/ReactiveFlags2/g, 'ReactiveFlags');
 	ts.sys.writeFile(fileName, text);
 });
