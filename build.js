@@ -25,22 +25,6 @@ const typesProgram = ts.createProgram({
 	},
 });
 
-const readFile = ts.sys.readFile;
-ts.sys.readFile = (fileName) => {
-	if (path.basename(fileName) === 'system.ts') {
-		return  `export const ReactiveFlags2 = {
-	None: 0,
-	Mutable: 1,
-	Watching: 2,
-	RecursedCheck: 4,
-	Recursed: 8,
-	Dirty: 16,
-	Pending: 32,
-};\n` + readFile(fileName);
-	}
-	return readFile(fileName);
-}
-
 const cjsProgram = ts.createProgram({
 	rootNames: config.fileNames,
 	configFileParsingDiagnostics: config.errors,
@@ -62,16 +46,30 @@ const esmProgram = ts.createProgram({
 	},
 });
 
+const iifeRe = /(export\s*)?var\s+([A-Za-z_$][\w$]*)\s*;\s*\(\s*function\s*\(\s*\2\s*\)\s*\{\s*([\s\S]*?)\s*\}\s*\)\s*\(\s*\2\s*\|\|\s*\(\s*(?:exports\.\2\s*=\s*)?\2\s*=\s*\{\}\s*\)\s*\)\s*;?/g;
+const entryRe = /\[\s*(['"])([^'"]+)\1\s*\]\s*=\s*([^\]]+?)\s*\]/g;
+
+function transformEnumsToConst(js) {
+	return js.replace(iifeRe, (whole, esmExport, name, body) => {
+		const props = Array.from(body.matchAll(entryRe), ([, , k, v]) => `    ${k}: ${v},`)
+		if (!props.length)
+			return whole;
+
+		const left = esmExport ? `export const ${name}` : `exports.${name}`;
+		return `${left} = {\n${props.join("\n")}\n};`;
+	});
+}
+
 typesProgram.emit(undefined, ts.sys.writeFile);
 cjsProgram.emit(undefined, (fileName, text) => {
 	fileName = fileName.slice(0, -'.js'.length) + '.cjs';
 	text = text.replace(/\.\/system\.js/g, './system.cjs');
-	text = text.replace(/ReactiveFlags2/g, 'ReactiveFlags');
+	text = transformEnumsToConst(text);
 	ts.sys.writeFile(fileName, text);
 });
 esmProgram.emit(undefined, (fileName, text) => {
 	fileName = fileName.slice(0, -'.js'.length) + '.mjs';
 	text = text.replace(/\.\/system\.js/g, './system.mjs');
-	text = text.replace(/ReactiveFlags2/g, 'ReactiveFlags');
+	text = transformEnumsToConst(text);
 	ts.sys.writeFile(fileName, text);
 });
