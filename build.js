@@ -24,6 +24,17 @@ const typesProgram = ts.createProgram({
 		emitDeclarationOnly: true,
 	},
 });
+
+const readFile = ts.sys.readFile;
+ts.sys.readFile = (fileName) => {
+	if (path.basename(fileName) === 'system.ts') {
+		return readFile(fileName)
+			.replace(`export const enum ReactiveFlags {`, `export const ReactiveFlags = {`)
+			.replace(/(\w+) = (\d+),/g, `$1: $2,`);
+	}
+	return readFile(fileName);
+}
+
 const cjsProgram = ts.createProgram({
 	rootNames: config.fileNames,
 	configFileParsingDiagnostics: config.errors,
