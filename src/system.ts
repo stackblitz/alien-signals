@@ -250,7 +250,7 @@ export function createReactiveSystem({
 			const flags = sub.flags;
 			if ((flags & (ReactiveFlags.Pending | ReactiveFlags.Dirty)) === ReactiveFlags.Pending) {
 				sub.flags = flags | ReactiveFlags.Dirty;
-				if (flags & ReactiveFlags.Watching) {
+				if ((flags & (ReactiveFlags.Watching | ReactiveFlags.RecursedCheck)) === ReactiveFlags.Watching) {
 					notify(sub);
 				}
 			}

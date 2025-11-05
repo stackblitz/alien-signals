@@ -147,7 +147,7 @@ export function effect(fn: () => void): () => void {
 		subsTail: undefined,
 		deps: undefined,
 		depsTail: undefined,
-		flags: ReactiveFlags.Watching,
+		flags: ReactiveFlags.Watching | ReactiveFlags.RecursedCheck,
 	};
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
@@ -157,6 +157,7 @@ export function effect(fn: () => void): () => void {
 		e.fn();
 	} finally {
 		activeSub = prevSub;
+		e.flags &= ~ReactiveFlags.RecursedCheck;
 	}
 	return effectOper.bind(e);
 }
@@ -255,12 +256,13 @@ function computedOper<T>(this: Computed<T>): T {
 			}
 		}
 	} else if (!flags) {
-		this.flags = ReactiveFlags.Mutable;
+		this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(this);
 		try {
 			this.value = this.getter();
 		} finally {
 			activeSub = prevSub;
+			this.flags &= ~ReactiveFlags.RecursedCheck;
 		}
 	}
 	const sub = activeSub;

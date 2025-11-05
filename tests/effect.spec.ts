@@ -250,3 +250,24 @@ test('should handle flags are indirectly updated during checkDirty', () => {
 	a(true);
 	expect(triggers).toBe(2);
 });
+
+test('should handle effect recursion for the first execution', () => {
+	const src1 = signal(0);
+	const src2 = signal(0);
+
+	let triggers1 = 0;
+	let triggers2 = 0;
+
+	effect(() => {
+		triggers1++;
+		src1(Math.min(src1() + 1, 5));
+	});
+	effect(() => {
+		triggers2++;
+		src2(Math.min(src2() + 1, 5));
+		src2();
+	});
+
+	expect(triggers1).toBe(1);
+	expect(triggers2).toBe(1);
+});
