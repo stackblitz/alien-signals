@@ -71,7 +71,7 @@ export function getActiveSub(): ReactiveNode | undefined {
 	return activeSub;
 }
 
-export function setActiveSub(sub: ReactiveNode | undefined) {
+export function setActiveSub(sub?: ReactiveNode) {
 	const prevSub = activeSub;
 	activeSub = sub;
 	return prevSub;

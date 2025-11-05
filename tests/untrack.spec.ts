@@ -7,7 +7,7 @@ test('should pause tracking in computed', () => {
 	let computedTriggerTimes = 0;
 	const c = computed(() => {
 		computedTriggerTimes++;
-		const currentSub = setActiveSub(undefined);
+		const currentSub = setActiveSub();
 		const value = src();
 		setActiveSub(currentSub);
 		return value;
@@ -29,7 +29,7 @@ test('should pause tracking in effect', () => {
 	effect(() => {
 		effectTriggerTimes++;
 		if (is()) {
-			const currentSub = setActiveSub(undefined);
+			const currentSub = setActiveSub();
 			src();
 			setActiveSub(currentSub);
 		}
@@ -63,7 +63,7 @@ test('should pause tracking in effect scope', () => {
 	effectScope(() => {
 		effect(() => {
 			effectTriggerTimes++;
-			const currentSub = setActiveSub(undefined);
+			const currentSub = setActiveSub();
 			src();
 			setActiveSub(currentSub);
 		});

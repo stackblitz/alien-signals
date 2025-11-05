@@ -88,7 +88,7 @@ function reaction<T>(
 }
 
 function untracked<T>(callback: () => T): T {
-	const currentSub = setActiveSub(undefined);
+	const currentSub = setActiveSub();
 	try {
 		return callback();
 	} finally {

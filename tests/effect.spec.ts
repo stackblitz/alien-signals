@@ -184,7 +184,7 @@ test('should duplicate subscribers do not affect the notify order', () => {
 
 	effect(() => {
 		order.push('a');
-		const currentSub = setActiveSub(undefined);
+		const currentSub = setActiveSub();
 		const isOne = src2() === 1;
 		setActiveSub(currentSub);
 		if (isOne) {
