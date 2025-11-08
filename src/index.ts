@@ -193,15 +193,15 @@ export function trigger(fn: () => void) {
 		fn();
 	} finally {
 		activeSub = prevSub;
-		do {
-			const link = sub.deps!;
+		while (sub.deps !== undefined) {
+			const link = sub.deps;
 			const dep = link.dep;
 			unlink(link, sub);
 			if (dep.subs !== undefined) {
 				propagate(dep.subs);
 				shallowPropagate(dep.subs);
 			}
-		} while (sub.deps !== undefined);
+		}
 		if (!batchDepth) {
 			flush();
 		}

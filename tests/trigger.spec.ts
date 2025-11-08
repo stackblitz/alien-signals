@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest';
 import { computed, effect, trigger, signal } from '../src';
 
+test('should not throw when triggering with no dependencies', () => {
+	trigger(() => { });
+});
+
 test('should trigger updates for dependent computed signals', () => {
 	const arr = signal<number[]>([]);
 	const length = computed(() => arr().length);
