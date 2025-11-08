@@ -96,6 +96,47 @@ stopScope();
 count(3); // No console output
 ```
 
+#### Manual Triggering
+
+The `trigger()` function allows you to manually trigger updates for downstream dependencies when you've directly mutated a signal's value without using the signal setter:
+
+```ts
+import { signal, computed, trigger } from 'alien-signals';
+
+const arr = signal<number[]>([]);
+const length = computed(() => arr().length);
+
+console.log(length()); // 0
+
+// Direct mutation doesn't automatically trigger updates
+arr().push(1);
+console.log(length()); // Still 0
+
+// Manually trigger updates
+trigger(arr);
+console.log(length()); // 1
+```
+
+You can also trigger multiple signals at once:
+
+```ts
+import { signal, computed, trigger } from 'alien-signals';
+
+const src1 = signal<number[]>([]);
+const src2 = signal<number[]>([]);
+const total = computed(() => src1().length + src2().length);
+
+src1().push(1);
+src2().push(2);
+
+trigger(() => {
+  src1();
+  src2();
+});
+
+console.log(total()); // 2
+```
+
 #### Creating Your Own Surface API
 
 You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to build your own signal API. For implementation examples, see:

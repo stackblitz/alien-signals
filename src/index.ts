@@ -182,6 +182,32 @@ export function effectScope(fn: () => void): () => void {
 	return effectScopeOper.bind(e);
 }
 
+export function trigger(fn: () => void) {
+	const sub: ReactiveNode = {
+		deps: undefined,
+		depsTail: undefined,
+		flags: ReactiveFlags.Watching,
+	};
+	const prevSub = setActiveSub(sub);
+	try {
+		fn();
+	} finally {
+		setActiveSub(prevSub);
+		do {
+			const link = sub.deps!;
+			const dep = link.dep;
+			unlink(link, sub);
+			if (dep.subs !== undefined) {
+				propagate(dep.subs);
+				shallowPropagate(dep.subs);
+			}
+		} while (sub.deps !== undefined);
+		if (!batchDepth) {
+			flush();
+		}
+	}
+}
+
 function updateComputed(c: Computed): boolean {
 	++cycle;
 	c.depsTail = undefined;
