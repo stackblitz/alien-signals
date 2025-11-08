@@ -192,7 +192,7 @@ export function trigger(fn: () => void) {
 	try {
 		fn();
 	} finally {
-		setActiveSub(prevSub);
+		activeSub = prevSub;
 		do {
 			const link = sub.deps!;
 			const dep = link.dep;
