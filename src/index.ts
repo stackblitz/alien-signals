@@ -1,15 +1,15 @@
 import { createReactiveSystem, ReactiveFlags, type ReactiveNode } from './system.js';
 
-interface Effect extends ReactiveNode {
+interface EffectNode extends ReactiveNode {
 	fn(): void;
 }
 
-interface Computed<T = any> extends ReactiveNode {
+interface ComputedNode<T = any> extends ReactiveNode {
 	value: T | undefined;
 	getter: (previousValue?: T) => T;
 }
 
-interface Signal<T = any> extends ReactiveNode {
+interface SignalNode<T = any> extends ReactiveNode {
 	currentValue: T;
 	pendingValue: T;
 }
@@ -20,7 +20,7 @@ let notifyIndex = 0;
 let queuedLength = 0;
 let activeSub: ReactiveNode | undefined;
 
-const queued: (Effect | undefined)[] = [];
+const queued: (EffectNode | undefined)[] = [];
 const {
 	link,
 	unlink,
@@ -28,21 +28,21 @@ const {
 	checkDirty,
 	shallowPropagate,
 } = createReactiveSystem({
-	update(node: Signal | Computed): boolean {
+	update(node: SignalNode | ComputedNode): boolean {
 		if (node.depsTail !== undefined) {
-			return updateComputed(node as Computed);
+			return updateComputed(node as ComputedNode);
 		} else {
-			return updateSignal(node as Signal);
+			return updateSignal(node as SignalNode);
 		}
 	},
-	notify(effect: Effect) {
+	notify(effect: EffectNode) {
 		let insertIndex = queuedLength;
 		let firstInsertedIndex = insertIndex;
 
 		do {
 			effect.flags &= ~ReactiveFlags.Watching;
 			queued[insertIndex++] = effect;
-			effect = effect.subs?.sub as Effect;
+			effect = effect.subs?.sub as EffectNode;
 			if (effect === undefined || !(effect.flags & ReactiveFlags.Watching)) {
 				break;
 			}
@@ -141,7 +141,7 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 }
 
 export function effect(fn: () => void): () => void {
-	const e: Effect = {
+	const e: EffectNode = {
 		fn,
 		subs: undefined,
 		subsTail: undefined,
@@ -208,7 +208,7 @@ export function trigger(fn: () => void) {
 	}
 }
 
-function updateComputed(c: Computed): boolean {
+function updateComputed(c: ComputedNode): boolean {
 	++cycle;
 	c.depsTail = undefined;
 	c.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
@@ -223,12 +223,12 @@ function updateComputed(c: Computed): boolean {
 	}
 }
 
-function updateSignal(s: Signal): boolean {
+function updateSignal(s: SignalNode): boolean {
 	s.flags = ReactiveFlags.Mutable;
 	return s.currentValue !== (s.currentValue = s.pendingValue);
 }
 
-function run(e: Effect): void {
+function run(e: EffectNode): void {
 	const flags = e.flags;
 	if (
 		flags & ReactiveFlags.Dirty
@@ -242,7 +242,7 @@ function run(e: Effect): void {
 		e.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(e);
 		try {
-			(e as Effect).fn();
+			(e as EffectNode).fn();
 		} finally {
 			activeSub = prevSub;
 			e.flags &= ~ReactiveFlags.RecursedCheck;
@@ -263,7 +263,7 @@ function flush(): void {
 	queuedLength = 0;
 }
 
-function computedOper<T>(this: Computed<T>): T {
+function computedOper<T>(this: ComputedNode<T>): T {
 	const flags = this.flags;
 	if (
 		flags & ReactiveFlags.Dirty
@@ -298,7 +298,7 @@ function computedOper<T>(this: Computed<T>): T {
 	return this.value!;
 }
 
-function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
+function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 	if (value.length) {
 		if (this.pendingValue !== (this.pendingValue = value[0])) {
 			this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
@@ -331,7 +331,7 @@ function signalOper<T>(this: Signal<T>, ...value: [T]): T | void {
 	}
 }
 
-function effectOper(this: Effect): void {
+function effectOper(this: EffectNode): void {
 	effectScopeOper.call(this);
 }
 
