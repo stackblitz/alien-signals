@@ -48,3 +48,17 @@ test('should trigger effect once', () => {
 	});
 	expect(triggers).toBe(2);
 });
+
+test('should not notify the trigger function sub', () => {
+	const src1 = signal<number[]>([]);
+	const src2 = computed(() => src1());
+
+	effect(() => {
+		src1();
+		src2();
+	});
+	trigger(() => {
+		src1();
+		src2();
+	});
+});

@@ -193,13 +193,15 @@ export function trigger(fn: () => void) {
 		fn();
 	} finally {
 		activeSub = prevSub;
-		while (sub.deps !== undefined) {
-			const link = sub.deps;
+		let link = sub.deps;
+		while (link !== undefined) {
 			const dep = link.dep;
-			unlink(link, sub);
-			if (dep.subs !== undefined) {
-				propagate(dep.subs);
-				shallowPropagate(dep.subs);
+			link = unlink(link, sub);
+			const subs = dep.subs;
+			if (subs !== undefined) {
+				sub.flags = ReactiveFlags.None;
+				propagate(subs);
+				shallowPropagate(subs);
 			}
 		}
 		if (!batchDepth) {
