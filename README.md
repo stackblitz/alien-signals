@@ -31,6 +31,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 ## Other Language Implementations
 
 - **Dart:** [medz/alien-signals-dart](https://github.com/medz/alien-signals-dart)
+- **Dart:** [void-signals/void_signals](https://github.com/void-signals/void_signals)
 - **Lua:** [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua)
 - **Lua 5.4:** [xuhuanzy/alien-signals-lua](https://github.com/xuhuanzy/alien-signals-lua)
 - **Luau:** [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau)
