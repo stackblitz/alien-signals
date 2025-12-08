@@ -14,7 +14,6 @@ interface SignalNode<T = any> extends ReactiveNode {
 	pendingValue: T;
 }
 
-let cycle = 0;
 let batchDepth = 0;
 let notifyIndex = 0;
 let queuedLength = 0;
@@ -151,7 +150,7 @@ export function effect(fn: () => void): () => void {
 	};
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
-		link(e, prevSub, 0);
+		link(e, prevSub);
 	}
 	try {
 		e.fn();
@@ -172,7 +171,7 @@ export function effectScope(fn: () => void): () => void {
 	};
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
-		link(e, prevSub, 0);
+		link(e, prevSub);
 	}
 	try {
 		fn();
@@ -211,7 +210,6 @@ export function trigger(fn: () => void) {
 }
 
 function updateComputed(c: ComputedNode): boolean {
-	++cycle;
 	c.depsTail = undefined;
 	c.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 	const prevSub = setActiveSub(c);
@@ -239,7 +237,6 @@ function run(e: EffectNode): void {
 			&& checkDirty(e.deps!, e)
 		)
 	) {
-		++cycle;
 		e.depsTail = undefined;
 		e.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(e);
@@ -295,7 +292,7 @@ function computedOper<T>(this: ComputedNode<T>): T {
 	}
 	const sub = activeSub;
 	if (sub !== undefined) {
-		link(this, sub, cycle);
+		link(this, sub);
 	}
 	return this.value!;
 }
@@ -324,7 +321,7 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 		let sub = activeSub;
 		while (sub !== undefined) {
 			if (sub.flags & (ReactiveFlags.Mutable | ReactiveFlags.Watching)) {
-				link(this, sub, cycle);
+				link(this, sub);
 				break;
 			}
 			sub = sub.subs?.sub;

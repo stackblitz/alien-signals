@@ -7,7 +7,6 @@ export interface ReactiveNode {
 }
 
 export interface Link {
-	version: number;
 	dep: ReactiveNode;
 	sub: ReactiveNode;
 	prevSub: Link | undefined;
@@ -26,7 +25,6 @@ export const enum ReactiveFlags {
 	Mutable = 1,
 	Watching = 2,
 	RecursedCheck = 4,
-	Recursed = 8,
 	Dirty = 16,
 	Pending = 32,
 }
@@ -48,26 +46,24 @@ export function createReactiveSystem({
 		shallowPropagate,
 	};
 
-	function link(dep: ReactiveNode, sub: ReactiveNode, version: number): void {
+	function link(dep: ReactiveNode, sub: ReactiveNode): void {
 		const prevDep = sub.depsTail;
 		if (prevDep !== undefined && prevDep.dep === dep) {
 			return;
 		}
 		const nextDep = prevDep !== undefined ? prevDep.nextDep : sub.deps;
 		if (nextDep !== undefined && nextDep.dep === dep) {
-			nextDep.version = version;
 			sub.depsTail = nextDep;
 			return;
 		}
 		const prevSub = dep.subsTail;
-		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
+		if (prevSub !== undefined && prevSub.sub === sub) {
 			return;
 		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail
 			= {
-				version,
 				dep,
 				sub,
 				prevDep,
@@ -127,14 +123,12 @@ export function createReactiveSystem({
 			const sub = link.sub;
 			let flags = sub.flags;
 
-			if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
+			if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
 				sub.flags = flags | ReactiveFlags.Pending;
-			} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
+			} else if (!(flags & (ReactiveFlags.RecursedCheck))) {
 				flags = ReactiveFlags.None;
-			} else if (!(flags & ReactiveFlags.RecursedCheck)) {
-				sub.flags = (flags & ~ReactiveFlags.Recursed) | ReactiveFlags.Pending;
-			} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)) && isValidLink(link, sub)) {
-				sub.flags = flags | (ReactiveFlags.Recursed | ReactiveFlags.Pending);
+			} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
+				sub.flags = flags | (ReactiveFlags.Pending);
 				flags &= ReactiveFlags.Mutable;
 			} else {
 				flags = ReactiveFlags.None;
@@ -255,16 +249,5 @@ export function createReactiveSystem({
 				}
 			}
 		} while ((link = link.nextSub!) !== undefined);
-	}
-
-	function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
-		let link = sub.depsTail;
-		while (link !== undefined) {
-			if (link === checkLink) {
-				return true;
-			}
-			link = link.prevDep;
-		}
-		return false;
 	}
 }
