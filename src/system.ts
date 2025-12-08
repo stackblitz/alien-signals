@@ -128,7 +128,7 @@ export function createReactiveSystem({
 			} else if (!(flags & (ReactiveFlags.RecursedCheck))) {
 				flags = ReactiveFlags.None;
 			} else if (!(flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
-				sub.flags = flags | (ReactiveFlags.Pending);
+				sub.flags = flags | ReactiveFlags.Pending;
 				flags &= ReactiveFlags.Mutable;
 			} else {
 				flags = ReactiveFlags.None;
