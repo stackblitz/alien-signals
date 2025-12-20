@@ -97,6 +97,33 @@ stopScope();
 count(3); // No console output
 ```
 
+#### Nested Effects
+
+Effects can be nested inside other effects. When the outer effect re-runs, inner effects from the previous run are automatically cleaned up, and new inner effects are created if needed. The system ensures proper execution order, outer effects always run before their inner effects:
+
+```ts
+import { signal, effect } from 'alien-signals';
+
+const show = signal(true);
+const count = signal(1);
+
+effect(() => {
+  if (show()) {
+    // This inner effect is created when show() is true
+    effect(() => {
+      console.log(`Count is: ${count()}`);
+    });
+  }
+}); // Console: Count is: 1
+
+count(2); // Console: Count is: 2
+
+// When show becomes false, the inner effect is cleaned up
+show(false); // No output
+
+count(3); // No output (inner effect no longer exists)
+```
+
 #### Manual Triggering
 
 The `trigger()` function allows you to manually trigger updates for downstream dependencies when you've directly mutated a signal's value without using the signal setter:
