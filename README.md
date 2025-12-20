@@ -99,7 +99,7 @@ count(3); // No console output
 
 #### Nested Effects
 
-Effects can be nested inside other effects. When the outer effect re-runs, inner effects from the previous run are automatically cleaned up, and new inner effects are created if needed. The system ensures proper execution order—outer effects always run before their inner effects:
+Effects can be nested inside other effects. When the outer effect re-runs, inner effects from the previous run are automatically cleaned up, and new inner effects are created if needed. The system ensures proper execution order, outer effects always run before their inner effects:
 
 ```ts
 import { signal, effect } from 'alien-signals';
