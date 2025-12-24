@@ -286,3 +286,44 @@ test('should support custom recurse effect', () => {
 
 	expect(triggers).toBe(6);
 });
+
+test('should not execute skipped effects from previous failed flush when updating unrelated signal', () => {
+	const a = signal(0);
+	const b = signal(0);
+	const c = signal(0);
+	const d = computed(() => (c(), 0));
+
+	let effect3Executed = false;
+
+	effect(() => {
+		a();
+	});
+	effect(() => {
+		if (a() === 2) {
+			throw new Error('Error in effect 2');
+		}
+	});
+	effect(() => {
+		a();
+		d();
+		effect3Executed = true;
+	});
+	effect(() => {
+		b();
+	});
+
+	a(1);
+
+	effect3Executed = false;
+	try {
+		a(2);
+	} catch (e) {
+		expect((e as Error).message).toBe('Error in effect 2');
+	}
+
+	expect(effect3Executed).toBe(false);
+	b(1);
+	expect(effect3Executed).toBe(false);
+	c(1);
+	expect(effect3Executed).toBe(true);
+});

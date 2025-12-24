@@ -40,8 +40,8 @@ const {
 		let firstInsertedIndex = insertIndex;
 
 		do {
-			effect.flags &= ~ReactiveFlags.Watching;
 			queued[insertIndex++] = effect;
+			effect.flags &= ~ReactiveFlags.Watching;
 			effect = effect.subs?.sub as EffectNode;
 			if (effect === undefined || !(effect.flags & ReactiveFlags.Watching)) {
 				break;
@@ -256,13 +256,21 @@ function run(e: EffectNode): void {
 }
 
 function flush(): void {
-	while (notifyIndex < queuedLength) {
-		const effect = queued[notifyIndex]!;
-		queued[notifyIndex++] = undefined;
-		run(effect);
+	try {
+		while (notifyIndex < queuedLength) {
+			const effect = queued[notifyIndex]!;
+			queued[notifyIndex++] = undefined;
+			run(effect);
+		}
+	} finally {
+		while (notifyIndex < queuedLength) {
+			const effect = queued[notifyIndex]!;
+			queued[notifyIndex++] = undefined;
+			effect.flags |= ReactiveFlags.Watching | ReactiveFlags.Recursed;
+		}
+		notifyIndex = 0;
+		queuedLength = 0;
 	}
-	notifyIndex = 0;
-	queuedLength = 0;
 }
 
 function computedOper<T>(this: ComputedNode<T>): T {
