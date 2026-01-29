@@ -39,6 +39,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - **C#:** [CTRL-Neo-Studios/csharp-alien-signals](https://github.com/CTRL-Neo-Studios/csharp-alien-signals)
 - **Go:** [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go)
 - **Rust:** [wuzekang/samara-signals](https://github.com/wuzekang/samara/tree/main/crates/signals)
+- **Rust:** [ohkami-rs/alien-signals-rs](https://github.com/ohkami-rs/alien-signals-rs)
 
 ## Derived Projects
 
