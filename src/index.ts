@@ -1,5 +1,10 @@
 import { createReactiveSystem, ReactiveFlags, type ReactiveNode } from './system.js';
 
+export interface Signal<T> {
+	(): T;
+	(value: T): void;
+}
+
 interface EffectNode extends ReactiveNode {
 	fn(): void;
 }
@@ -107,18 +112,9 @@ export function isEffectScope(fn: () => void): boolean {
 	return fn.name === 'bound ' + effectScopeOper.name;
 }
 
-export function signal<T>(): {
-	(): T | undefined;
-	(value: T | undefined): void;
-};
-export function signal<T>(initialValue: T): {
-	(): T;
-	(value: T): void;
-};
-export function signal<T>(initialValue?: T): {
-	(): T | undefined;
-	(value: T | undefined): void;
-} {
+export function signal<T>(): Signal<T | undefined>;
+export function signal<T>(initialValue: T): Signal<T>;
+export function signal<T>(initialValue?: T): Signal<T | undefined> {
 	return signalOper.bind({
 		currentValue: initialValue,
 		pendingValue: initialValue,
