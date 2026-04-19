@@ -193,13 +193,13 @@ export function trigger(fn: () => void) {
 		fn();
 	} finally {
 		activeSub = prevSub;
+		sub.flags = ReactiveFlags.None;
 		let link = sub.deps;
 		while (link !== undefined) {
 			const dep = link.dep;
 			link = unlink(link, sub);
 			const subs = dep.subs;
 			if (subs !== undefined) {
-				sub.flags = ReactiveFlags.None;
 				propagate(subs);
 				shallowPropagate(subs);
 			}
