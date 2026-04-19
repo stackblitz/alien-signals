@@ -1,5 +1,8 @@
 import { computed, effect, signal } from '../esm/index.mjs';
 
+if (typeof globalThis.gc !== 'function') {
+	throw new Error('GC is not exposed. Run with --expose-gc flag');
+}
 globalThis.gc();
 let start = process.memoryUsage().heapUsed;
 
