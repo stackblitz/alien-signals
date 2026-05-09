@@ -91,11 +91,7 @@ export function createReactiveSystem({
 	}
 
 	function unlink(link: Link, sub = link.sub): Link | undefined {
-		const dep = link.dep;
-		const prevDep = link.prevDep;
-		const nextDep = link.nextDep;
-		const nextSub = link.nextSub;
-		const prevSub = link.prevSub;
+		const { dep, prevDep, nextDep, nextSub, prevSub } = link;
 		if (nextDep !== undefined) {
 			nextDep.prevDep = prevDep;
 		} else {
@@ -186,17 +182,15 @@ export function createReactiveSystem({
 			if (sub.flags & ReactiveFlags.Dirty) {
 				dirty = true;
 			} else if ((flags & (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) === (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) {
+				const subs = dep.subs;
 				if (update(dep)) {
-					const subs = dep.subs!;
-					if (subs.nextSub !== undefined) {
+					if (subs !== undefined && subs.nextSub !== undefined) {
 						shallowPropagate(subs);
 					}
 					dirty = true;
 				}
 			} else if ((flags & (ReactiveFlags.Mutable | ReactiveFlags.Pending)) === (ReactiveFlags.Mutable | ReactiveFlags.Pending)) {
-				if (link.nextSub !== undefined || link.prevSub !== undefined) {
-					stack = { value: link, prev: stack };
-				}
+				stack = { value: link, prev: stack };
 				link = dep.deps!;
 				sub = dep;
 				++checkDepth;
@@ -212,18 +206,13 @@ export function createReactiveSystem({
 			}
 
 			while (checkDepth--) {
-				const firstSub = sub.subs!;
-				const hasMultipleSubs = firstSub.nextSub !== undefined;
-				if (hasMultipleSubs) {
-					link = stack!.value;
-					stack = stack!.prev;
-				} else {
-					link = firstSub;
-				}
+				link = stack!.value;
+				stack = stack!.prev;
 				if (dirty) {
+					const subs = sub.subs;
 					if (update(sub)) {
-						if (hasMultipleSubs) {
-							shallowPropagate(firstSub);
+						if (subs !== undefined && subs.nextSub !== undefined) {
+							shallowPropagate(subs);
 						}
 						sub = link.sub;
 						continue;
@@ -240,7 +229,7 @@ export function createReactiveSystem({
 				}
 			}
 
-			return dirty;
+			return dirty && !!sub.flags;
 		} while (true);
 	}
 
