@@ -1,5 +1,8 @@
 import { createReactiveSystem, ReactiveFlags, type ReactiveNode } from './system.js';
 
+interface EffectScopeNode extends ReactiveNode {
+}
+
 interface EffectNode extends ReactiveNode {
 	fn(): void;
 }
@@ -28,12 +31,15 @@ const {
 	checkDirty,
 	shallowPropagate,
 } = createReactiveSystem({
-	update(node: SignalNode | ComputedNode): boolean {
-		if (node.depsTail !== undefined) {
-			return updateComputed(node as ComputedNode);
-		} else {
-			return updateSignal(node as SignalNode);
+	update(node: SignalNode | ComputedNode | EffectScopeNode): boolean {
+		if ('getter' in node) {
+			return updateComputed(node);
 		}
+		if ('currentValue' in node) {
+			return updateSignal(node);
+		}
+		node.flags = ReactiveFlags.Mutable;
+		return true;
 	},
 	notify(effect: EffectNode) {
 		let insertIndex = queuedLength;
@@ -163,12 +169,12 @@ export function effect(fn: () => void): () => void {
 }
 
 export function effectScope(fn: () => void): () => void {
-	const e: ReactiveNode = {
+	const e: EffectScopeNode = {
 		deps: undefined,
 		depsTail: undefined,
 		subs: undefined,
 		subsTail: undefined,
-		flags: ReactiveFlags.None,
+		flags: ReactiveFlags.Mutable,
 	};
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
@@ -329,13 +335,9 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 				}
 			}
 		}
-		let sub = activeSub;
-		while (sub !== undefined) {
-			if (sub.flags & (ReactiveFlags.Mutable | ReactiveFlags.Watching)) {
-				link(this, sub, cycle);
-				break;
-			}
-			sub = sub.subs?.sub;
+		const sub = activeSub;
+		if (sub !== undefined) {
+			link(this, sub, cycle);
 		}
 		return this.currentValue;
 	}
@@ -345,7 +347,7 @@ function effectOper(this: EffectNode): void {
 	effectScopeOper.call(this);
 }
 
-function effectScopeOper(this: ReactiveNode): void {
+function effectScopeOper(this: EffectScopeNode): void {
 	this.depsTail = undefined;
 	this.flags = ReactiveFlags.None;
 	purgeDeps(this);
