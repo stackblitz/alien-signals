@@ -244,13 +244,13 @@ function run(e: EffectNode): void {
 		e.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(e);
 		try {
-			(e as EffectNode).fn();
+			e.fn();
 		} finally {
 			activeSub = prevSub;
 			e.flags &= ~ReactiveFlags.RecursedCheck;
 			purgeDeps(e);
 		}
-	} else {
+	} else if (e.flags) {
 		e.flags = ReactiveFlags.Watching;
 	}
 }
