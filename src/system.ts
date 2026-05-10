@@ -182,9 +182,9 @@ export function createReactiveSystem({
 			if (sub.flags & ReactiveFlags.Dirty) {
 				dirty = true;
 			} else if ((flags & (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) === (ReactiveFlags.Mutable | ReactiveFlags.Dirty)) {
-				const subs = dep.subs;
+				const subs = dep.subs!;
 				if (update(dep)) {
-					if (subs !== undefined && subs.nextSub !== undefined) {
+					if (subs.nextSub !== undefined) {
 						shallowPropagate(subs);
 					}
 					dirty = true;
@@ -209,9 +209,9 @@ export function createReactiveSystem({
 				link = stack!.value;
 				stack = stack!.prev;
 				if (dirty) {
-					const subs = sub.subs;
+					const subs = sub.subs!;
 					if (update(sub)) {
-						if (subs !== undefined && subs.nextSub !== undefined) {
+						if (subs.nextSub !== undefined) {
 							shallowPropagate(subs);
 						}
 						sub = link.sub;
