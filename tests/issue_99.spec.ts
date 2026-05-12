@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { computed, effect, effectScope, signal } from '../src';
+import { computed, effect, signal } from '../src';
 
 test('#99 consecutive inner resets through computed chain', () => {
 	const s = signal(0);
