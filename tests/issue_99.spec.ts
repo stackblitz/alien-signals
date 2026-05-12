@@ -16,8 +16,11 @@ test('#99 consecutive inner resets through computed chain', () => {
 	expect(runs).toBe(1);
 	s(1);
 	expect(s()).toBe(0);
+	expect(runs).toBe(2);
 	s(2);
 	expect(s()).toBe(0);
+	expect(runs).toBe(3);
 	s(3);
 	expect(s()).toBe(0);
+	expect(runs).toBe(4);
 });
