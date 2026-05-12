@@ -253,15 +253,7 @@ function run(e: EffectNode): void {
 		)
 	) {
 		if (e.cleanup) {
-			const cleanup = e.cleanup;
-			e.cleanup = undefined;
-			const prevSub = activeSub;
-			activeSub = undefined;
-			try {
-				cleanup();
-			} finally {
-				activeSub = prevSub;
-			}
+			runCleanup(e);
 			if (!e.flags) {
 				return;
 			}
@@ -368,11 +360,21 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 	}
 }
 
+function runCleanup(e: EffectNode): void {
+	const cleanup = e.cleanup!;
+	e.cleanup = undefined;
+	const prevSub = activeSub;
+	activeSub = undefined;
+	try {
+		cleanup();
+	} finally {
+		activeSub = prevSub;
+	}
+}
+
 function effectOper(this: EffectNode): void {
 	if (this.cleanup) {
-		const cleanup = this.cleanup;
-		this.cleanup = undefined;
-		cleanup();
+		runCleanup(this);
 	}
 	effectScopeOper.call(this);
 }
