@@ -4,7 +4,8 @@ interface EffectScopeNode extends ReactiveNode {
 }
 
 interface EffectNode extends ReactiveNode {
-	fn(): void;
+	fn(): (() => void) | void;
+	cleanup: (() => void) | void;
 }
 
 interface ComputedNode<T = any> extends ReactiveNode {
@@ -147,9 +148,10 @@ export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	}) as () => T;
 }
 
-export function effect(fn: () => void): () => void {
+export function effect(fn: () => void | (() => void)): () => void {
 	const e: EffectNode = {
 		fn,
+		cleanup: undefined,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
@@ -162,7 +164,7 @@ export function effect(fn: () => void): () => void {
 	}
 	try {
 		++runDepth;
-		e.fn();
+		e.cleanup = e.fn();
 	} finally {
 		--runDepth;
 		activeSub = prevSub;
@@ -250,13 +252,27 @@ function run(e: EffectNode): void {
 			&& checkDirty(e.deps!, e)
 		)
 	) {
+		if (e.cleanup) {
+			const cleanup = e.cleanup;
+			e.cleanup = undefined;
+			const prevSub = activeSub;
+			activeSub = undefined;
+			try {
+				cleanup();
+			} finally {
+				activeSub = prevSub;
+			}
+			if (!e.flags) {
+				return;
+			}
+		}
 		e.depsTail = undefined;
 		e.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(e);
 		try {
 			++cycle;
 			++runDepth;
-			e.fn();
+			e.cleanup = e.fn();
 		} finally {
 			--runDepth;
 			activeSub = prevSub;
@@ -353,6 +369,11 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 }
 
 function effectOper(this: EffectNode): void {
+	if (this.cleanup) {
+		const cleanup = this.cleanup;
+		this.cleanup = undefined;
+		cleanup();
+	}
 	effectScopeOper.call(this);
 }
 
