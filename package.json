@@ -58,7 +58,6 @@
 	"devDependencies": {
 		"@tsslint/cli": "latest",
 		"@tsslint/config": "latest",
-		"jest-extended": "latest",
 		"mitata": "latest",
 		"reactive-framework-test-suite": "^0.0.0",
 		"rolldown": "latest",
