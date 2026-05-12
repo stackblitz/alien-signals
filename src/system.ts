@@ -115,7 +115,7 @@ export function createReactiveSystem({
 		return nextDep;
 	}
 
-	function propagate(link: Link): void {
+	function propagate(link: Link, innerWrite: boolean): void {
 		let next = link.nextSub;
 		let stack: Stack<Link | undefined> | undefined;
 
@@ -125,6 +125,9 @@ export function createReactiveSystem({
 
 			if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
 				sub.flags = flags | ReactiveFlags.Pending;
+				if (innerWrite) {
+					sub.flags |= ReactiveFlags.Recursed;
+				}
 			} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
 				flags = ReactiveFlags.None;
 			} else if (!(flags & ReactiveFlags.RecursedCheck)) {

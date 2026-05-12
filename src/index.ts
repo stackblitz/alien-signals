@@ -18,6 +18,7 @@ interface SignalNode<T = any> extends ReactiveNode {
 }
 
 let cycle = 0;
+let runDepth = 0;
 let batchDepth = 0;
 let notifyIndex = 0;
 let queuedLength = 0;
@@ -160,8 +161,10 @@ export function effect(fn: () => void): () => void {
 		link(e, prevSub, 0);
 	}
 	try {
+		++runDepth;
 		e.fn();
 	} finally {
+		--runDepth;
 		activeSub = prevSub;
 		e.flags &= ~ReactiveFlags.RecursedCheck;
 	}
@@ -206,7 +209,7 @@ export function trigger(fn: () => void) {
 			link = unlink(link, sub);
 			const subs = dep.subs;
 			if (subs !== undefined) {
-				propagate(subs);
+				propagate(subs, !!runDepth);
 				shallowPropagate(subs);
 			}
 		}
@@ -217,14 +220,16 @@ export function trigger(fn: () => void) {
 }
 
 function updateComputed(c: ComputedNode): boolean {
-	++cycle;
 	c.depsTail = undefined;
 	c.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 	const prevSub = setActiveSub(c);
 	try {
+		++cycle;
+		++runDepth;
 		const oldValue = c.value;
 		return oldValue !== (c.value = c.getter(oldValue));
 	} finally {
+		--runDepth;
 		activeSub = prevSub;
 		c.flags &= ~ReactiveFlags.RecursedCheck;
 		purgeDeps(c);
@@ -245,13 +250,15 @@ function run(e: EffectNode): void {
 			&& checkDirty(e.deps!, e)
 		)
 	) {
-		++cycle;
 		e.depsTail = undefined;
 		e.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(e);
 		try {
+			++cycle;
+			++runDepth;
 			e.fn();
 		} finally {
+			--runDepth;
 			activeSub = prevSub;
 			e.flags &= ~ReactiveFlags.RecursedCheck;
 			purgeDeps(e);
@@ -301,8 +308,10 @@ function computedOper<T>(this: ComputedNode<T>): T {
 		this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(this);
 		try {
+			++runDepth;
 			this.value = this.getter();
 		} finally {
+			--runDepth;
 			activeSub = prevSub;
 			this.flags &= ~ReactiveFlags.RecursedCheck;
 		}
@@ -320,7 +329,7 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 			this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 			const subs = this.subs;
 			if (subs !== undefined) {
-				propagate(subs);
+				propagate(subs, !!runDepth);
 				if (!batchDepth) {
 					flush();
 				}
