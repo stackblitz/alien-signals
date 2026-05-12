@@ -179,14 +179,15 @@ You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to bu
 
 ## About `propagate` and `checkDirty` functions
 
-In order to eliminate recursive calls and improve performance, we record the last link node of the previous loop in `propagate` and `checkDirty` functions, and implement the rollback logic to return to this node.
+The actual implementations of `propagate` and `checkDirty` in [system.ts](https://github.com/stackblitz/alien-signals/blob/master/src/system.ts) use iterative stack-based traversal to eliminate recursive calls for performance. This makes the code harder to read, and the performance gain may not apply to other languages.
 
-This results in code that is difficult to understand, and you don't necessarily get the same performance improvements in other languages, so we record the original implementation without eliminating recursive calls here for reference.
+Below are the equivalent recursive versions for reference.
 
-#### `propagate`
+<details>
+<summary><code>propagate</code></summary>
 
 ```ts
-function propagate(link: Link): void {
+function propagate(link: Link, innerWrite: boolean): void {
 	do {
 		const sub = link.sub;
 
@@ -194,6 +195,9 @@ function propagate(link: Link): void {
 
 		if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed | ReactiveFlags.Dirty | ReactiveFlags.Pending))) {
 			sub.flags = flags | ReactiveFlags.Pending;
+			if (innerWrite) {
+				sub.flags |= ReactiveFlags.Recursed;
+			}
 		} else if (!(flags & (ReactiveFlags.RecursedCheck | ReactiveFlags.Recursed))) {
 			flags = ReactiveFlags.None;
 		} else if (!(flags & ReactiveFlags.RecursedCheck)) {
@@ -212,7 +216,7 @@ function propagate(link: Link): void {
 		if (flags & ReactiveFlags.Mutable) {
 			const subSubs = sub.subs;
 			if (subSubs !== undefined) {
-				propagate(subSubs);
+				propagate(subSubs, innerWrite);
 			}
 		}
 
@@ -220,8 +224,10 @@ function propagate(link: Link): void {
 	} while (link !== undefined);
 }
 ```
+</details>
 
-#### `checkDirty`
+<details>
+<summary><code>checkDirty</code></summary>
 
 ```ts
 function checkDirty(link: Link, sub: ReactiveNode): boolean {
@@ -259,3 +265,4 @@ function checkDirty(link: Link, sub: ReactiveNode): boolean {
 	return false;
 }
 ```
+</details>
