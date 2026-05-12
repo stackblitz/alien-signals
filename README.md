@@ -9,7 +9,7 @@
 
 # alien-signals
 
-This project explores a push-pull based signal algorithm. Its current implementation is similar to or related to certain other frontend projects:
+This project explores a push-pull based signal algorithm. The implementation is related to the following frontend projects:
 
 - Propagation algorithm of Vue 3
 - Preact’s double-linked-list approach (https://preactjs.com/blog/signal-boosting/)
@@ -18,7 +18,7 @@ This project explores a push-pull based signal algorithm. Its current implementa
 
 We impose some constraints (such as not using Array/Set/Map and disallowing function recursion in [the algorithmic core](https://github.com/stackblitz/alien-signals/blob/master/src/system.ts)) to ensure performance. We found that under these conditions, maintaining algorithmic simplicity offers more significant improvements than complex scheduling strategies.
 
-Even though Vue 3.4 is already optimized, alien-signals is still noticeably faster. (I wrote code for both, and since they share similar algorithms, they’re quite comparable.)
+I wrote the reactivity code for both Vue and alien-signals. Below is a benchmark comparison against Vue 3.4 and other frameworks. The core algorithm has since been [ported back to Vue 3.6](https://github.com/vuejs/core/pull/12349).
 
 <img width="1210" alt="Image" src="https://github.com/user-attachments/assets/88448f6d-4034-4389-89aa-9edf3da77254" />
 
@@ -26,7 +26,7 @@ Even though Vue 3.4 is already optimized, alien-signals is still noticeably fast
 
 ## Background
 
-I spent considerable time [optimizing Vue 3.4’s reactivity system](https://github.com/vuejs/core/pull/5912), gaining experience along the way. Since Vue 3.5 [switched to a pull-based algorithm similar to Preact](https://github.com/vuejs/core/pull/10397), I decided to continue researching a push-pull based implementation in a separate project. Our end goal is to implement fully incremental AST parsing and virtual code generation in Vue language tools, based on alien-signals.
+I spent considerable time [optimizing Vue 3.4’s reactivity system](https://github.com/vuejs/core/pull/5912), gaining experience along the way. Since Vue 3.5 [switched to a pull-based algorithm similar to Preact](https://github.com/vuejs/core/pull/10397), I decided to continue researching a push-pull based implementation in a separate project. The algorithm is used in Vue language tools for incremental AST parsing and virtual code generation.
 
 ## Other Language Implementations
 
@@ -102,7 +102,7 @@ count(3); // No console output
 
 #### Nested Effects
 
-Effects can be nested inside other effects. When the outer effect re-runs, inner effects from the previous run are automatically cleaned up, and new inner effects are created if needed. The system ensures proper execution order, outer effects always run before their inner effects:
+Effects can be nested inside other effects. When the outer effect re-runs, inner effects from the previous run are automatically cleaned up, and new inner effects are created if needed. The system ensures proper execution order — outer effects always run before their inner effects:
 
 ```ts
 import { signal, effect } from 'alien-signals';
@@ -179,9 +179,7 @@ You can reuse alien-signals’ core algorithm via `createReactiveSystem()` to bu
 
 ## About `propagate` and `checkDirty` functions
 
-The actual implementations of `propagate` and `checkDirty` in [system.ts](https://github.com/stackblitz/alien-signals/blob/master/src/system.ts) use iterative stack-based traversal to eliminate recursive calls for performance. This makes the code harder to read, and the performance gain may not apply to other languages.
-
-Below are the equivalent recursive versions for reference.
+The actual implementations of `propagate` and `checkDirty` in [system.ts](https://github.com/stackblitz/alien-signals/blob/master/src/system.ts) replace recursive calls with iterative stack-based traversal for performance. The recursive versions below are equivalent and easier to follow — useful as a reference when porting to other languages where the iterative optimization may not help.
 
 <details>
 <summary><code>propagate</code></summary>
