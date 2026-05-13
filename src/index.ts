@@ -227,11 +227,9 @@ function updateComputed(c: ComputedNode): boolean {
 	const prevSub = setActiveSub(c);
 	try {
 		++cycle;
-		++runDepth;
 		const oldValue = c.value;
 		return oldValue !== (c.value = c.getter(oldValue));
 	} finally {
-		--runDepth;
 		activeSub = prevSub;
 		c.flags &= ~ReactiveFlags.RecursedCheck;
 		purgeDeps(c);
@@ -316,10 +314,8 @@ function computedOper<T>(this: ComputedNode<T>): T {
 		this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 		const prevSub = setActiveSub(this);
 		try {
-			++runDepth;
 			this.value = this.getter();
 		} finally {
-			--runDepth;
 			activeSub = prevSub;
 			this.flags &= ~ReactiveFlags.RecursedCheck;
 		}
