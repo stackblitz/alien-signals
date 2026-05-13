@@ -3,7 +3,6 @@ import { testSuite, SkipTest, type ReactiveFramework } from 'reactive-framework-
 import { signal, computed, effect, effectScope, startBatch, endBatch, setActiveSub } from '../src';
 
 const framework: ReactiveFramework = {
-	name: 'alien-signals',
 	signal(initialValue) {
 		const s = signal(initialValue);
 		return {
@@ -16,10 +15,10 @@ const framework: ReactiveFramework = {
 		return { read: () => c() };
 	},
 	effect(fn) {
-		return effect(fn) as unknown as () => void;
+		return effect(fn);
 	},
 	run(fn) {
-		return effectScope(fn) as any;
+		effectScope(fn)();
 	},
 	batch(fn) {
 		startBatch();
@@ -37,8 +36,6 @@ const framework: ReactiveFramework = {
 			setActiveSub(prev);
 		}
 	},
-	effectCleanup: true,
-	computedThrows: true,
 };
 
 for (const { section, cases } of testSuite) {
