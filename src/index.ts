@@ -269,7 +269,7 @@ function run(e: EffectNode): void {
 			e.flags &= ~ReactiveFlags.RecursedCheck;
 			purgeDeps(e);
 		}
-	} else if (e.flags) {
+	} else if (e.deps !== undefined) {
 		e.flags = ReactiveFlags.Watching;
 	}
 }

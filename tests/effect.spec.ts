@@ -15,3 +15,29 @@ test('should support custom recurse effect', () => {
 
 	expect(triggers).toBe(6);
 });
+
+// https://github.com/stackblitz/alien-signals/issues/115
+test('outer effect keeps responding to its own dep after inner re-runs', () => {
+	const a = signal(0);
+	const b = signal(0);
+	let outerRuns = 0;
+	let innerRuns = 0;
+
+	effect(() => {
+		a();
+		outerRuns++;
+		effect(() => {
+			b();
+			innerRuns++;
+		});
+	});
+	expect(outerRuns).toBe(1);
+	expect(innerRuns).toBe(1);
+
+	b(1);
+	expect(outerRuns).toBe(1);
+	expect(innerRuns).toBeGreaterThanOrEqual(2);
+
+	a(1);
+	expect(outerRuns).toBe(2);
+});
