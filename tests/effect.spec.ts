@@ -129,6 +129,22 @@ test('three-level nested cleanup on dispose: deepest first (depth-first reverse)
 	]);
 });
 
+test('computed unwatched: child effect cleanups run in reverse creation (LIFO)', () => {
+	// When the computed loses its last subscriber and gets unwatched, any
+	// effects it created during its getter must be cleaned up LIFO, not FIFO.
+	const log: string[] = [];
+	const c = computed(() => {
+		effect(() => () => log.push('e1'));
+		effect(() => () => log.push('e2'));
+		effect(() => () => log.push('e3'));
+		return 0;
+	});
+	const dispose = effect(() => { c(); });
+	log.length = 0;
+	dispose();
+	expect(log).toEqual(['e3', 'e2', 'e1']);
+});
+
 test('effect created inside computed: old inner cleanup runs before new inner setup', () => {
 	// When a computed re-evaluates, any effects its getter created on the
 	// previous run must be disposed (with cleanup) before the getter runs

@@ -76,9 +76,14 @@ const {
 		}
 		else if ('getter' in node) {
 			if (node.depsTail !== undefined) {
-				node.depsTail = undefined;
 				node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-				purgeDeps(node);
+				let link = node.depsTail;
+				node.depsTail = undefined;
+				while (link !== undefined) {
+					const prev = link.prevDep;
+					unlink(link, node);
+					link = prev;
+				}
 			}
 		}
 		else if ('currentValue' in node) {
@@ -200,6 +205,7 @@ export function effectScope(fn: () => void): () => void {
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
 		link(e, prevSub, 0);
+		prevSub.flags |= HasChildEffect;
 	}
 	try {
 		fn();
@@ -242,7 +248,8 @@ function updateComputed(c: ComputedNode): boolean {
 		let link = c.depsTail;
 		while (link !== undefined) {
 			const prev = link.prevDep;
-			if ('fn' in link.dep) {
+			const dep = link.dep;
+			if (!('getter' in dep) && !('currentValue' in dep)) {
 				unlink(link, c);
 			}
 			link = prev;
@@ -280,7 +287,8 @@ function run(e: EffectNode): void {
 			let link = e.depsTail;
 			while (link !== undefined) {
 				const prev = link.prevDep;
-				if ('fn' in link.dep) {
+				const dep = link.dep;
+				if (!('getter' in dep) && !('currentValue' in dep)) {
 					unlink(link, e);
 				}
 				link = prev;
