@@ -1,5 +1,5 @@
-import { describe, test } from 'vitest';
-import { testSuite, SkipTest, type ReactiveFramework } from 'reactive-framework-test-suite';
+import { describe, expect, test } from 'vitest';
+import { testSuite, SkipTest, setExpect, type ReactiveFramework } from 'reactive-framework-test-suite';
 import { signal, computed, effect, effectScope, startBatch, endBatch, setActiveSub } from '../src';
 
 const framework: ReactiveFramework = {
@@ -37,6 +37,8 @@ const framework: ReactiveFramework = {
 		}
 	},
 };
+
+setExpect(expect);
 
 for (const { section, cases } of testSuite) {
 	describe(section, () => {

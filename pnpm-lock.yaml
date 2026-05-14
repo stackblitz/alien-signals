@@ -18,8 +18,8 @@ importers:
         specifier: latest
         version: 1.0.34
       reactive-framework-test-suite:
-        specifier: 0.0.1
-        version: 0.0.1
+        specifier: 0.0.2
+        version: 0.0.2
       rolldown:
         specifier: latest
         version: 1.0.0
@@ -380,8 +380,8 @@ packages:
     resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  reactive-framework-test-suite@0.0.1:
-    resolution: {integrity: sha512-NK204Xw+4CkybkaKDQp5QPeFlt48+LTk7vRJNIvSyZdaEsvrnOLAPu/GxSLyEhVuPnXPmS3/ptX49DwxoFYhSQ==}
+  reactive-framework-test-suite@0.0.2:
+    resolution: {integrity: sha512-wExFKyvh7u2CejdCLRPhf1qH1D9LlC4DJFAv0DNinvj3OuqMYj60ukFOMkWYoyLFt2ze0SwduK0t+1sWK7LEUQ==}
 
   rolldown@1.0.0:
     resolution: {integrity: sha512-yD986aXDESFGS95spT1LAv0jssywP4npMEjmMHyN2/5+eE8qQJUype2AaKkRiLgBgyD0LFlubwAht7VmY8rGoA==}
@@ -799,7 +799,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  reactive-framework-test-suite@0.0.1: {}
+  reactive-framework-test-suite@0.0.2: {}
 
   rolldown@1.0.0:
     dependencies:

@@ -59,7 +59,7 @@
 		"@tsslint/cli": "latest",
 		"@tsslint/config": "latest",
 		"mitata": "latest",
-		"reactive-framework-test-suite": "0.0.1",
+		"reactive-framework-test-suite": "0.0.2",
 		"rolldown": "latest",
 		"typescript": "latest",
 		"vitest": "latest"
