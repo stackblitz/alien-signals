@@ -18,6 +18,12 @@ interface SignalNode<T = any> extends ReactiveNode {
 	pendingValue: T;
 }
 
+// Marks a parent (effect or scope) whose deps include at least one child
+// effect. Used to gate the dispose-children-first slow path in run() so
+// leaf effects (no children, no own cleanup) avoid the extra deps walk.
+// The bit is outside ReactiveFlags' range and never touched by system.ts.
+const HasChildEffect = 64;
+
 let cycle = 0;
 let runDepth = 0;
 let batchDepth = 0;
@@ -64,13 +70,22 @@ const {
 			queued[insertIndex] = left;
 		}
 	},
-	unwatched(node) {
-		if (!(node.flags & ReactiveFlags.Mutable)) {
+	unwatched(node: SignalNode | ComputedNode | EffectNode | EffectScopeNode) {
+		if ('fn' in node) {
+			effectOper.call(node);
+		}
+		else if ('getter' in node) {
+			if (node.depsTail !== undefined) {
+				node.depsTail = undefined;
+				node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
+				purgeDeps(node);
+			}
+		}
+		else if ('currentValue' in node) {
+			// Nothing to do for signals, they are always mutable and never dirty until pendingValue changes
+		}
+		else {
 			effectScopeOper.call(node);
-		} else if (node.depsTail !== undefined) {
-			node.depsTail = undefined;
-			node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-			purgeDeps(node);
 		}
 	},
 });
@@ -161,6 +176,7 @@ export function effect(fn: () => void | (() => void)): () => void {
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
 		link(e, prevSub, 0);
+		prevSub.flags |= HasChildEffect;
 	}
 	try {
 		++runDepth;
@@ -222,6 +238,16 @@ export function trigger(fn: () => void) {
 }
 
 function updateComputed(c: ComputedNode): boolean {
+	if (c.flags & HasChildEffect) {
+		let link = c.depsTail;
+		while (link !== undefined) {
+			const prev = link.prevDep;
+			if ('fn' in link.dep) {
+				unlink(link, c);
+			}
+			link = prev;
+		}
+	}
 	c.depsTail = undefined;
 	c.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
 	const prevSub = setActiveSub(c);
@@ -250,6 +276,16 @@ function run(e: EffectNode): void {
 			&& checkDirty(e.deps!, e)
 		)
 	) {
+		if (flags & HasChildEffect) {
+			let link = e.depsTail;
+			while (link !== undefined) {
+				const prev = link.prevDep;
+				if ('fn' in link.dep) {
+					unlink(link, e);
+				}
+				link = prev;
+			}
+		}
 		if (e.cleanup) {
 			runCleanup(e);
 			if (!e.flags) {
@@ -270,7 +306,7 @@ function run(e: EffectNode): void {
 			purgeDeps(e);
 		}
 	} else if (e.deps !== undefined) {
-		e.flags = ReactiveFlags.Watching;
+		e.flags = ReactiveFlags.Watching | (flags & HasChildEffect);
 	}
 }
 
@@ -369,16 +405,20 @@ function runCleanup(e: EffectNode): void {
 }
 
 function effectOper(this: EffectNode): void {
+	effectScopeOper.call(this);
 	if (this.cleanup) {
 		runCleanup(this);
 	}
-	effectScopeOper.call(this);
 }
 
 function effectScopeOper(this: EffectScopeNode): void {
-	this.depsTail = undefined;
 	this.flags = ReactiveFlags.None;
-	purgeDeps(this);
+	let link = this.depsTail;
+	while (link !== undefined) {
+		const prev = link.prevDep;
+		unlink(link, this);
+		link = prev;
+	}
 	const sub = this.subs;
 	if (sub !== undefined) {
 		unlink(sub);
