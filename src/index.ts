@@ -71,10 +71,7 @@ const {
 		}
 	},
 	unwatched(node: SignalNode | ComputedNode | EffectNode | EffectScopeNode) {
-		if ('fn' in node) {
-			effectOper.call(node);
-		}
-		else if ('getter' in node) {
+		if ('getter' in node) {
 			if (node.depsTail !== undefined) {
 				node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 				let link: Link | undefined = node.depsTail;
@@ -88,6 +85,9 @@ const {
 		}
 		else if ('currentValue' in node) {
 			// Nothing to do for signals, they are always mutable and never dirty until pendingValue changes
+		}
+		else if ('fn' in node) {
+			effectOper.call(node);
 		}
 		else {
 			effectScopeOper.call(node);
