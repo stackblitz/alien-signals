@@ -1,4 +1,4 @@
-import { createReactiveSystem, ReactiveFlags, type ReactiveNode } from './system.js';
+import { createReactiveSystem, ReactiveFlags, type Link, type ReactiveNode } from './system.js';
 
 interface EffectScopeNode extends ReactiveNode {
 }
@@ -77,10 +77,10 @@ const {
 		else if ('getter' in node) {
 			if (node.depsTail !== undefined) {
 				node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-				let link = node.depsTail;
+				let link: Link | undefined = node.depsTail;
 				node.depsTail = undefined;
 				while (link !== undefined) {
-					const prev = link.prevDep;
+					const prev: Link | undefined = link.prevDep;
 					unlink(link, node);
 					link = prev;
 				}
