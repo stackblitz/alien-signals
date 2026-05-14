@@ -1,4 +1,4 @@
-import { createReactiveSystem, ReactiveFlags, type Link, type ReactiveNode } from './system.js';
+import { createReactiveSystem, ReactiveFlags, type ReactiveNode } from './system.js';
 
 interface EffectScopeNode extends ReactiveNode {
 }
@@ -74,13 +74,7 @@ const {
 		if ('getter' in node) {
 			if (node.depsTail !== undefined) {
 				node.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
-				let link: Link | undefined = node.depsTail;
-				node.depsTail = undefined;
-				while (link !== undefined) {
-					const prev: Link | undefined = link.prevDep;
-					unlink(link, node);
-					link = prev;
-				}
+				disposeAllDepsInReverse(node);
 			}
 		}
 		else if ('currentValue' in node) {
@@ -421,15 +415,19 @@ function effectOper(this: EffectNode): void {
 
 function effectScopeOper(this: EffectScopeNode): void {
 	this.flags = ReactiveFlags.None;
-	let link = this.depsTail;
-	while (link !== undefined) {
-		const prev = link.prevDep;
-		unlink(link, this);
-		link = prev;
-	}
+	disposeAllDepsInReverse(this);
 	const sub = this.subs;
 	if (sub !== undefined) {
 		unlink(sub);
+	}
+}
+
+function disposeAllDepsInReverse(sub: ReactiveNode): void {
+	let link = sub.depsTail;
+	while (link !== undefined) {
+		const prev = link.prevDep;
+		unlink(link, sub);
+		link = prev;
 	}
 }
 
