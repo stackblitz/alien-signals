@@ -99,6 +99,10 @@ export function setActiveSub(sub?: ReactiveNode) {
 	return prevSub;
 }
 
+function shouldTrack(sub: ReactiveNode): boolean {
+	return !!(sub.flags & (ReactiveFlags.Mutable | ReactiveFlags.Watching));
+}
+
 export function getBatchDepth(): number {
 	return batchDepth;
 }
@@ -173,13 +177,16 @@ export function effect(fn: () => void | (() => void)): () => void {
 		flags: ReactiveFlags.Watching | ReactiveFlags.RecursedCheck,
 	};
 	const prevSub = setActiveSub(e);
-	if (prevSub !== undefined) {
+	if (prevSub !== undefined && shouldTrack(prevSub)) {
 		link(e, prevSub, 0);
 		prevSub.flags |= HasChildEffect;
 	}
 	try {
 		++runDepth;
 		e.cleanup = e.fn();
+	} catch (error) {
+		effectOper.call(e);
+		throw error;
 	} finally {
 		--runDepth;
 		activeSub = prevSub;
@@ -197,12 +204,15 @@ export function effectScope(fn: () => void): () => void {
 		flags: ReactiveFlags.Mutable,
 	};
 	const prevSub = setActiveSub(e);
-	if (prevSub !== undefined) {
+	if (prevSub !== undefined && shouldTrack(prevSub)) {
 		link(e, prevSub, 0);
 		prevSub.flags |= HasChildEffect;
 	}
 	try {
 		fn();
+	} catch (error) {
+		effectScopeOper.call(e);
+		throw error;
 	} finally {
 		activeSub = prevSub;
 	}
@@ -359,7 +369,7 @@ function computedOper<T>(this: ComputedNode<T>): T {
 		}
 	}
 	const sub = activeSub;
-	if (sub !== undefined) {
+	if (sub !== undefined && shouldTrack(sub)) {
 		link(this, sub, cycle);
 	}
 	return this.value!;
@@ -387,7 +397,7 @@ function signalOper<T>(this: SignalNode<T>, ...value: [T]): T | void {
 			}
 		}
 		const sub = activeSub;
-		if (sub !== undefined) {
+		if (sub !== undefined && shouldTrack(sub)) {
 			link(this, sub, cycle);
 		}
 		return this.currentValue;
