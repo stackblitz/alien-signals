@@ -50,6 +50,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [WebReflection/alien-signals](https://github.com/WebReflection/alien-signals): Preact signals like API and a class based approach for easy brand check
 - [@lift-html/alien](https://github.com/JLarky/lift-html/tree/main/packages/alien): Integrating alien-signals into lift-html
 - [ilha](https://github.com/ilhajs/ilha): A tiny web UI library built around the islands architecture
+- [@sigrea/core](https://github.com/sigrea/core): Signals, deep reactivity, and molecule lifecycles built on alien-signals
 
 ## Adoption
 
