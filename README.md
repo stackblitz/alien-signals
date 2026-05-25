@@ -51,6 +51,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [@lift-html/alien](https://github.com/JLarky/lift-html/tree/main/packages/alien): Integrating alien-signals into lift-html
 - [ilha](https://github.com/ilhajs/ilha): A tiny web UI library built around the islands architecture
 - [@sigrea/core](https://github.com/sigrea/core): Signals, deep reactivity, and molecule lifecycles built on alien-signals
+- [@lazy-promise/alien-signals](https://github.com/lazy-promise/lazy-promise/tree/main/packages/alien-signals): Async signals built on top of alien-signals and LazyPromise
 
 ## Adoption
 
