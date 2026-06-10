@@ -62,3 +62,32 @@ test('should not notify the trigger function sub', () => {
 		src2();
 	});
 });
+
+test('should allow writing a signal after reading it', () => {
+	const src1 = signal(1);
+
+	trigger(() => {
+		src1();
+		src1(src1() + 1);
+	});
+	expect(src1()).toBe(2);
+});
+
+test('should rerun effect once when writing a signal after reading it', () => {
+	const src1 = signal(1);
+
+	let triggers = 0;
+
+	effect(() => {
+		triggers++;
+		src1();
+	});
+
+	expect(triggers).toBe(1);
+	trigger(() => {
+		src1();
+		src1(src1() + 1);
+	});
+	expect(triggers).toBe(2);
+	expect(src1()).toBe(2);
+});

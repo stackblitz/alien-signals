@@ -210,12 +210,18 @@ export function effectScope(fn: () => void): () => void {
 }
 
 export function trigger(fn: () => void) {
+	// RecursedCheck marks this sub as mid-run (like an executing effect), so
+	// writes inside fn to already-read deps take the recursed-write path in
+	// propagate/shallowPropagate instead of notify-queueing this non-effect
+	// node, which would crash in run(). Batching defers those writes' flush
+	// so fn's reads and writes settle as one atomic change set.
 	const sub: ReactiveNode = {
 		deps: undefined,
 		depsTail: undefined,
-		flags: ReactiveFlags.Watching,
+		flags: ReactiveFlags.Watching | ReactiveFlags.RecursedCheck,
 	};
 	const prevSub = setActiveSub(sub);
+	++batchDepth;
 	try {
 		fn();
 	} finally {
@@ -231,7 +237,7 @@ export function trigger(fn: () => void) {
 				shallowPropagate(subs);
 			}
 		}
-		if (!batchDepth) {
+		if (!--batchDepth) {
 			flush();
 		}
 	}
