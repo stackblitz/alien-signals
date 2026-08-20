@@ -11,6 +11,17 @@ interface EffectNode extends ReactiveNode {
 interface ComputedNode<T = any> extends ReactiveNode {
 	value: T | undefined;
 	getter: (previousValue?: T) => T;
+	/**
+	 * The error thrown by the most recent getter evaluation, if any.
+	 *
+	 * When a computed's getter throws, the computed is left in a cached
+	 * `Mutable` state with `value` unset. Without this field, a subsequent
+	 * read (e.g. from an unrelated re-run of the subscriber) would fall
+	 * through all branches and return the stale `undefined` instead of
+	 * surfacing the error. Storing it lets `computedOper` re-throw the same
+	 * error on reads until the dependencies change and the getter re-runs.
+	 */
+	error: unknown;
 }
 
 interface SignalNode<T = any> extends ReactiveNode {
@@ -157,6 +168,7 @@ export function signal<T>(initialValue?: T): {
 export function computed<T>(getter: (previousValue?: T) => T): () => T {
 	return computedOper.bind({
 		value: undefined,
+		error: undefined,
 		subs: undefined,
 		subsTail: undefined,
 		deps: undefined,
@@ -266,7 +278,14 @@ function updateComputed(c: ComputedNode): boolean {
 	try {
 		++cycle;
 		const oldValue = c.value;
-		return oldValue !== (c.value = c.getter(oldValue));
+		const newValue = c.getter(oldValue);
+		c.error = undefined;
+		return oldValue !== (c.value = newValue);
+	} catch (error) {
+		// Store the error so subsequent reads (before the deps change) can
+		// re-throw it instead of returning the stale cached value.
+		c.error = error;
+		throw error;
 	} finally {
 		activeSub = prevSub;
 		c.flags &= ~ReactiveFlags.RecursedCheck;
@@ -367,10 +386,22 @@ function computedOper<T>(this: ComputedNode<T>): T {
 			const prevSub = setActiveSub(this);
 			try {
 				this.value = this.getter();
+				this.error = undefined;
+			} catch (error) {
+				// Store the error so subsequent reads (before the deps
+				// change) can re-throw it instead of returning the stale
+				// cached value.
+				this.error = error;
+				throw error;
 			} finally {
 				activeSub = prevSub;
 				this.flags &= ~ReactiveFlags.RecursedCheck;
 			}
+		} else if (this.error !== undefined) {
+			// Cached but the last evaluation threw, and the deps haven't
+			// changed (not Dirty/Pending): re-throw the stored error rather
+			// than returning the stale `undefined` value.
+			throw this.error;
 		}
 	} finally {
 		if (shouldLink) {
