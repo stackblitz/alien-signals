@@ -60,6 +60,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - [flamrdevs/xignal](https://github.com/flamrdevs/xignal): Infrastructure for the reactive system
 - [vuejs/language-tools](https://github.com/vuejs/language-tools): Used in the language-core package for virtual code generation
 - [unuse](https://github.com/un-ts/unuse): A framework-agnostic `use` library inspired by `VueUse`
+- [nano_kit](https://github.com/TrigenSoftware/nano_kit): The core algorithm has been forked into [Agera](https://github.com/TrigenSoftware/nano_kit/tree/main/packages/agera), the reactive core of Nano Kit and [Nanoviews](https://github.com/TrigenSoftware/nanoviews)
 
 ## Usage
 
