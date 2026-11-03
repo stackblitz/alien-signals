@@ -193,3 +193,35 @@ test('an error in an upstream computed reaches the effect through a computed cha
 	source(2);
 	expect(seen).toEqual([10, 'error', 20]);
 });
+
+test('other subscribers re-run when a computed starts throwing during a direct read', () => {
+	const source = signal(1);
+	const c = computed(() => {
+		if (source() === 0) {
+			throw new Error('pending');
+		}
+		return source();
+	});
+	const first: unknown[] = [];
+	const second: unknown[] = [];
+
+	effect(() => {
+		source();
+		try {
+			first.push(c());
+		} catch {
+			first.push('error');
+		}
+	});
+	effect(() => {
+		try {
+			second.push(c());
+		} catch {
+			second.push('error');
+		}
+	});
+
+	source(0);
+	expect(first).toEqual([1, 'error']);
+	expect(second).toEqual([1, 'error']);
+});
