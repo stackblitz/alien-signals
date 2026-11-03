@@ -63,6 +63,9 @@ export function createReactiveSystem({
 		if (prevSub !== undefined && prevSub.version === version && prevSub.sub === sub) {
 			return;
 		}
+		if (!sub.flags) {
+			return;
+		}
 		const newLink
 			= sub.depsTail
 			= dep.subsTail

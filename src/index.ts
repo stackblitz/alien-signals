@@ -175,11 +175,16 @@ export function effect(fn: () => void | (() => void)): () => void {
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
 		link(e, prevSub, 0);
-		prevSub.flags |= HasChildEffect;
+		if (e.subs !== undefined) {
+			prevSub.flags |= HasChildEffect;
+		}
 	}
 	try {
 		++runDepth;
 		e.cleanup = e.fn();
+	} catch (error) {
+		effectOper.call(e);
+		throw error;
 	} finally {
 		--runDepth;
 		activeSub = prevSub;
@@ -199,10 +204,15 @@ export function effectScope(fn: () => void): () => void {
 	const prevSub = setActiveSub(e);
 	if (prevSub !== undefined) {
 		link(e, prevSub, 0);
-		prevSub.flags |= HasChildEffect;
+		if (e.subs !== undefined) {
+			prevSub.flags |= HasChildEffect;
+		}
 	}
 	try {
 		fn();
+	} catch (error) {
+		effectScopeOper.call(e);
+		throw error;
 	} finally {
 		activeSub = prevSub;
 	}
