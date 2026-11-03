@@ -115,3 +115,81 @@ test('computed retries after its dependency changes and changes back', () => {
 	source('a');
 	expect(c()).toBe('a');
 });
+
+test('every subscriber of a computed re-runs when its evaluation starts throwing', () => {
+	const source = signal(1);
+	const c = computed(() => {
+		if (source() === 0) {
+			throw new Error('pending');
+		}
+		return source();
+	});
+	const first: unknown[] = [];
+	const second: unknown[] = [];
+
+	effect(() => {
+		try {
+			first.push(c());
+		} catch {
+			first.push('error');
+		}
+	});
+	effect(() => {
+		try {
+			second.push(c());
+		} catch {
+			second.push('error');
+		}
+	});
+
+	source(0);
+	expect(first).toEqual([1, 'error']);
+	expect(second).toEqual([1, 'error']);
+});
+
+test('recovering to the value held before the error still notifies subscribers', () => {
+	const source = signal(1);
+	const c = computed(() => {
+		if (source() === 0) {
+			throw new Error('pending');
+		}
+		return 2;
+	});
+	const seen: unknown[] = [];
+
+	effect(() => {
+		try {
+			seen.push(c());
+		} catch {
+			seen.push('error');
+		}
+	});
+
+	source(0);
+	source(1);
+	expect(seen).toEqual([2, 'error', 2]);
+});
+
+test('an error in an upstream computed reaches the effect through a computed chain', () => {
+	const source = signal(1);
+	const inner = computed(() => {
+		if (source() === 0) {
+			throw new Error('pending');
+		}
+		return source();
+	});
+	const outer = computed(() => inner() * 10);
+	const seen: unknown[] = [];
+
+	effect(() => {
+		try {
+			seen.push(outer());
+		} catch {
+			seen.push('error');
+		}
+	});
+
+	expect(() => source(0)).not.toThrow();
+	source(2);
+	expect(seen).toEqual([10, 'error', 20]);
+});

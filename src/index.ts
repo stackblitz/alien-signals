@@ -24,6 +24,11 @@ interface SignalNode<T = any> extends ReactiveNode {
 // The bit is outside ReactiveFlags' range and never touched by system.ts.
 const HasChildEffect = 64;
 
+// Marks a computed whose last evaluation threw: it holds no value, so the
+// next read evaluates it again. Unlike Dirty, propagate() still passes
+// through it, so a dep change reaches the subscribers that saw the error.
+const Failed = 128;
+
 let cycle = 0;
 let runDepth = 0;
 let batchDepth = 0;
@@ -41,7 +46,11 @@ const {
 } = createReactiveSystem({
 	update(node: SignalNode | ComputedNode | EffectScopeNode): boolean {
 		if ('getter' in node) {
-			return updateComputed(node);
+			try {
+				return updateComputed(node);
+			} catch {
+				return true;
+			}
 		}
 		if ('currentValue' in node) {
 			return updateSignal(node);
@@ -249,7 +258,8 @@ export function trigger(fn: () => void) {
 }
 
 function updateComputed(c: ComputedNode): boolean {
-	if (c.flags & HasChildEffect) {
+	const flags = c.flags;
+	if (flags & HasChildEffect) {
 		let link = c.depsTail;
 		while (link !== undefined) {
 			const prev = link.prevDep;
@@ -266,7 +276,14 @@ function updateComputed(c: ComputedNode): boolean {
 	try {
 		++cycle;
 		const oldValue = c.value;
-		return oldValue !== (c.value = c.getter(oldValue));
+		return oldValue !== (c.value = c.getter(oldValue)) || !!(flags & Failed);
+	} catch (error) {
+		c.flags |= Failed;
+		const subs = c.subs;
+		if (subs !== undefined) {
+			shallowPropagate(subs);
+		}
+		throw error;
 	} finally {
 		activeSub = prevSub;
 		c.flags &= ~ReactiveFlags.RecursedCheck;
@@ -343,35 +360,41 @@ function flush(): void {
 
 function computedOper<T>(this: ComputedNode<T>): T {
 	const flags = this.flags;
-	if (
-		flags & ReactiveFlags.Dirty
-		|| (
-			flags & ReactiveFlags.Pending
-			&& (
-				checkDirty(this.deps!, this)
-				|| (this.flags = flags & ~ReactiveFlags.Pending, false)
+	try {
+		if (
+			flags & (ReactiveFlags.Dirty | Failed)
+			|| (
+				flags & ReactiveFlags.Pending
+				&& (
+					checkDirty(this.deps!, this)
+					|| (this.flags = flags & ~ReactiveFlags.Pending, false)
+				)
 			)
-		)
-	) {
-		if (updateComputed(this)) {
-			const subs = this.subs;
-			if (subs !== undefined) {
-				shallowPropagate(subs);
+		) {
+			if (updateComputed(this)) {
+				const subs = this.subs;
+				if (subs !== undefined) {
+					shallowPropagate(subs);
+				}
+			}
+		} else if (!flags) {
+			this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
+			const prevSub = setActiveSub(this);
+			try {
+				this.value = this.getter();
+			} catch (error) {
+				this.flags |= Failed;
+				throw error;
+			} finally {
+				activeSub = prevSub;
+				this.flags &= ~ReactiveFlags.RecursedCheck;
 			}
 		}
-	} else if (!flags) {
-		this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
-		const prevSub = setActiveSub(this);
-		try {
-			this.value = this.getter();
-		} finally {
-			activeSub = prevSub;
-			this.flags &= ~ReactiveFlags.RecursedCheck;
+	} finally {
+		const sub = activeSub;
+		if (sub !== undefined) {
+			link(this, sub, cycle);
 		}
-	}
-	const sub = activeSub;
-	if (sub !== undefined) {
-		link(this, sub, cycle);
 	}
 	return this.value!;
 }
