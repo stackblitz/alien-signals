@@ -360,41 +360,48 @@ function flush(): void {
 
 function computedOper<T>(this: ComputedNode<T>): T {
 	const flags = this.flags;
-	try {
-		if (
-			flags & (ReactiveFlags.Dirty | Failed)
-			|| (
-				flags & ReactiveFlags.Pending
-				&& (
-					checkDirty(this.deps!, this)
-					|| (this.flags = flags & ~ReactiveFlags.Pending, false)
-				)
+	if (
+		// 144 = Dirty | Failed, spelled out so the hot read tests one literal.
+		flags & 144
+		|| !flags
+		|| (
+			flags & ReactiveFlags.Pending
+			&& (
+				checkDirty(this.deps!, this)
+				|| (this.flags = flags & ~ReactiveFlags.Pending, false)
 			)
-		) {
-			if (updateComputed(this)) {
+		)
+	) {
+		try {
+			if (!flags) {
+				this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
+				const prevSub = setActiveSub(this);
+				try {
+					this.value = this.getter();
+				} catch (error) {
+					this.flags |= Failed;
+					throw error;
+				} finally {
+					activeSub = prevSub;
+					this.flags &= ~ReactiveFlags.RecursedCheck;
+				}
+			} else if (updateComputed(this)) {
 				const subs = this.subs;
 				if (subs !== undefined) {
 					shallowPropagate(subs);
 				}
 			}
-		} else if (!flags) {
-			this.flags = ReactiveFlags.Mutable | ReactiveFlags.RecursedCheck;
-			const prevSub = setActiveSub(this);
-			try {
-				this.value = this.getter();
-			} catch (error) {
-				this.flags |= Failed;
-				throw error;
-			} finally {
-				activeSub = prevSub;
-				this.flags &= ~ReactiveFlags.RecursedCheck;
+		} catch (error) {
+			const sub = activeSub;
+			if (sub !== undefined) {
+				link(this, sub, cycle);
 			}
+			throw error;
 		}
-	} finally {
-		const sub = activeSub;
-		if (sub !== undefined) {
-			link(this, sub, cycle);
-		}
+	}
+	const sub = activeSub;
+	if (sub !== undefined) {
+		link(this, sub, cycle);
 	}
 	return this.value!;
 }
