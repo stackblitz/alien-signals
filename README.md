@@ -35,6 +35,7 @@ I spent considerable time [optimizing Vue 3.4’s reactivity system](https://git
 - **Lua:** [YanqingXu/alien-signals-in-lua](https://github.com/YanqingXu/alien-signals-in-lua)
 - **Lua 5.4:** [xuhuanzy/alien-signals-lua](https://github.com/xuhuanzy/alien-signals-lua)
 - **Luau:** [Nicell/alien-signals-luau](https://github.com/Nicell/alien-signals-luau)
+- **Luau:** [maneetoo/luau-signals](https://github.com/maneetoo/luau-signals)
 - **Java:** [CTRL-Neo-Studios/java-alien-signals](https://github.com/CTRL-Neo-Studios/java-alien-signals)
 - **C#:** [CTRL-Neo-Studios/csharp-alien-signals](https://github.com/CTRL-Neo-Studios/csharp-alien-signals)
 - **Go:** [delaneyj/alien-signals-go](https://github.com/delaneyj/alien-signals-go)
