@@ -5,6 +5,8 @@
 	"description": "The lightest signal library.",
 	"packageManager": "pnpm@9.12.0",
 	"types": "./types/index.d.ts",
+	"main": "./cjs/index.cjs",
+	"module": "./esm/index.mjs",
 	"exports": {
 		".": {
 			"types": "./types/index.d.ts",
