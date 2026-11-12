@@ -1,0 +1,84 @@
+diff --git a/src/index.ts b/src/index.ts
+index d503438..5b07e1e 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -23,6 +23,7 @@ interface SignalNode<T = any> extends ReactiveNode {
+ // leaf effects (no children, no own cleanup) avoid the extra deps walk.
+ // The bit is outside ReactiveFlags' range and never touched by system.ts.
+ const HasChildEffect = 64;
++const Failed = 128;
+ 
+ let cycle = 0;
+ let runDepth = 0;
+@@ -257,6 +258,10 @@ function updateComputed(c: ComputedNode): boolean {
+ 		++cycle;
+ 		const oldValue = c.value;
+ 		return oldValue !== (c.value = c.getter(oldValue));
++	} catch (err) {
++		c.value = err;
++		c.flags |= Failed;
++		return true;
+ 	} finally {
+ 		activeSub = prevSub;
+ 		c.flags &= ~ReactiveFlags.RecursedCheck;
+@@ -314,20 +319,28 @@ function run(e: EffectNode): void {
+ }
+ 
+ function flush(): void {
+-	try {
+-		while (notifyIndex < queuedLength) {
+-			const effect = queued[notifyIndex]!;
+-			queued[notifyIndex++] = undefined;
++	let failed = false;
++	let error: unknown;
++	while (notifyIndex < queuedLength) {
++		const effect = queued[notifyIndex]!;
++		queued[notifyIndex++] = undefined;
++		try {
+ 			run(effect);
++		} catch (err) {
++			const flags = effect.flags;
++			if (flags && !(flags & ReactiveFlags.Watching)) {
++				effectOper.call(effect);
++			}
++			if (!failed) {
++				failed = true;
++				error = err;
++			}
+ 		}
+-	} finally {
+-		while (notifyIndex < queuedLength) {
+-			const effect = queued[notifyIndex]!;
+-			queued[notifyIndex++] = undefined;
+-			effect.flags |= ReactiveFlags.Watching | ReactiveFlags.Recursed;
+-		}
+-		notifyIndex = 0;
+-		queuedLength = 0;
++	}
++	notifyIndex = 0;
++	queuedLength = 0;
++	if (failed) {
++		throw error;
+ 	}
+ }
+ 
+@@ -354,6 +367,9 @@ function computedOper<T>(this: ComputedNode<T>): T {
+ 		const prevSub = setActiveSub(this);
+ 		try {
+ 			this.value = this.getter();
++		} catch (err) {
++			this.value = err as T;
++			this.flags |= Failed;
+ 		} finally {
+ 			activeSub = prevSub;
+ 			this.flags &= ~ReactiveFlags.RecursedCheck;
+@@ -363,6 +379,9 @@ function computedOper<T>(this: ComputedNode<T>): T {
+ 	if (sub !== undefined) {
+ 		link(this, sub, cycle);
+ 	}
++	if (this.flags & Failed) {
++		throw this.value;
++	}
+ 	return this.value!;
+ }
+ 

@@ -1,0 +1,26 @@
+diff --git a/src/index.ts b/src/index.ts
+index d503438..f7e75df 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -332,6 +332,10 @@ function flush(): void {
+ }
+ 
+ function computedOper<T>(this: ComputedNode<T>): T {
++	const sub = activeSub;
++	if (sub !== undefined) {
++		link(this, sub, cycle);
++	}
+ 	const flags = this.flags;
+ 	if (
+ 		flags & ReactiveFlags.Dirty
+@@ -359,10 +363,6 @@ function computedOper<T>(this: ComputedNode<T>): T {
+ 			this.flags &= ~ReactiveFlags.RecursedCheck;
+ 		}
+ 	}
+-	const sub = activeSub;
+-	if (sub !== undefined) {
+-		link(this, sub, cycle);
+-	}
+ 	return this.value!;
+ }
+ 

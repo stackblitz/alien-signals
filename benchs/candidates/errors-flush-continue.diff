@@ -1,0 +1,59 @@
+diff --git a/src/index.ts b/src/index.ts
+index d503438..703f848 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -290,7 +290,12 @@ function run(e: EffectNode): void {
+ 			}
+ 		}
+ 		if (e.cleanup) {
+-			runCleanup(e);
++			try {
++				runCleanup(e);
++			} catch (err) {
++				effectOper.call(e);
++				throw err;
++			}
+ 			if (!e.flags) {
+ 				return;
+ 			}
+@@ -314,20 +319,28 @@ function run(e: EffectNode): void {
+ }
+ 
+ function flush(): void {
+-	try {
+-		while (notifyIndex < queuedLength) {
+-			const effect = queued[notifyIndex]!;
+-			queued[notifyIndex++] = undefined;
++	let failed = false;
++	let error: unknown;
++	while (notifyIndex < queuedLength) {
++		const effect = queued[notifyIndex]!;
++		queued[notifyIndex++] = undefined;
++		try {
+ 			run(effect);
++		} catch (err) {
++			const flags = effect.flags;
++			if (flags && !(flags & ReactiveFlags.Watching)) {
++				effect.flags = flags | ReactiveFlags.Watching | ReactiveFlags.Recursed;
++			}
++			if (!failed) {
++				failed = true;
++				error = err;
++			}
+ 		}
+-	} finally {
+-		while (notifyIndex < queuedLength) {
+-			const effect = queued[notifyIndex]!;
+-			queued[notifyIndex++] = undefined;
+-			effect.flags |= ReactiveFlags.Watching | ReactiveFlags.Recursed;
+-		}
+-		notifyIndex = 0;
+-		queuedLength = 0;
++	}
++	notifyIndex = 0;
++	queuedLength = 0;
++	if (failed) {
++		throw error;
+ 	}
+ }
+ 
