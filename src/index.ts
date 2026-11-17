@@ -227,7 +227,12 @@ export function trigger(fn: () => void) {
 			const dep = link.dep;
 			link = unlink(link, sub);
 			const subs = dep.subs;
-			if (subs !== undefined) {
+			if ("getter" in dep) {
+				dep.flags |= ReactiveFlags.Dirty;
+				if (subs !== undefined) {
+					propagate(subs, !!runDepth);
+				}
+			} else if (subs !== undefined) {
 				propagate(subs, !!runDepth);
 				shallowPropagate(subs);
 			}
